@@ -1,0 +1,651 @@
+// ============================================================
+// BABY SPA - PRISMA SCHEMA
+// Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  ADMIN
+  RECEPTION
+  THERAPIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BirthType {
+  NATURAL
+  CESAREAN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum SessionStatus {
+  PENDING
+  EVALUATED
+  COMPLETED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+  OTHER
+}
+
+enum PaymentType {
+  SALARY
+  ADVANCE
+  BONUS
+  DEDUCTION
+  OTHER
+}
+
+enum MovementType {
+  PURCHASE
+  SALE
+  USAGE
+  ADJUSTMENT
+}
+
+enum MuscleTone {
+  LOW
+  NORMAL
+  TENSE
+}
+
+enum Mood {
+  CALM
+  IRRITABLE
+}
+
+enum NotificationType {
+  MESVERSARY
+  BIRTHDAY
+  APPOINTMENT_24H
+  PATTERN_REMINDER
+  INACTIVE_CLIENT
+}
+
+// ============================================================
+// USUARIOS DEL SISTEMA (Staff)
+// ============================================================
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String?
+  passwordHash String
+  name         String
+  role         UserRole
+  phone        String?
+  isActive     Boolean   @default(true)
+
+  // Para control de sueldos
+  baseSalary Decimal? @db.Decimal(10, 2)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  sessionsAsTherapist Session[]
+  registrationLinks   RegistrationLink[]
+  babyNotes           BabyNote[]
+  staffPayments       StaffPayment[]
+
+  @@map("users")
+}
+
+// ============================================================
+// PADRES / TUTORES
+// ============================================================
+
+model Parent {
+  id String @id @default(cuid())
+
+  // Identificadores únicos (cualquiera sirve para buscar)
+  documentId   String @unique // CI (Bolivia) o CPF (Brasil)
+  documentType String @default("CI")
+  phone        String @unique // También único para búsqueda
+
+  name      String
+  email     String?
+  birthDate DateTime?
+
+  // Acceso al portal
+  accessCode String @unique // BSB-XXXXX
+
+  // Sistema de penalización
+  noShowCount        Int       @default(0)
+  requiresPrepayment Boolean   @default(false)
+  lastNoShowDate     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  babies        BabyParent[]
+  waitlistItems Waitlist[]
+
+  @@map("parents")
+}
+
+// ============================================================
+// BEBÉS
+// ============================================================
+
+model Baby {
+  id String @id @default(cuid())
+
+  name      String
+  birthDate DateTime
+  gender    Gender
+
+  // Datos de nacimiento
+  birthWeeks  Int?
+  birthWeight Decimal?  @db.Decimal(4, 2)
+  birthType   BirthType?
+
+  // Datos médicos
+  birthDifficulty          Boolean  @default(false)
+  birthDifficultyDesc      String?
+  pregnancyIssues          Boolean  @default(false)
+  pregnancyIssuesDesc      String?
+  priorStimulation         Boolean  @default(false)
+  priorStimulationType     String?
+  developmentDiagnosis     Boolean  @default(false)
+  developmentDiagnosisDesc String?
+  diagnosedIllness         Boolean  @default(false)
+  diagnosedIllnessDesc     String?
+  recentMedication         Boolean  @default(false)
+  recentMedicationDesc     String?
+  allergies                String?
+  specialObservations      String?
+
+  // Autorizaciones
+  socialMediaConsent Boolean @default(false)
+  instagramHandle    String?
+
+  // Marketing
+  referralSource String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parents          BabyParent[]
+  packagePurchases PackagePurchase[]
+  appointments     Appointment[]
+  sessions         Session[]
+  notifications    NotificationLog[]
+  notes            BabyNote[]
+
+  @@map("babies")
+}
+
+// ============================================================
+// RELACIÓN BEBÉ - PADRE (N:M)
+// ============================================================
+
+model BabyParent {
+  id           String  @id @default(cuid())
+  babyId       String
+  baby         Baby    @relation(fields: [babyId], references: [id], onDelete: Cascade)
+  parentId     String
+  parent       Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  relationship String  @default("MOTHER")
+  isPrimary    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([babyId, parentId])
+  @@map("baby_parents")
+}
+
+// ============================================================
+// NOTAS INTERNAS DEL BEBÉ
+// ============================================================
+
+model BabyNote {
+  id     String @id @default(cuid())
+  babyId String
+  baby   Baby   @relation(fields: [babyId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  note   String
+
+  createdAt DateTime @default(now())
+
+  @@map("baby_notes")
+}
+
+// ============================================================
+// LINK REGISTRO TEMPORAL
+// ============================================================
+
+model RegistrationLink {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  expiresAt   DateTime
+  isUsed      Boolean   @default(false)
+  usedAt      DateTime?
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  babyId      String?
+  parentId    String?
+
+  createdAt DateTime @default(now())
+
+  @@map("registration_links")
+}
+
+// ============================================================
+// CATÁLOGO DE PAQUETES
+// ============================================================
+
+model Package {
+  id             String  @id @default(cuid())
+  name           String
+  namePortuguese String?
+  description    String?
+  sessionCount   Int
+  basePrice      Decimal @db.Decimal(10, 2)
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchases PackagePurchase[]
+
+  @@map("packages")
+}
+
+// ============================================================
+// COMPRA DE PAQUETE
+// ============================================================
+
+model PackagePurchase {
+  id        String  @id @default(cuid())
+  babyId    String
+  baby      Baby    @relation(fields: [babyId], references: [id])
+  packageId String
+  package   Package @relation(fields: [packageId], references: [id])
+
+  basePrice      Decimal  @db.Decimal(10, 2)
+  discountAmount Decimal  @default(0) @db.Decimal(10, 2)
+  discountReason String?
+  finalPrice     Decimal  @db.Decimal(10, 2)
+
+  totalSessions     Int
+  usedSessions      Int @default(0)
+  remainingSessions Int
+
+  // Patrón de visitas
+  visitPattern  String? // FIXED_DAY, FREQUENCY, IRREGULAR
+  fixedDay      Int? // 0-6 si FIXED_DAY
+  frequencyDays Int? // Cada X días si FREQUENCY
+
+  isActive Boolean @default(true)
+
+  paymentId String?  @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+
+  @@map("package_purchases")
+}
+
+// ============================================================
+// CITAS (Agendamiento)
+// ============================================================
+
+model Appointment {
+  id     String @id @default(cuid())
+  babyId String
+  baby   Baby   @relation(fields: [babyId], references: [id])
+
+  date      DateTime          @db.Date
+  startTime DateTime          @db.Time
+  endTime   DateTime          @db.Time
+
+  status AppointmentStatus @default(SCHEDULED)
+
+  reminder24hSent   Boolean   @default(false)
+  reminder24hSentAt DateTime?
+
+  notes        String?
+  cancelReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session?
+  history AppointmentHistory[]
+
+  @@map("appointments")
+}
+
+// ============================================================
+// HISTORIAL DE CAMBIOS DE CITA
+// ============================================================
+
+model AppointmentHistory {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  action        String // CREATED, RESCHEDULED, CANCELLED, COMPLETED, NO_SHOW
+  performedBy   String // user_id o parent_id
+  performerType String // USER o PARENT
+  performerName String
+
+  oldValue Json?
+  newValue Json?
+  reason   String?
+
+  createdAt DateTime @default(now())
+
+  @@map("appointment_history")
+}
+
+// ============================================================
+// LISTA DE ESPERA
+// ============================================================
+
+model Waitlist {
+  id       String @id @default(cuid())
+  babyId   String
+  parentId String
+  parent   Parent @relation(fields: [parentId], references: [id])
+
+  desiredDate DateTime @db.Date
+  desiredTime DateTime @db.Time
+
+  notified   Boolean   @default(false)
+  notifiedAt DateTime?
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("waitlist")
+}
+
+// ============================================================
+// SESIONES (Ejecución)
+// ============================================================
+
+model Session {
+  id                String           @id @default(cuid())
+  appointmentId     String           @unique
+  appointment       Appointment      @relation(fields: [appointmentId], references: [id])
+  babyId            String
+  baby              Baby             @relation(fields: [babyId], references: [id])
+  therapistId       String
+  therapist         User             @relation(fields: [therapistId], references: [id])
+  packagePurchaseId String?
+  packagePurchase   PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
+
+  sessionNumber Int
+  status        SessionStatus @default(PENDING)
+
+  startedAt   DateTime?
+  evaluatedAt DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  evaluation Evaluation?
+  products   SessionProduct[]
+  payment    Payment?
+
+  @@map("sessions")
+}
+
+// ============================================================
+// EVALUACIÓN DE SESIÓN
+// ============================================================
+
+model Evaluation {
+  id        String  @id @default(cuid())
+  sessionId String  @unique
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  babyAgeMonths Int
+  babyWeight    Decimal? @db.Decimal(4, 2)
+
+  // Evaluación sensorial
+  visualTracking   Boolean?
+  eyeContact       Boolean?
+  auditoryResponse Boolean?
+
+  // Desarrollo muscular
+  muscleTone      MuscleTone?
+  cervicalControl Boolean?
+  headUp          Boolean?
+
+  // Hitos
+  sits   Boolean?
+  crawls Boolean?
+  walks  Boolean?
+
+  // Estado
+  mood Mood?
+
+  // Comentarios
+  internalNotes String? // Solo visible para staff
+  externalNotes String? // Visible para padres
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("evaluations")
+}
+
+// ============================================================
+// PRODUCTOS (Inventario)
+// ============================================================
+
+model Product {
+  id             String  @id @default(cuid())
+  name           String
+  namePortuguese String?
+  description    String?
+  category       String?
+  costPrice      Decimal @db.Decimal(10, 2)
+  salePrice      Decimal @db.Decimal(10, 2)
+  currentStock   Int     @default(0)
+  minStock       Int     @default(5)
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements     InventoryMovement[]
+  sessionUsages SessionProduct[]
+
+  @@map("products")
+}
+
+// ============================================================
+// MOVIMIENTOS DE INVENTARIO
+// ============================================================
+
+model InventoryMovement {
+  id          String       @id @default(cuid())
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id])
+  type        MovementType
+  quantity    Int
+  unitPrice   Decimal      @db.Decimal(10, 2)
+  totalAmount Decimal      @db.Decimal(10, 2)
+  notes       String?
+  stockAfter  Int
+
+  createdAt DateTime @default(now())
+
+  @@map("inventory_movements")
+}
+
+// ============================================================
+// PRODUCTOS USADOS EN SESIÓN
+// ============================================================
+
+model SessionProduct {
+  id           String  @id @default(cuid())
+  sessionId    String
+  session      Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product @relation(fields: [productId], references: [id])
+  quantity     Int     @default(1)
+  unitPrice    Decimal @db.Decimal(10, 2)
+  isChargeable Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@map("session_products")
+}
+
+// ============================================================
+// PAGOS
+// ============================================================
+
+model Payment {
+  id              String           @id @default(cuid())
+  sessionId       String?          @unique
+  session         Session?         @relation(fields: [sessionId], references: [id])
+  packagePurchase PackagePurchase?
+  amount          Decimal          @db.Decimal(10, 2)
+  method          PaymentMethod
+  notes           String?
+
+  createdAt DateTime @default(now())
+
+  @@map("payments")
+}
+
+// ============================================================
+// PAGOS AL PERSONAL
+// ============================================================
+
+model StaffPayment {
+  id     String      @id @default(cuid())
+  userId String
+  user   User        @relation(fields: [userId], references: [id])
+  type   PaymentType
+  amount Decimal     @db.Decimal(10, 2)
+  period String? // "2026-01" para sueldos/adelantos
+  notes  String?
+  date   DateTime    @db.Date
+
+  createdAt DateTime @default(now())
+
+  @@map("staff_payments")
+}
+
+// ============================================================
+// GASTOS OPERATIVOS
+// ============================================================
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  category    String?
+  amount      Decimal  @db.Decimal(10, 2)
+  date        DateTime @db.Date
+  notes       String?
+
+  createdAt DateTime @default(now())
+
+  @@map("expenses")
+}
+
+// ============================================================
+// LOG DE NOTIFICACIONES
+// ============================================================
+
+model NotificationLog {
+  id                  String           @id @default(cuid())
+  babyId              String
+  baby                Baby             @relation(fields: [babyId], references: [id])
+  type                NotificationType
+  emailSent           Boolean          @default(false)
+  emailSentAt         DateTime?
+  whatsappContacted   Boolean          @default(false)
+  whatsappContactedAt DateTime?
+  metadata            Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("notification_logs")
+}
+
+// ============================================================
+// CONFIGURACIÓN DEL SISTEMA
+// ============================================================
+
+model SystemConfig {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  description String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+// ============================================================
+// HORARIOS DE ATENCIÓN
+// ============================================================
+
+model BusinessHours {
+  id             String    @id @default(cuid())
+  dayOfWeek      Int // 0=Dom, 1=Lun, ..., 6=Sab
+  morningOpen    DateTime? @db.Time
+  morningClose   DateTime? @db.Time
+  afternoonOpen  DateTime? @db.Time
+  afternoonClose DateTime? @db.Time
+  isOpen         Boolean   @default(true)
+
+  @@unique([dayOfWeek])
+  @@map("business_hours")
+}
+
+// ============================================================
+// DÍAS CERRADOS
+// ============================================================
+
+model ClosedDate {
+  id     String   @id @default(cuid())
+  date   DateTime @db.Date
+  reason String?
+
+  @@unique([date])
+  @@map("closed_dates")
+}
