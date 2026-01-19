@@ -1,12 +1,32 @@
 import createMiddleware from "next-intl/middleware";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 
 // Crear el middleware de internacionalización
 const handleI18nRouting = createMiddleware(routing);
 
 export default function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
   const host = request.headers.get("host") || "";
+
+  // Excluir rutas públicas de registro del middleware i18n
+  if (pathname.startsWith("/registro")) {
+    // Solo agregar headers de país/base de datos
+    const response = NextResponse.next();
+
+    let country: "bolivia" | "brazil" = "bolivia";
+    if (host.startsWith("br.") || host.includes("brazil")) {
+      country = "brazil";
+    }
+
+    response.headers.set("x-country", country);
+    response.headers.set(
+      "x-database",
+      country === "brazil" ? "babyspa_brazil" : "babyspa_bolivia"
+    );
+
+    return response;
+  }
 
   // Detectar país/base de datos por subdominio
   let country: "bolivia" | "brazil" = "bolivia";

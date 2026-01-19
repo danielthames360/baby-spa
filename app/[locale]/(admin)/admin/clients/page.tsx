@@ -13,6 +13,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  Link2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BabyCard } from "@/components/babies/baby-card";
+import { CreateRegistrationLinkDialog } from "@/components/registration/create-link-dialog";
 
 interface BabyListItem {
   id: string;
@@ -68,6 +70,7 @@ export default function ClientsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
 
   const fetchBabies = useCallback(async () => {
     setIsLoading(true);
@@ -124,13 +127,29 @@ export default function ClientsPage() {
           </h1>
           <p className="mt-1 text-gray-500">{t("clients.subtitle")}</p>
         </div>
-        <Link href={`/${locale}/admin/clients/new`}>
-          <Button className="h-12 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-teal-400/40">
-            <Plus className="mr-2 h-5 w-5" />
-            {t("clients.newBaby")}
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowLinkDialog(true)}
+            variant="outline"
+            className="h-12 rounded-xl border-2 border-teal-200 px-4 font-medium text-teal-600 transition-all hover:bg-teal-50 hover:text-teal-700"
+          >
+            <Link2 className="mr-2 h-5 w-5" />
+            {t("clients.createLink")}
           </Button>
-        </Link>
+          <Link href={`/${locale}/admin/clients/new`}>
+            <Button className="h-12 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-teal-400/40">
+              <Plus className="mr-2 h-5 w-5" />
+              {t("clients.newBaby")}
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {/* Registration Link Dialog */}
+      <CreateRegistrationLinkDialog
+        open={showLinkDialog}
+        onOpenChange={setShowLinkDialog}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

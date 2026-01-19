@@ -27,7 +27,18 @@
       "Bash(npx eslint:*)",
       "mcp__chrome-devtools__list_pages",
       "mcp__chrome-devtools__list_network_requests",
-      "mcp__chrome-devtools__press_key"
+      "mcp__chrome-devtools__press_key",
+      "Bash(grep:*)",
+      "mcp__chrome-devtools__get_network_request",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx dotenv:*)",
+      "mcp__chrome-devtools__select_page",
+      "Bash(npx tsx:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:Passw0rd@localhost:5432/babyspa_bolivia\" npx tsx:*)",
+      "mcp__chrome-devtools__resize_page",
+      "mcp__chrome-devtools__emulate",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)"
     ]
   }
 }

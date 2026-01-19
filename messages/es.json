@@ -141,8 +141,6 @@
     "name": "Nombre completo",
     "phone": "Teléfono",
     "email": "Correo electrónico",
-    "documentId": "Documento de identidad",
-    "documentType": "Tipo de documento",
     "relationship": "Relación",
     "mother": "Madre",
     "father": "Padre",
@@ -274,6 +272,7 @@
     "title": "Clientes",
     "subtitle": "Gestión de bebés y familias",
     "newBaby": "Nuevo Bebé",
+    "createLink": "Crear Link",
     "searchPlaceholder": "Buscar por nombre, CI o teléfono...",
     "filters": {
       "all": "Todos",
@@ -295,6 +294,27 @@
     "emptyDescription": "Comienza registrando tu primer bebé",
     "viewProfile": "Ver perfil",
     "totalClients": "Total de clientes"
+  },
+
+  "registrationLink": {
+    "title": "Crear Link de Registro",
+    "description": "Genera un enlace temporal para que el padre registre los datos desde su celular",
+    "parentName": "Nombre del padre/madre",
+    "parentNamePlaceholder": "Nombre completo",
+    "parentPhone": "Teléfono de WhatsApp",
+    "parentPhonePlaceholder": "+591 7XXXXXXX",
+    "createButton": "Generar Link",
+    "linkCreated": "¡Link creado exitosamente!",
+    "expiresIn": "Este enlace expira en 5 días",
+    "sendWhatsApp": "Enviar por WhatsApp",
+    "createAnother": "Crear otro",
+    "whatsappMessage": "¡Hola! 👋\n\nTe compartimos el enlace para registrar a tu bebé en Baby Spa:\n{link}\n\nEs un formulario sencillo e intuitivo. Si necesitas ayuda, ¡escríbenos!\n\n— Equipo Baby Spa 🫧",
+    "errors": {
+      "NAME_REQUIRED": "El nombre es requerido",
+      "NAME_TOO_SHORT": "El nombre es muy corto",
+      "PHONE_REQUIRED": "El teléfono es requerido",
+      "PHONE_INVALID": "Teléfono inválido"
+    }
   },
 
   "babyForm": {
@@ -328,12 +348,9 @@
       "editTitle": "Editar Padre/Madre",
       "name": "Nombre completo",
       "namePlaceholder": "Ingresa el nombre completo",
-      "documentType": "Tipo de documento",
-      "ci": "CI (Cédula de Identidad)",
-      "passport": "Pasaporte",
-      "documentId": "Número de documento",
-      "documentIdPlaceholder": "Ingresa el número de documento",
       "phone": "Teléfono",
+      "phoneRequired": "Teléfono",
+      "phoneOptional": "Teléfono (opcional)",
       "phonePlaceholder": "+591 7XXXXXXX",
       "email": "Correo electrónico",
       "emailPlaceholder": "correo@ejemplo.com",
@@ -421,14 +438,12 @@
       "BIRTH_DATE_FUTURE": "La fecha de nacimiento no puede ser futura",
       "BIRTH_DATE_TOO_OLD": "El bebé debe tener menos de 3 años",
       "GENDER_REQUIRED": "El género es requerido",
-      "DOCUMENT_REQUIRED": "El documento de identidad es requerido",
       "PHONE_REQUIRED": "El teléfono es requerido",
       "PHONE_INVALID": "El teléfono no es válido",
       "EMAIL_INVALID": "El correo electrónico no es válido",
       "EMAIL_REQUIRED_PRIMARY": "El correo electrónico es requerido para el contacto principal",
       "PARENT_REQUIRED": "Debe seleccionar o crear un padre/madre",
       "AT_LEAST_ONE_PARENT": "Debe registrar al menos un padre/madre/tutor",
-      "DOCUMENT_EXISTS": "Ya existe un padre/madre con este documento",
       "PHONE_EXISTS": "Ya existe un padre/madre con este teléfono"
     }
   },

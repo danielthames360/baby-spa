@@ -37,8 +37,6 @@ interface SelectedParent {
   id: string;
   name: string;
   phone: string;
-  documentId: string;
-  documentType: string;
   email: string | null;
   accessCode: string;
 }
@@ -83,8 +81,6 @@ export default function NewBabyPage() {
     resolver: zodResolver(primaryParentSchema),
     defaultValues: {
       name: "",
-      documentId: "",
-      documentType: "CI",
       phone: "",
       email: "",
       relationship: "MOTHER",
@@ -96,8 +92,6 @@ export default function NewBabyPage() {
     resolver: zodResolver(secondaryParentSchema),
     defaultValues: {
       name: "",
-      documentId: "",
-      documentType: "CI",
       phone: "",
       email: "",
       relationship: "FATHER",
@@ -212,9 +206,7 @@ export default function NewBabyPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error === "DOCUMENT_EXISTS") {
-          setSubmitError(t("babyForm.errors.DOCUMENT_EXISTS"));
-        } else if (data.error === "PHONE_EXISTS") {
+        if (data.error === "PHONE_EXISTS") {
           setSubmitError(t("babyForm.errors.PHONE_EXISTS"));
         } else {
           setSubmitError(data.error || t("common.error"));
@@ -594,10 +586,6 @@ export default function NewBabyPage() {
                     <p>
                       <span className="text-gray-500">{t("babyForm.parentForm.phone")}:</span>{" "}
                       {parent1Form.getValues("phone")}
-                    </p>
-                    <p>
-                      <span className="text-gray-500">{t("babyForm.parentForm.documentId")}:</span>{" "}
-                      {parent1Form.getValues("documentId")}
                     </p>
                   </>
                 )}

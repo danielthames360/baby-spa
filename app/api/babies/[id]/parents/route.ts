@@ -41,8 +41,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const validatedParent = parentSchema.parse(parentData);
         const newParent = await parentService.create({
           name: validatedParent.name,
-          documentId: validatedParent.documentId,
-          documentType: validatedParent.documentType,
           phone: validatedParent.phone,
           email: validatedParent.email || undefined,
           birthDate: validatedParent.birthDate || undefined,
@@ -50,12 +48,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         parentId = newParent.id;
       } catch (error) {
         if (error instanceof Error) {
-          if (error.message === "DOCUMENT_EXISTS") {
-            return NextResponse.json(
-              { error: "DOCUMENT_EXISTS" },
-              { status: 400 }
-            );
-          }
           if (error.message === "PHONE_EXISTS") {
             return NextResponse.json(
               { error: "PHONE_EXISTS" },

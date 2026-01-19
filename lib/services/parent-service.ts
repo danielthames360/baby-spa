@@ -4,9 +4,7 @@ import { Prisma } from "@prisma/client";
 // Types
 export interface ParentWithBabies {
   id: string;
-  documentId: string;
-  documentType: string;
-  phone: string;
+  phone: string | null;
   name: string;
   email: string | null;
   birthDate: Date | null;
@@ -32,9 +30,7 @@ export interface ParentWithBabies {
 
 export interface ParentCreateInput {
   name: string;
-  documentId: string;
-  documentType?: string;
-  phone: string;
+  phone?: string;
   email?: string;
   birthDate?: Date;
 }
@@ -42,9 +38,7 @@ export interface ParentCreateInput {
 export interface ParentSearchResult {
   id: string;
   name: string;
-  phone: string;
-  documentId: string;
-  documentType: string;
+  phone: string | null;
   email: string | null;
   accessCode: string;
   babies: {
@@ -98,15 +92,12 @@ export const parentService = {
         OR: [
           { name: { contains: query, mode: "insensitive" } },
           { phone: { contains: query } },
-          { documentId: { contains: query } },
         ],
       },
       select: {
         id: true,
         name: true,
         phone: true,
-        documentId: true,
-        documentType: true,
         email: true,
         accessCode: true,
         babies: {
@@ -195,46 +186,16 @@ export const parentService = {
     return parent as ParentWithBabies | null;
   },
 
-  async getByDocumentId(documentId: string): Promise<ParentWithBabies | null> {
-    const parent = await prisma.parent.findUnique({
-      where: { documentId },
-      include: {
-        babies: {
-          include: {
-            baby: {
-              select: {
-                id: true,
-                name: true,
-                birthDate: true,
-                gender: true,
-                isActive: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return parent as ParentWithBabies | null;
-  },
-
   async create(data: ParentCreateInput): Promise<ParentWithBabies> {
-    // Check for existing document
-    const existingByDocument = await prisma.parent.findUnique({
-      where: { documentId: data.documentId },
-    });
+    // Check for existing phone (only if phone provided)
+    if (data.phone) {
+      const existingByPhone = await prisma.parent.findUnique({
+        where: { phone: data.phone },
+      });
 
-    if (existingByDocument) {
-      throw new Error("DOCUMENT_EXISTS");
-    }
-
-    // Check for existing phone
-    const existingByPhone = await prisma.parent.findUnique({
-      where: { phone: data.phone },
-    });
-
-    if (existingByPhone) {
-      throw new Error("PHONE_EXISTS");
+      if (existingByPhone) {
+        throw new Error("PHONE_EXISTS");
+      }
     }
 
     // Generate unique access code
@@ -243,9 +204,7 @@ export const parentService = {
     const parent = await prisma.parent.create({
       data: {
         name: data.name,
-        documentId: data.documentId,
-        documentType: data.documentType || "CI",
-        phone: data.phone,
+        phone: data.phone || null,
         email: data.email,
         birthDate: data.birthDate,
         accessCode,
@@ -288,20 +247,6 @@ export const parentService = {
       }
     }
 
-    // If updating documentId, check it's not already taken
-    if (data.documentId) {
-      const existingByDocument = await prisma.parent.findFirst({
-        where: {
-          documentId: data.documentId,
-          NOT: { id },
-        },
-      });
-
-      if (existingByDocument) {
-        throw new Error("DOCUMENT_EXISTS");
-      }
-    }
-
     const parent = await prisma.parent.update({
       where: { id },
       data: {
@@ -309,8 +254,6 @@ export const parentService = {
         ...(data.phone && { phone: data.phone }),
         ...(data.email !== undefined && { email: data.email }),
         ...(data.birthDate !== undefined && { birthDate: data.birthDate }),
-        ...(data.documentId && { documentId: data.documentId }),
-        ...(data.documentType && { documentType: data.documentType }),
       },
       include: {
         babies: {
@@ -403,7 +346,6 @@ export const parentService = {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
         { phone: { contains: search } },
-        { documentId: { contains: search } },
       ];
     }
 
@@ -414,8 +356,6 @@ export const parentService = {
           id: true,
           name: true,
           phone: true,
-          documentId: true,
-          documentType: true,
           email: true,
           accessCode: true,
           babies: {

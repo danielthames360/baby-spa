@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateParentSchema } from "@/lib/validations/baby";
 
 // Use explicit type to avoid zod coerce.date() type inference issues
@@ -19,8 +18,6 @@ interface ParentFormValues {
   name?: string;
   phone?: string;
   email?: string;
-  documentId?: string;
-  documentType?: "CI" | "CPF" | "PASSPORT";
 }
 
 interface ParentData {
@@ -28,8 +25,6 @@ interface ParentData {
   name: string;
   phone: string;
   email: string | null;
-  documentId: string;
-  documentType: string;
   birthDate: string | null;
 }
 
@@ -52,8 +47,6 @@ export default function EditParentPage() {
       name: "",
       phone: "",
       email: "",
-      documentId: "",
-      documentType: "CI",
     },
   });
 
@@ -72,8 +65,6 @@ export default function EditParentPage() {
           name: data.name,
           phone: data.phone,
           email: data.email || "",
-          documentId: data.documentId,
-          documentType: data.documentType as "CI" | "CPF" | "PASSPORT",
         });
       } catch {
         setError("Error loading parent data");
@@ -100,10 +91,6 @@ export default function EditParentPage() {
         const result = await response.json();
         if (result.error === "PHONE_EXISTS") {
           setError(t("babyForm.errors.PHONE_EXISTS"));
-          return;
-        }
-        if (result.error === "DOCUMENT_EXISTS") {
-          setError(t("babyForm.errors.DOCUMENT_EXISTS"));
           return;
         }
         throw new Error("Failed to update parent");
@@ -217,52 +204,6 @@ export default function EditParentPage() {
                 </FormItem>
               )}
             />
-
-            {/* Document Type & Document ID */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="documentType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700">
-                      {t("babyForm.parentForm.documentType")}
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "CI"}>
-                      <FormControl>
-                        <SelectTrigger className="h-12 rounded-xl border-2 border-teal-100">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="CI">{t("babyForm.parentForm.ci")}</SelectItem>
-                        <SelectItem value="PASSPORT">{t("babyForm.parentForm.passport")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="documentId"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel className="text-gray-700">
-                      {t("babyForm.parentForm.documentId")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        value={field.value || ""}
-                        className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button

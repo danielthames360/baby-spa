@@ -124,10 +124,8 @@ model User {
 model Parent {
   id String @id @default(cuid())
 
-  // Identificadores únicos (cualquiera sirve para buscar)
-  documentId   String @unique // CI (Bolivia) o CPF (Brasil)
-  documentType String @default("CI")
-  phone        String @unique // También único para búsqueda
+  // Identificador único (opcional para padre/tutor secundario)
+  phone String? @unique
 
   name      String
   email     String?
@@ -247,11 +245,19 @@ model BabyNote {
 model RegistrationLink {
   id          String    @id @default(cuid())
   token       String    @unique
-  expiresAt   DateTime
+
+  // Datos pre-llenados por recepción (solo teléfono requerido)
+  parentName  String?
+  parentPhone String
+
+  expiresAt   DateTime  // 5 días desde creación
   isUsed      Boolean   @default(false)
   usedAt      DateTime?
+
   createdById String
   createdBy   User      @relation(fields: [createdById], references: [id])
+
+  // Referencias al padre y bebé creados (se llenan al completar)
   babyId      String?
   parentId    String?
 

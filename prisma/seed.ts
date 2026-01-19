@@ -93,11 +93,9 @@ async function main() {
   console.log("Creating test parent...");
 
   const testParent = await prisma.parent.upsert({
-    where: { documentId: "12345678" },
+    where: { phone: "+591 71234567" },
     update: {},
     create: {
-      documentId: "12345678",
-      documentType: "CI",
       phone: "+591 71234567",
       name: "Laura Martínez",
       email: "laura@example.com",

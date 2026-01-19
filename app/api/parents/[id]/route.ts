@@ -59,17 +59,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         phone: validatedData.phone,
         email: validatedData.email || undefined,
         birthDate: validatedData.birthDate || undefined,
-        documentId: validatedData.documentId,
-        documentType: validatedData.documentType,
       });
 
       return NextResponse.json({ parent });
     } catch (error) {
       if (error instanceof Error && error.message === "PHONE_EXISTS") {
         return NextResponse.json({ error: "PHONE_EXISTS" }, { status: 400 });
-      }
-      if (error instanceof Error && error.message === "DOCUMENT_EXISTS") {
-        return NextResponse.json({ error: "DOCUMENT_EXISTS" }, { status: 400 });
       }
       throw error;
     }

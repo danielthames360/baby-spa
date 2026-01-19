@@ -78,58 +78,6 @@ export function ParentFormFields<T extends FieldValues>({ form, prefix = "", isP
         )}
       />
 
-      {/* Document Type & Document ID */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <FormField
-          control={form.control}
-          name={fieldName("documentType")}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-gray-700">
-                {t("babyForm.parentForm.documentType")}
-              </FormLabel>
-              <Select onValueChange={field.onChange} value={getStringValue(field.value) || "CI"}>
-                <FormControl>
-                  <SelectTrigger className="h-12 rounded-xl border-2 border-teal-100">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="CI">{t("babyForm.parentForm.ci")}</SelectItem>
-                  <SelectItem value="PASSPORT">
-                    {t("babyForm.parentForm.passport")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name={fieldName("documentId")}
-          render={({ field, fieldState }) => (
-            <FormItem className="md:col-span-2">
-              <FormLabel className="text-gray-700">
-                {t("babyForm.parentForm.documentId")}
-              </FormLabel>
-              <FormControl>
-                <Input
-                  name={field.name}
-                  ref={field.ref}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                  value={getStringValue(field.value)}
-                  placeholder={t("babyForm.parentForm.documentIdPlaceholder")}
-                  className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
-                />
-              </FormControl>
-              <FormMessage>{translateError(fieldState.error?.message)}</FormMessage>
-            </FormItem>
-          )}
-        />
-      </div>
-
       {/* Phone */}
       <FormField
         control={form.control}
@@ -137,7 +85,7 @@ export function ParentFormFields<T extends FieldValues>({ form, prefix = "", isP
         render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel className="text-gray-700">
-              {t("babyForm.parentForm.phone")}
+              {isPrimary ? t("babyForm.parentForm.phoneRequired") : t("babyForm.parentForm.phoneOptional")}
             </FormLabel>
             <FormControl>
               <PhoneInput
@@ -159,7 +107,7 @@ export function ParentFormFields<T extends FieldValues>({ form, prefix = "", isP
         render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel className="text-gray-700">
-              {isPrimary ? t("babyForm.parentForm.emailRequired") : t("babyForm.parentForm.emailOptional")}
+              {t("babyForm.parentForm.emailOptional")}
             </FormLabel>
             <FormControl>
               <Input

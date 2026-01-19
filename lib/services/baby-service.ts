@@ -42,10 +42,8 @@ export interface BabyWithRelations {
     parent: {
       id: string;
       name: string;
-      phone: string;
+      phone: string | null;
       email: string | null;
-      documentId: string;
-      documentType: string;
       accessCode: string;
       noShowCount: number;
       requiresPrepayment: boolean;
@@ -81,7 +79,7 @@ export interface BabyListItem {
     parent: {
       id: string;
       name: string;
-      phone: string;
+      phone: string | null;
     };
   }[];
   packagePurchases: {
@@ -181,7 +179,6 @@ export const babyService = {
                 OR: [
                   { name: { contains: search, mode: "insensitive" } },
                   { phone: { contains: search } },
-                  { documentId: { contains: search } },
                 ],
               },
             },
@@ -262,8 +259,6 @@ export const babyService = {
                 name: true,
                 phone: true,
                 email: true,
-                documentId: true,
-                documentType: true,
                 accessCode: true,
                 noShowCount: true,
                 requiresPrepayment: true,
@@ -347,8 +342,6 @@ export const babyService = {
                 name: true,
                 phone: true,
                 email: true,
-                documentId: true,
-                documentType: true,
                 accessCode: true,
                 noShowCount: true,
                 requiresPrepayment: true,
@@ -439,8 +432,6 @@ export const babyService = {
                 name: true,
                 phone: true,
                 email: true,
-                documentId: true,
-                documentType: true,
                 accessCode: true,
                 noShowCount: true,
                 requiresPrepayment: true,
@@ -634,8 +625,6 @@ export const babyService = {
                 name: true,
                 phone: true,
                 email: true,
-                documentId: true,
-                documentType: true,
                 accessCode: true,
                 noShowCount: true,
                 requiresPrepayment: true,

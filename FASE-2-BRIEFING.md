@@ -313,29 +313,31 @@ app/
 
 ```
 1. Recepción → Crea link con nombre del padre y teléfono
-2. Sistema genera token único (válido 7 días)
+2. Sistema genera token único (válido 5 días)
 3. Recepción envía link por WhatsApp: bo.babyspa.online/registro/ABC123
 4. Padre abre link en su celular
-5. Padre ve formulario con su nombre pre-llenado
-6. Padre completa datos del bebé
-7. Al guardar:
-   - Se crea el Parent (si no existe)
+5. Padre ve formulario con su nombre y telefono pre-llenado
+6. padre puede llenar los datos del segundo padre si asi lo desea, tal cual hacemos en nuestro wizard del staff
+7. Padre completa datos del bebé
+8. Al guardar:
+   - Se crea el Parent (si no existe) o padres
    - Se crea el Baby
    - Se vinculan
    - Se genera código de acceso (BSB-XXXXX)
    - Se marca el link como usado
-8. Padre recibe confirmación con su código de acceso
+   - Se puede iniciar sesion y ingresar al dashboard de padres de manera directa con ese codigo generado
+9. Padre recibe confirmación con su código de acceso, al correo registrado
 ```
 
 ## 2.4 Formulario Público
 
-- Diseño: Simple, móvil-first, colores Baby Spa
+- Diseño: Simple, móvil-first, colores Baby Spa, siguiendo los patrones de disenho!
 - Sin header/sidebar (es público)
 - Campos:
   - Nombre del padre (pre-llenado, editable)
   - CI/CPF
   - Teléfono (pre-llenado)
-  - Email (opcional)
+  - Email (opcional) para el padre que no es principal sigueindo la logica que seguimos en el wizard! este email se usara para contacto
   - --- Datos del Bebé ---
   - Nombre completo
   - Fecha de nacimiento
@@ -343,9 +345,10 @@ app/
   - Tipo de parto
   - Semanas de gestación (opcional)
   - Peso al nacer (opcional)
-  - Condiciones especiales (opcional)
+  y los demas datos que ya tenemos en el formulario que crea el staff informacion medica, observaciones, autorizaciones y demas...
 - Botón: "Completar Registro"
-- Al finalizar: mostrar código de acceso y mensaje de bienvenida
+- Al finalizar: mostrar código de acceso y mensaje de bienvenida, pedir que guarde el codigo de acceso para un proximo inicio de sesion, posterior a eso deberiamos tener un boton de comenzar el cual inciara sesion de manera directa y redirigira al portal de padres, obviamente creando la sesion que persistira en ese dispositivo hasta que el padre decida cerrar sesion
+- Como dato extra debemos siempre tener el overlay que usamos de intro en todo el sistema con su logica ya definida! creo que es solo reutilizarlo
 
 ---
 

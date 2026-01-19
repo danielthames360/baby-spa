@@ -25,8 +25,6 @@ interface SelectedParent {
   id: string;
   name: string;
   phone: string;
-  documentId: string;
-  documentType: string;
   email: string | null;
   accessCode: string;
 }
@@ -61,8 +59,6 @@ export function AddParentDialog({
     resolver: zodResolver(parentSchema),
     defaultValues: {
       name: "",
-      documentId: "",
-      documentType: "CI",
       phone: "",
       email: "",
       relationship: "GUARDIAN",
@@ -121,9 +117,7 @@ export function AddParentDialog({
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error === "DOCUMENT_EXISTS") {
-          setError(t("babyForm.errors.DOCUMENT_EXISTS"));
-        } else if (data.error === "PHONE_EXISTS") {
+        if (data.error === "PHONE_EXISTS") {
           setError(t("babyForm.errors.PHONE_EXISTS"));
         } else {
           setError(t("addParentDialog.error"));
@@ -189,7 +183,7 @@ export function AddParentDialog({
                     {t("common.cancel")}
                   </Button>
                 </div>
-                <ParentFormFields form={parentForm} hideRelationshipFields />
+                <ParentFormFields form={parentForm} isPrimary hideRelationshipFields />
               </div>
             </Form>
           )}

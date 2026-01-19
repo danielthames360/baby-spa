@@ -52,8 +52,6 @@ export async function POST(request: NextRequest) {
     try {
       const parent = await parentService.create({
         name: validatedData.name,
-        documentId: validatedData.documentId,
-        documentType: validatedData.documentType,
         phone: validatedData.phone,
         email: validatedData.email || undefined,
         birthDate: validatedData.birthDate || undefined,
@@ -62,12 +60,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ parent }, { status: 201 });
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message === "DOCUMENT_EXISTS") {
-          return NextResponse.json(
-            { error: "DOCUMENT_EXISTS" },
-            { status: 400 }
-          );
-        }
         if (error.message === "PHONE_EXISTS") {
           return NextResponse.json({ error: "PHONE_EXISTS" }, { status: 400 });
         }

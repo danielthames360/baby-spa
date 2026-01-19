@@ -11,8 +11,6 @@ interface ParentResult {
   id: string;
   name: string;
   phone: string;
-  documentId: string;
-  documentType: string;
   email: string | null;
   accessCode: string;
   babies: {
@@ -127,10 +125,6 @@ export function ParentSearch({
                             <span className="flex items-center gap-1">
                               <Phone className="h-3 w-3" />
                               {parent.phone}
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {parent.documentType}: {parent.documentId}
                             </span>
                           </div>
                           {parent.babies.length > 0 && (

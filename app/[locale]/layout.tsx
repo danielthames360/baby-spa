@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-import { Nunito, Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -7,27 +5,6 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { IntroOverlay } from "@/components/layout/intro-overlay";
 import { Toaster } from "@/components/ui/sonner";
 import { routing } from "@/i18n/routing";
-import "../globals.css";
-
-const nunito = Nunito({
-  variable: "--font-nunito",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-export const metadata: Metadata = {
-  title: {
-    default: "Baby Spa",
-    template: "%s | Baby Spa",
-  },
-  description: "Sistema de gestión para spa de bebés - Hidroterapia y estimulación temprana",
-};
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -49,19 +26,13 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body
-        className={`${nunito.variable} ${inter.variable} font-sans antialiased`}
-      >
-        <SessionProvider>
-          <NextIntlClientProvider messages={messages}>
-            <IntroOverlay>
-              {children}
-            </IntroOverlay>
-            <Toaster position="top-right" richColors />
-          </NextIntlClientProvider>
-        </SessionProvider>
-      </body>
-    </html>
+    <SessionProvider>
+      <NextIntlClientProvider messages={messages}>
+        <IntroOverlay>
+          {children}
+        </IntroOverlay>
+        <Toaster position="top-right" richColors />
+      </NextIntlClientProvider>
+    </SessionProvider>
   );
 }
