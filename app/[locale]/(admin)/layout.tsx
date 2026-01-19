@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { AdminHeader } from "@/components/layout/admin-header";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { FloatingBubbles } from "@/components/ui/floating-bubbles";
 import { Loader2 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -57,9 +58,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
+      {/* Decorative Background Blurs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
+        <div className="absolute -right-32 top-1/4 h-96 w-96 rounded-full bg-cyan-200/25 blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/3 h-64 w-64 rounded-full bg-teal-100/40 blur-2xl" />
+        <div className="absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-cyan-100/30 blur-3xl" />
+      </div>
+
+      {/* Floating Animated Bubbles */}
+      <FloatingBubbles count={18} />
+
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex">
+      <div className="relative z-10 hidden lg:flex">
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -74,7 +86,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
         <AdminHeader onMenuClick={() => setMobileMenuOpen(true)} />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

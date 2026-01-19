@@ -135,9 +135,10 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   )
 }
 
-function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
+function FormMessage({ className, children, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : props.children
+  // Use children if provided (for custom translated messages), otherwise use error.message
+  const body = children ?? (error ? String(error?.message ?? "") : null)
 
   if (!body) {
     return null

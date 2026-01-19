@@ -80,7 +80,12 @@ async function main() {
     },
   });
 
-  console.log("Users created:", { admin: admin.username, reception: reception.username });
+  console.log("Users created:", {
+    admin: admin.username,
+    reception: reception.username,
+    therapist1: therapist1.username,
+    therapist2: therapist2.username,
+  });
 
   // ============================================================
   // PADRE DE PRUEBA (para Portal)

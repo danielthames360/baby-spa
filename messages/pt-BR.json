@@ -28,7 +28,21 @@
     "noResults": "Sem resultados",
     "today": "Hoje",
     "yesterday": "Ontem",
-    "tomorrow": "Amanhã"
+    "tomorrow": "Amanhã",
+    "tagline": "Hidroterapia e estimulação precoce",
+    "footerTagline": "Hidroterapia e estimulação precoce para bebês",
+    "copyright": "Todos os direitos reservados",
+    "introTagline": "Hidroterapia infantil",
+    "portalWelcomeSubtitle": "Portal para pais do Baby Spa",
+    "sessionsUnit": "sessões",
+    "recentActivity": "Atividade recente",
+    "hour": "Hora",
+    "todayAppointments": "Consultas hoje",
+    "activeClients": "Clientes ativos",
+    "registeredBabies": "Bebês registrados",
+    "nextSession": "Próxima sessão",
+    "welcomeTo": "Bem-vindo/a ao",
+    "sessionsWillAppear": "As sessões aparecerão aqui conforme o calendário do dia"
   },
 
   "auth": {
@@ -54,6 +68,7 @@
     "userInactive": "Usuário desativado",
     "portalWelcome": "Portal dos Pais",
     "portalDescription": "Acesse as informações do seu bebê, agende consultas e revise o histórico de sessões.",
+    "systemTitle": "Sistema de Gestão",
     "errors": {
       "USERNAME_REQUIRED": "O nome de usuário é obrigatório",
       "USERNAME_TOO_SHORT": "O usuário deve ter pelo menos 3 caracteres",

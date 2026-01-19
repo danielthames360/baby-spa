@@ -210,4 +210,172 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Typography - Heading styles */
+  h1 {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
+    font-family: var(--font-nunito), sans-serif;
+  }
+  h2 {
+    @apply text-2xl md:text-3xl font-bold tracking-tight;
+    font-family: var(--font-nunito), sans-serif;
+  }
+  h3 {
+    @apply text-xl font-semibold;
+    font-family: var(--font-nunito), sans-serif;
+  }
+  h4 {
+    @apply text-lg font-semibold;
+    font-family: var(--font-nunito), sans-serif;
+  }
+}
+
+/* Baby Spa Custom Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(5deg);
+  }
+}
+
+@keyframes softPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: translateX(-5%) scaleY(1);
+  }
+  50% {
+    transform: translateX(5%) scaleY(1.2);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Animation utility classes */
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-softPulse {
+  animation: softPulse 2s ease-in-out infinite;
+}
+
+/* Transition utility classes */
+.transition-smooth {
+  transition-property: all;
+  transition-duration: 300ms;
+  transition-timing-function: ease-out;
+}
+
+.hover-lift {
+  transition-property: all;
+  transition-duration: 300ms;
+}
+.hover-lift:hover {
+  transform: translateY(-0.25rem);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Glassmorphism card styles */
+.glass-card {
+  background-color: rgb(255 255 255 / 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.5);
+}
+
+.glass-card-hover {
+  background-color: rgb(255 255 255 / 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.5);
+  transition-property: all;
+  transition-duration: 300ms;
+}
+.glass-card-hover:hover {
+  box-shadow: 0 20px 25px -5px rgb(20 184 166 / 0.1), 0 8px 10px -6px rgb(20 184 166 / 0.1);
+  transform: translateY(-0.25rem);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  color: transparent;
+  background-clip: text;
+  background-image: linear-gradient(to right, #14b8a6, #06b6d4);
+}
+
+/* Baby Spa gradient backgrounds */
+.bg-baby-spa {
+  background-image: linear-gradient(to bottom right, #f0fdfd, #ecfeff, #eff6ff);
+}
+
+.bg-baby-spa-gradient {
+  background-image: linear-gradient(to bottom right, #14b8a6, #06b6d4);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #f3f4f6;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #5eead4;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #2dd4bf;
 }
