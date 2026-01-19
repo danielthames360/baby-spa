@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Salvar",
+    "saving": "Salvando...",
     "cancel": "Cancelar",
     "delete": "Excluir",
     "edit": "Editar",
@@ -267,5 +268,265 @@
     "validationError": "Erro de validação",
     "unauthorized": "Não autorizado",
     "forbidden": "Acesso negado"
+  },
+
+  "clients": {
+    "title": "Clientes",
+    "subtitle": "Gestão de bebês e famílias",
+    "newBaby": "Novo Bebê",
+    "searchPlaceholder": "Buscar por nome, CPF ou telefone...",
+    "filters": {
+      "all": "Todos",
+      "withPackage": "Com pacote ativo",
+      "withoutPackage": "Sem pacote"
+    },
+    "table": {
+      "name": "Nome",
+      "age": "Idade",
+      "parent": "Pai/Mãe",
+      "phone": "Telefone",
+      "package": "Pacote",
+      "sessions": "Sessões",
+      "lastVisit": "Última visita",
+      "actions": "Ações"
+    },
+    "empty": "Não há clientes registrados",
+    "emptySearch": "Nenhum resultado encontrado",
+    "emptyDescription": "Comece registrando seu primeiro bebê",
+    "viewProfile": "Ver perfil",
+    "totalClients": "Total de clientes"
+  },
+
+  "babyForm": {
+    "createTitle": "Registrar Novo Bebê",
+    "editTitle": "Editar Bebê",
+    "steps": {
+      "parent": "Pai/Mãe",
+      "parent1": "Pai/Mãe Principal",
+      "parent2": "Segundo Pai/Responsável",
+      "baby": "Dados do Bebê",
+      "confirm": "Confirmar"
+    },
+    "secondParent": {
+      "title": "Adicionar Segundo Pai/Responsável",
+      "subtitle": "Esta etapa é opcional",
+      "skipButton": "Pular esta etapa",
+      "addAnother": "Adicionar outro pai/responsável"
+    },
+    "searchParent": {
+      "title": "Buscar Pai/Mãe Existente",
+      "placeholder": "Digite CPF, telefone ou nome...",
+      "searching": "Buscando...",
+      "notFound": "Nenhum pai/mãe encontrado",
+      "createNew": "Criar novo pai/mãe",
+      "found": "Pai/mãe encontrado",
+      "selectExisting": "Selecionar existente",
+      "orCreateNew": "ou criar um novo"
+    },
+    "parentForm": {
+      "title": "Dados do Pai/Mãe",
+      "editTitle": "Editar Pai/Mãe",
+      "name": "Nome completo",
+      "namePlaceholder": "Digite o nome completo",
+      "documentType": "Tipo de documento",
+      "ci": "CPF",
+      "passport": "Passaporte",
+      "documentId": "Número do documento",
+      "documentIdPlaceholder": "Digite o número do documento",
+      "phone": "Telefone",
+      "phonePlaceholder": "+55 11 9XXXX-XXXX",
+      "email": "E-mail",
+      "emailPlaceholder": "email@exemplo.com",
+      "emailOptional": "E-mail (opcional)",
+      "emailRequired": "E-mail",
+      "birthDate": "Data de nascimento",
+      "birthDateOptional": "Data de nascimento (opcional)",
+      "relationship": "Parentesco com o bebê",
+      "mother": "Mãe",
+      "father": "Pai",
+      "guardian": "Responsável",
+      "other": "Outro",
+      "isPrimary": "É contato principal"
+    },
+    "babyData": {
+      "title": "Dados do Bebê",
+      "name": "Nome completo",
+      "namePlaceholder": "Digite o nome do bebê",
+      "birthDate": "Data de nascimento",
+      "gender": "Gênero",
+      "male": "Masculino",
+      "female": "Feminino",
+      "photo": "Foto do bebê",
+      "uploadPhoto": "Enviar foto",
+      "changePhoto": "Alterar foto",
+      "birthInfo": "Informações do Nascimento",
+      "birthType": "Tipo de parto",
+      "natural": "Natural",
+      "cesarean": "Cesárea",
+      "gestationWeeks": "Semanas de gestação",
+      "gestationWeeksPlaceholder": "Ex: 38",
+      "birthWeight": "Peso ao nascer (kg)",
+      "birthWeightPlaceholder": "Ex: 3.2",
+      "medicalInfo": "Informações Médicas",
+      "birthDifficulty": "Houve dificuldades no parto?",
+      "birthDifficultyDesc": "Descreva as dificuldades",
+      "pregnancyIssues": "Houve problemas durante a gravidez?",
+      "pregnancyIssuesDesc": "Descreva os problemas",
+      "priorStimulation": "Já recebeu estimulação prévia?",
+      "priorStimulationType": "Tipo de estimulação",
+      "developmentDiagnosis": "Possui diagnóstico de desenvolvimento?",
+      "developmentDiagnosisDesc": "Descreva o diagnóstico",
+      "diagnosedIllness": "Possui alguma doença diagnosticada?",
+      "diagnosedIllnessDesc": "Descreva a doença",
+      "recentMedication": "Toma medicação atualmente?",
+      "recentMedicationDesc": "Descreva a medicação",
+      "allergies": "Alergias",
+      "allergiesPlaceholder": "Lista de alergias conhecidas...",
+      "specialObservations": "Observações especiais",
+      "specialObservationsPlaceholder": "Qualquer informação adicional importante...",
+      "consents": "Autorizações",
+      "socialMediaConsent": "Autorizo uso de fotos em redes sociais",
+      "instagramHandle": "Usuário do Instagram (opcional)",
+      "instagramPlaceholder": "@usuario",
+      "referralSource": "Como nos conheceu?",
+      "referralOptions": {
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "google": "Google",
+        "referral": "Indicação",
+        "other": "Outro"
+      }
+    },
+    "confirm": {
+      "title": "Confirmar Registro",
+      "parentInfo": "Informações do Pai/Mãe",
+      "parent1Info": "Pai/Mãe Principal",
+      "parent2Info": "Segundo Pai/Responsável",
+      "babyInfo": "Informações do Bebê",
+      "accessCodeNote": "Será gerado um código de acesso ao portal para o pai/mãe",
+      "reviewData": "Por favor revise os dados antes de confirmar"
+    },
+    "success": {
+      "title": "Registro Concluído!",
+      "message": "O bebê foi registrado com sucesso",
+      "accessCode": "Código de acesso ao portal",
+      "accessCodeNote": "Compartilhe este código com o pai/mãe para acesso ao portal",
+      "goToProfile": "Ver perfil do bebê",
+      "registerAnother": "Registrar outro bebê"
+    },
+    "errors": {
+      "NAME_REQUIRED": "O nome é obrigatório",
+      "NAME_TOO_SHORT": "O nome deve ter pelo menos 2 caracteres",
+      "BIRTH_DATE_REQUIRED": "A data de nascimento é obrigatória",
+      "BIRTH_DATE_FUTURE": "A data de nascimento não pode ser futura",
+      "BIRTH_DATE_TOO_OLD": "O bebê deve ter menos de 3 anos",
+      "GENDER_REQUIRED": "O gênero é obrigatório",
+      "DOCUMENT_REQUIRED": "O documento de identidade é obrigatório",
+      "PHONE_REQUIRED": "O telefone é obrigatório",
+      "PHONE_INVALID": "O telefone não é válido",
+      "EMAIL_INVALID": "O e-mail não é válido",
+      "EMAIL_REQUIRED_PRIMARY": "O e-mail é obrigatório para o contato principal",
+      "PARENT_REQUIRED": "Deve selecionar ou criar um pai/mãe",
+      "AT_LEAST_ONE_PARENT": "Deve registrar pelo menos um pai/mãe/responsável",
+      "DOCUMENT_EXISTS": "Já existe um pai/mãe com este documento",
+      "PHONE_EXISTS": "Já existe um pai/mãe com este telefone"
+    }
+  },
+
+  "babyProfile": {
+    "title": "Perfil do Bebê",
+    "tabs": {
+      "info": "Informações",
+      "packages": "Pacotes",
+      "appointments": "Agendamentos",
+      "sessions": "Sessões",
+      "notes": "Notas"
+    },
+    "info": {
+      "basicInfo": "Informações Básicas",
+      "age": "Idade",
+      "birthDate": "Data de nascimento",
+      "gender": "Gênero",
+      "birthInfo": "Informações do Nascimento",
+      "birthType": "Tipo de parto",
+      "gestationWeeks": "Semanas de gestação",
+      "birthWeight": "Peso ao nascer",
+      "medicalInfo": "Informações Médicas",
+      "parents": "Pais/Responsáveis",
+      "primaryContact": "Contato principal",
+      "portalAccess": "Acesso ao Portal",
+      "copyCode": "Copiar código",
+      "codeCopied": "Código copiado!",
+      "addParent": "Adicionar Pai/Responsável",
+      "removeParent": "Remover",
+      "setAsPrimary": "Definir como principal",
+      "confirmRemoveParent": "Tem certeza que deseja remover este pai/responsável do bebê?",
+      "cannotRemoveOnlyParent": "Não é possível remover o único pai/responsável",
+      "cannotRemovePrimaryWithoutOther": "Não é possível remover o contato principal sem atribuir outro primeiro"
+    },
+    "packages": {
+      "activePackage": "Pacote Ativo",
+      "noActivePackage": "Sem pacote ativo",
+      "sessionsRemaining": "sessões restantes",
+      "sellPackage": "Vender Pacote",
+      "history": "Histórico de Pacotes",
+      "noHistory": "Não há pacotes anteriores"
+    },
+    "appointments": {
+      "upcoming": "Próximos Agendamentos",
+      "noUpcoming": "Não há agendamentos programados",
+      "scheduleNew": "Agendar",
+      "history": "Histórico de Agendamentos",
+      "noHistory": "Não há agendamentos anteriores"
+    },
+    "sessions": {
+      "completed": "Sessões Concluídas",
+      "noSessions": "Não há sessões concluídas",
+      "viewEvaluation": "Ver avaliação",
+      "totalSessions": "Total de sessões"
+    },
+    "notes": {
+      "title": "Notas Internas",
+      "addNote": "Adicionar Nota",
+      "notePlaceholder": "Escreva uma nota...",
+      "noNotes": "Não há notas registradas",
+      "addedBy": "Adicionada por",
+      "deleteNote": "Excluir nota",
+      "confirmDelete": "Tem certeza que deseja excluir esta nota?"
+    },
+    "actions": {
+      "edit": "Editar Bebê",
+      "deactivate": "Desativar",
+      "activate": "Ativar",
+      "whatsapp": "Enviar WhatsApp",
+      "call": "Ligar"
+    }
+  },
+
+  "age": {
+    "days": "{count} dias",
+    "weeks": "{count} semanas",
+    "months": "{count} meses",
+    "monthsAndDays": "{months} meses e {days} dias",
+    "years": "{count} ano",
+    "yearsPlural": "{count} anos",
+    "yearsAndMonths": "{years} ano e {months} meses",
+    "yearsAndMonthsPlural": "{years} anos e {months} meses",
+    "newborn": "Recém-nascido",
+    "dayShort": "{count}d",
+    "monthShort": "{count}m",
+    "yearShort": "{count}a"
+  },
+
+  "addParentDialog": {
+    "title": "Adicionar Pai/Responsável",
+    "subtitle": "Adicionar a {babyName}",
+    "searchOrCreate": "Buscar existente ou criar novo",
+    "relationship": "Parentesco com o bebê",
+    "setPrimary": "Definir como contato principal",
+    "primaryWarning": "Isso alterará o contato principal atual",
+    "adding": "Adicionando...",
+    "success": "Pai/responsável adicionado com sucesso",
+    "error": "Erro ao adicionar pai/responsável"
   }
 }

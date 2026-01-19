@@ -1,0 +1,823 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Baby,
+  User,
+  Phone,
+  Mail,
+  Calendar,
+  Package,
+  FileText,
+  Loader2,
+  Edit,
+  Copy,
+  Check,
+  MessageCircle,
+  Plus,
+  Trash2,
+  Star,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogDestructiveAction,
+} from "@/components/ui/alert-dialog";
+import { calculateExactAge, formatAge } from "@/lib/utils/age";
+import { AddParentDialog } from "@/components/babies/add-parent-dialog";
+
+interface BabyWithRelations {
+  id: string;
+  name: string;
+  birthDate: string;
+  gender: string;
+  birthWeeks: number | null;
+  birthWeight: string | null;
+  birthType: string | null;
+  allergies: string | null;
+  specialObservations: string | null;
+  isActive: boolean;
+  parents: {
+    id: string;
+    relationship: string;
+    isPrimary: boolean;
+    parent: {
+      id: string;
+      name: string;
+      phone: string;
+      email: string | null;
+      documentId: string;
+      documentType: string;
+      accessCode: string;
+      noShowCount: number;
+      requiresPrepayment: boolean;
+    };
+  }[];
+  packagePurchases: {
+    id: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    isActive: boolean;
+    package: {
+      id: string;
+      name: string;
+      namePortuguese: string | null;
+    };
+  }[];
+  _count?: {
+    sessions: number;
+    appointments: number;
+  };
+}
+
+interface Note {
+  id: string;
+  note: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+  };
+}
+
+export default function BabyProfilePage() {
+  const t = useTranslations();
+  const params = useParams();
+  const router = useRouter();
+  const locale = params.locale as string;
+  const id = params.id as string;
+
+  const [baby, setBaby] = useState<BabyWithRelations | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [showAddParentDialog, setShowAddParentDialog] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [parentActionLoading, setParentActionLoading] = useState<string | null>(null);
+  const [parentError, setParentError] = useState<string | null>(null);
+  const [removeParentDialog, setRemoveParentDialog] = useState<{
+    open: boolean;
+    parentId: string;
+    parentName: string;
+    isPrimary: boolean;
+  }>({ open: false, parentId: "", parentName: "", isPrimary: false });
+
+  const fetchBaby = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/babies/${id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error);
+      }
+
+      setBaby(data.baby);
+    } catch (error) {
+      console.error("Error fetching baby:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  const fetchNotes = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/babies/${id}/notes`);
+      const data = await response.json();
+      setNotes(data.notes || []);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchBaby();
+    fetchNotes();
+  }, [fetchBaby, fetchNotes]);
+
+  const handleCopyCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+
+    setIsAddingNote(true);
+    try {
+      const response = await fetch(`/api/babies/${id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: newNote }),
+      });
+
+      if (response.ok) {
+        setNewNote("");
+        fetchNotes();
+      }
+    } catch (error) {
+      console.error("Error adding note:", error);
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await fetch(`/api/babies/${id}/notes/${noteId}`, {
+        method: "DELETE",
+      });
+      fetchNotes();
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
+  };
+
+  const handleSetAsPrimary = async (parentId: string) => {
+    setParentActionLoading(parentId);
+    setParentError(null);
+    try {
+      const response = await fetch(`/api/babies/${id}/parents`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId, isPrimary: true }),
+      });
+
+      if (response.ok) {
+        fetchBaby();
+      } else {
+        const data = await response.json();
+        setParentError(data.error);
+      }
+    } catch (error) {
+      console.error("Error setting parent as primary:", error);
+    } finally {
+      setParentActionLoading(null);
+    }
+  };
+
+  const openRemoveParentDialog = (parentId: string, parentName: string, isPrimary: boolean) => {
+    // Check if this is the only parent
+    if (!baby || baby.parents.length <= 1) {
+      setParentError(t("babyProfile.info.cannotRemoveOnlyParent"));
+      return;
+    }
+
+    // Check if trying to remove primary when there are other parents
+    if (isPrimary && baby.parents.length > 1) {
+      setParentError(t("babyProfile.info.cannotRemovePrimaryWithoutOther"));
+      return;
+    }
+
+    // Open confirmation dialog
+    setRemoveParentDialog({ open: true, parentId, parentName, isPrimary });
+  };
+
+  const handleConfirmRemoveParent = async () => {
+    const { parentId } = removeParentDialog;
+    setRemoveParentDialog({ open: false, parentId: "", parentName: "", isPrimary: false });
+
+    setParentActionLoading(parentId);
+    setParentError(null);
+    try {
+      const response = await fetch(`/api/babies/${id}/parents?parentId=${parentId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        fetchBaby();
+      } else {
+        const data = await response.json();
+        if (data.error === "CANNOT_REMOVE_ONLY_PARENT") {
+          setParentError(t("babyProfile.info.cannotRemoveOnlyParent"));
+        } else {
+          setParentError(data.error);
+        }
+      }
+    } catch (error) {
+      console.error("Error removing parent:", error);
+    } finally {
+      setParentActionLoading(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+      </div>
+    );
+  }
+
+  if (!baby) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-gray-500">{t("errors.notFound")}</p>
+        <Link href={`/${locale}/admin/clients`} className="mt-4">
+          <Button variant="outline">{t("common.back")}</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const primaryParent = baby.parents.find((p) => p.isPrimary)?.parent ||
+    baby.parents[0]?.parent;
+
+  const activePackage = baby.packagePurchases.find(
+    (p) => p.isActive && p.remainingSessions > 0
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          className="h-10 w-10 rounded-xl hover:bg-teal-50"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-600" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-nunito text-2xl font-bold text-transparent">
+            {baby.name}
+          </h1>
+          <p className="text-sm text-gray-500">{formatAge(calculateExactAge(baby.birthDate), t)}</p>
+        </div>
+        <Link href={`/${locale}/admin/clients/${id}/edit`}>
+          <Button
+            variant="outline"
+            className="h-10 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            {t("babyProfile.actions.edit")}
+          </Button>
+        </Link>
+      </div>
+
+      {/* Quick Info Card */}
+      <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          {/* Avatar */}
+          <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-100 to-cyan-100">
+            <Baby className="h-10 w-10 text-teal-600" />
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white">
+                {formatAge(calculateExactAge(baby.birthDate), t)}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="rounded-full border-teal-200 text-teal-700"
+              >
+                {baby.gender === "MALE"
+                  ? t("babyForm.babyData.male")
+                  : t("babyForm.babyData.female")}
+              </Badge>
+              {activePackage ? (
+                <Badge className="rounded-full bg-emerald-100 text-emerald-700">
+                  <Package className="mr-1 h-3 w-3" />
+                  {activePackage.remainingSessions} {t("babyProfile.packages.sessionsRemaining")}
+                </Badge>
+              ) : (
+                <Badge className="rounded-full bg-amber-100 text-amber-700">
+                  {t("babyProfile.packages.noActivePackage")}
+                </Badge>
+              )}
+            </div>
+
+            {primaryParent && (
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <span className="flex items-center gap-1">
+                  <User className="h-4 w-4 text-gray-400" />
+                  {primaryParent.name}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="h-4 w-4 text-gray-400" />
+                  {primaryParent.phone}
+                </span>
+                {primaryParent.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    {primaryParent.email}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          {primaryParent && (
+            <div className="flex gap-2">
+              <a
+                href={`https://wa.me/${primaryParent.phone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-xl border-2 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </Button>
+              </a>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Tabs */}
+      <Tabs defaultValue="info" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white/70 p-1 backdrop-blur-md">
+          <TabsTrigger
+            value="info"
+            className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+          >
+            {t("babyProfile.tabs.info")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="packages"
+            className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+          >
+            {t("babyProfile.tabs.packages")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="appointments"
+            className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+          >
+            {t("babyProfile.tabs.appointments")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="sessions"
+            className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+          >
+            {t("babyProfile.tabs.sessions")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="notes"
+            className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+          >
+            {t("babyProfile.tabs.notes")}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Info Tab */}
+        <TabsContent value="info" className="space-y-4">
+          {/* Basic Info */}
+          <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+            <h3 className="mb-4 font-semibold text-gray-800">
+              {t("babyProfile.info.basicInfo")}
+            </h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-sm text-gray-500">{t("babyProfile.info.birthDate")}</p>
+                <p className="font-medium text-gray-800">
+                  {new Date(baby.birthDate).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">{t("babyProfile.info.gender")}</p>
+                <p className="font-medium text-gray-800">
+                  {baby.gender === "MALE"
+                    ? t("babyForm.babyData.male")
+                    : t("babyForm.babyData.female")}
+                </p>
+              </div>
+              {baby.birthType && (
+                <div>
+                  <p className="text-sm text-gray-500">{t("babyProfile.info.birthType")}</p>
+                  <p className="font-medium text-gray-800">
+                    {baby.birthType === "NATURAL"
+                      ? t("babyForm.babyData.natural")
+                      : t("babyForm.babyData.cesarean")}
+                  </p>
+                </div>
+              )}
+              {baby.birthWeeks && (
+                <div>
+                  <p className="text-sm text-gray-500">
+                    {t("babyProfile.info.gestationWeeks")}
+                  </p>
+                  <p className="font-medium text-gray-800">{baby.birthWeeks}</p>
+                </div>
+              )}
+              {baby.birthWeight && (
+                <div>
+                  <p className="text-sm text-gray-500">{t("babyProfile.info.birthWeight")}</p>
+                  <p className="font-medium text-gray-800">{baby.birthWeight} kg</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Parents */}
+          <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+            <h3 className="mb-4 font-semibold text-gray-800">
+              {t("babyProfile.info.parents")}
+            </h3>
+
+            {/* Error message */}
+            {parentError && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                {parentError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {baby.parents.map(({ parent, relationship, isPrimary }) => (
+                <div
+                  key={parent.id}
+                  className="flex flex-col gap-3 rounded-xl border border-teal-100 bg-teal-50/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100">
+                      <User className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">{parent.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {relationship === "MOTHER"
+                          ? t("babyForm.parentForm.mother")
+                          : relationship === "FATHER"
+                            ? t("babyForm.parentForm.father")
+                            : t("babyForm.parentForm.guardian")}
+                        {isPrimary && (
+                          <span className="ml-2 text-teal-600">
+                            ({t("babyProfile.info.primaryContact")})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="text-sm text-gray-600 sm:text-right">
+                      <p>{parent.phone}</p>
+                      {parent.email && <p>{parent.email}</p>}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {/* Set as Primary button - only show for non-primary parents */}
+                      {!isPrimary && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={t("babyProfile.info.setAsPrimary")}
+                          onClick={() => handleSetAsPrimary(parent.id)}
+                          disabled={parentActionLoading === parent.id}
+                          className="h-8 w-8 rounded-lg hover:bg-amber-100"
+                        >
+                          {parentActionLoading === parent.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                          ) : (
+                            <Star className="h-4 w-4 text-amber-500" />
+                          )}
+                        </Button>
+                      )}
+                      {/* Edit button */}
+                      <Link href={`/${locale}/admin/parents/${parent.id}/edit`}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg hover:bg-teal-100"
+                        >
+                          <Edit className="h-4 w-4 text-teal-600" />
+                        </Button>
+                      </Link>
+                      {/* Remove button - only show if more than 1 parent */}
+                      {baby.parents.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={t("babyProfile.info.removeParent")}
+                          onClick={() => openRemoveParentDialog(parent.id, parent.name, isPrimary)}
+                          disabled={parentActionLoading === parent.id}
+                          className="h-8 w-8 rounded-lg hover:bg-rose-100"
+                        >
+                          {parentActionLoading === parent.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-rose-500" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-rose-500" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Add Parent Button */}
+              <Button
+                variant="outline"
+                onClick={() => setShowAddParentDialog(true)}
+                className="w-full rounded-xl border-2 border-dashed border-teal-300 text-teal-600 transition-all hover:border-teal-400 hover:bg-teal-50"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("babyProfile.info.addParent")}
+              </Button>
+            </div>
+
+            {/* Access Code */}
+            {primaryParent && (
+              <div className="mt-4 rounded-xl border-2 border-teal-200 bg-teal-50 p-4">
+                <p className="text-sm text-teal-600">
+                  {t("babyProfile.info.portalAccess")}
+                </p>
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="font-mono text-xl font-bold text-teal-700">
+                    {primaryParent.accessCode}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleCopyCode(primaryParent.accessCode)}
+                    className="h-8 w-8 rounded-lg hover:bg-teal-100"
+                  >
+                    {codeCopied ? (
+                      <Check className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-teal-600" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Medical Info */}
+          {(baby.allergies || baby.specialObservations) && (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <h3 className="mb-4 font-semibold text-gray-800">
+                {t("babyProfile.info.medicalInfo")}
+              </h3>
+              <div className="space-y-4">
+                {baby.allergies && (
+                  <div>
+                    <p className="text-sm text-gray-500">{t("babyForm.babyData.allergies")}</p>
+                    <p className="mt-1 text-gray-800">{baby.allergies}</p>
+                  </div>
+                )}
+                {baby.specialObservations && (
+                  <div>
+                    <p className="text-sm text-gray-500">
+                      {t("babyForm.babyData.specialObservations")}
+                    </p>
+                    <p className="mt-1 text-gray-800">{baby.specialObservations}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Packages Tab */}
+        <TabsContent value="packages" className="space-y-4">
+          {activePackage ? (
+            <Card className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-emerald-600">
+                    {t("babyProfile.packages.activePackage")}
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-gray-800">
+                    {activePackage.package.name}
+                  </p>
+                  <p className="mt-2 text-sm text-gray-600">
+                    {activePackage.usedSessions} / {activePackage.totalSessions}{" "}
+                    {t("common.sessionsUnit")}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-emerald-600">
+                    {activePackage.remainingSessions}
+                  </p>
+                  <p className="text-sm text-emerald-600">
+                    {t("babyProfile.packages.sessionsRemaining")}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+                  <Package className="h-8 w-8 text-amber-500" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-600">
+                  {t("babyProfile.packages.noActivePackage")}
+                </h3>
+                <Button className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("babyProfile.packages.sellPackage")}
+                </Button>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Appointments Tab */}
+        <TabsContent value="appointments" className="space-y-4">
+          <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
+                <Calendar className="h-8 w-8 text-teal-400" />
+              </div>
+              <h3 className="mt-4 text-lg font-medium text-gray-600">
+                {t("babyProfile.appointments.noUpcoming")}
+              </h3>
+              <Button className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                {t("babyProfile.appointments.scheduleNew")}
+              </Button>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* Sessions Tab */}
+        <TabsContent value="sessions" className="space-y-4">
+          <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
+                <FileText className="h-8 w-8 text-teal-400" />
+              </div>
+              <h3 className="mt-4 text-lg font-medium text-gray-600">
+                {t("babyProfile.sessions.noSessions")}
+              </h3>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes" className="space-y-4">
+          {/* Add Note */}
+          <Card className="rounded-2xl border border-white/50 bg-white/70 p-4 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+            <Textarea
+              placeholder={t("babyProfile.notes.notePlaceholder")}
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              className="min-h-[100px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+            />
+            <div className="mt-3 flex justify-end">
+              <Button
+                onClick={handleAddNote}
+                disabled={!newNote.trim() || isAddingNote}
+                className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white"
+              >
+                {isAddingNote ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                {t("babyProfile.notes.addNote")}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Notes List */}
+          {notes.length > 0 ? (
+            <div className="space-y-3">
+              {notes.map((note) => (
+                <Card
+                  key={note.id}
+                  className="rounded-2xl border border-white/50 bg-white/70 p-4 shadow-lg shadow-teal-500/10 backdrop-blur-md"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-gray-800">{note.note}</p>
+                      <p className="mt-2 text-xs text-gray-400">
+                        {t("babyProfile.notes.addedBy")} {note.user.name} •{" "}
+                        {new Date(note.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="h-8 w-8 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
+                  <FileText className="h-8 w-8 text-teal-400" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-600">
+                  {t("babyProfile.notes.noNotes")}
+                </h3>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Add Parent Dialog */}
+      {showAddParentDialog && baby && (
+        <AddParentDialog
+          babyId={baby.id}
+          babyName={baby.name}
+          existingParentIds={baby.parents.map((p) => p.parent.id)}
+          onSuccess={() => {
+            setShowAddParentDialog(false);
+            fetchBaby();
+          }}
+          onClose={() => setShowAddParentDialog(false)}
+        />
+      )}
+
+      {/* Remove Parent Confirmation Dialog */}
+      <AlertDialog
+        open={removeParentDialog.open}
+        onOpenChange={(open) =>
+          setRemoveParentDialog((prev) => ({ ...prev, open }))
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("babyProfile.info.removeParent")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("babyProfile.info.confirmRemoveParent")}
+              <span className="mt-2 block font-medium text-gray-800">
+                {removeParentDialog.parentName}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogDestructiveAction onClick={handleConfirmRemoveParent}>
+              {t("babyProfile.info.removeParent")}
+            </AlertDialogDestructiveAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

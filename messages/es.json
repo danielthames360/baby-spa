@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Guardar",
+    "saving": "Guardando...",
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "edit": "Editar",
@@ -267,5 +268,265 @@
     "validationError": "Error de validación",
     "unauthorized": "No autorizado",
     "forbidden": "Acceso denegado"
+  },
+
+  "clients": {
+    "title": "Clientes",
+    "subtitle": "Gestión de bebés y familias",
+    "newBaby": "Nuevo Bebé",
+    "searchPlaceholder": "Buscar por nombre, CI o teléfono...",
+    "filters": {
+      "all": "Todos",
+      "withPackage": "Con paquete activo",
+      "withoutPackage": "Sin paquete"
+    },
+    "table": {
+      "name": "Nombre",
+      "age": "Edad",
+      "parent": "Padre/Madre",
+      "phone": "Teléfono",
+      "package": "Paquete",
+      "sessions": "Sesiones",
+      "lastVisit": "Última visita",
+      "actions": "Acciones"
+    },
+    "empty": "No hay clientes registrados",
+    "emptySearch": "No se encontraron resultados",
+    "emptyDescription": "Comienza registrando tu primer bebé",
+    "viewProfile": "Ver perfil",
+    "totalClients": "Total de clientes"
+  },
+
+  "babyForm": {
+    "createTitle": "Registrar Nuevo Bebé",
+    "editTitle": "Editar Bebé",
+    "steps": {
+      "parent": "Padre/Madre",
+      "parent1": "Padre/Madre Principal",
+      "parent2": "Segundo Padre/Tutor",
+      "baby": "Datos del Bebé",
+      "confirm": "Confirmar"
+    },
+    "secondParent": {
+      "title": "Agregar Segundo Padre/Tutor",
+      "subtitle": "Este paso es opcional",
+      "skipButton": "Omitir este paso",
+      "addAnother": "Agregar otro padre/tutor"
+    },
+    "searchParent": {
+      "title": "Buscar Padre/Madre Existente",
+      "placeholder": "Ingresa CI, teléfono o nombre...",
+      "searching": "Buscando...",
+      "notFound": "No se encontró ningún padre/madre",
+      "createNew": "Crear nuevo padre/madre",
+      "found": "Padre/madre encontrado",
+      "selectExisting": "Seleccionar existente",
+      "orCreateNew": "o crear uno nuevo"
+    },
+    "parentForm": {
+      "title": "Datos del Padre/Madre",
+      "editTitle": "Editar Padre/Madre",
+      "name": "Nombre completo",
+      "namePlaceholder": "Ingresa el nombre completo",
+      "documentType": "Tipo de documento",
+      "ci": "CI (Cédula de Identidad)",
+      "passport": "Pasaporte",
+      "documentId": "Número de documento",
+      "documentIdPlaceholder": "Ingresa el número de documento",
+      "phone": "Teléfono",
+      "phonePlaceholder": "+591 7XXXXXXX",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "correo@ejemplo.com",
+      "emailOptional": "Correo electrónico (opcional)",
+      "emailRequired": "Correo electrónico",
+      "birthDate": "Fecha de nacimiento",
+      "birthDateOptional": "Fecha de nacimiento (opcional)",
+      "relationship": "Relación con el bebé",
+      "mother": "Madre",
+      "father": "Padre",
+      "guardian": "Tutor/a",
+      "other": "Otro",
+      "isPrimary": "Es contacto principal"
+    },
+    "babyData": {
+      "title": "Datos del Bebé",
+      "name": "Nombre completo",
+      "namePlaceholder": "Ingresa el nombre del bebé",
+      "birthDate": "Fecha de nacimiento",
+      "gender": "Género",
+      "male": "Masculino",
+      "female": "Femenino",
+      "photo": "Foto del bebé",
+      "uploadPhoto": "Subir foto",
+      "changePhoto": "Cambiar foto",
+      "birthInfo": "Información del Nacimiento",
+      "birthType": "Tipo de parto",
+      "natural": "Natural",
+      "cesarean": "Cesárea",
+      "gestationWeeks": "Semanas de gestación",
+      "gestationWeeksPlaceholder": "Ej: 38",
+      "birthWeight": "Peso al nacer (kg)",
+      "birthWeightPlaceholder": "Ej: 3.2",
+      "medicalInfo": "Información Médica",
+      "birthDifficulty": "¿Hubo dificultades en el parto?",
+      "birthDifficultyDesc": "Describe las dificultades",
+      "pregnancyIssues": "¿Hubo problemas durante el embarazo?",
+      "pregnancyIssuesDesc": "Describe los problemas",
+      "priorStimulation": "¿Ha recibido estimulación previa?",
+      "priorStimulationType": "Tipo de estimulación",
+      "developmentDiagnosis": "¿Tiene diagnóstico de desarrollo?",
+      "developmentDiagnosisDesc": "Describe el diagnóstico",
+      "diagnosedIllness": "¿Tiene alguna enfermedad diagnosticada?",
+      "diagnosedIllnessDesc": "Describe la enfermedad",
+      "recentMedication": "¿Toma medicación actualmente?",
+      "recentMedicationDesc": "Describe la medicación",
+      "allergies": "Alergias",
+      "allergiesPlaceholder": "Lista de alergias conocidas...",
+      "specialObservations": "Observaciones especiales",
+      "specialObservationsPlaceholder": "Cualquier información adicional importante...",
+      "consents": "Autorizaciones",
+      "socialMediaConsent": "Autorizo uso de fotos en redes sociales",
+      "instagramHandle": "Usuario de Instagram (opcional)",
+      "instagramPlaceholder": "@usuario",
+      "referralSource": "¿Cómo nos conoció?",
+      "referralOptions": {
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "google": "Google",
+        "referral": "Recomendación",
+        "other": "Otro"
+      }
+    },
+    "confirm": {
+      "title": "Confirmar Registro",
+      "parentInfo": "Información del Padre/Madre",
+      "parent1Info": "Padre/Madre Principal",
+      "parent2Info": "Segundo Padre/Tutor",
+      "babyInfo": "Información del Bebé",
+      "accessCodeNote": "Se generará un código de acceso al portal para el padre/madre",
+      "reviewData": "Por favor revisa los datos antes de confirmar"
+    },
+    "success": {
+      "title": "¡Registro Exitoso!",
+      "message": "El bebé ha sido registrado correctamente",
+      "accessCode": "Código de acceso al portal",
+      "accessCodeNote": "Comparte este código con el padre/madre para que pueda acceder al portal",
+      "goToProfile": "Ver perfil del bebé",
+      "registerAnother": "Registrar otro bebé"
+    },
+    "errors": {
+      "NAME_REQUIRED": "El nombre es requerido",
+      "NAME_TOO_SHORT": "El nombre debe tener al menos 2 caracteres",
+      "BIRTH_DATE_REQUIRED": "La fecha de nacimiento es requerida",
+      "BIRTH_DATE_FUTURE": "La fecha de nacimiento no puede ser futura",
+      "BIRTH_DATE_TOO_OLD": "El bebé debe tener menos de 3 años",
+      "GENDER_REQUIRED": "El género es requerido",
+      "DOCUMENT_REQUIRED": "El documento de identidad es requerido",
+      "PHONE_REQUIRED": "El teléfono es requerido",
+      "PHONE_INVALID": "El teléfono no es válido",
+      "EMAIL_INVALID": "El correo electrónico no es válido",
+      "EMAIL_REQUIRED_PRIMARY": "El correo electrónico es requerido para el contacto principal",
+      "PARENT_REQUIRED": "Debe seleccionar o crear un padre/madre",
+      "AT_LEAST_ONE_PARENT": "Debe registrar al menos un padre/madre/tutor",
+      "DOCUMENT_EXISTS": "Ya existe un padre/madre con este documento",
+      "PHONE_EXISTS": "Ya existe un padre/madre con este teléfono"
+    }
+  },
+
+  "babyProfile": {
+    "title": "Perfil del Bebé",
+    "tabs": {
+      "info": "Información",
+      "packages": "Paquetes",
+      "appointments": "Citas",
+      "sessions": "Sesiones",
+      "notes": "Notas"
+    },
+    "info": {
+      "basicInfo": "Información Básica",
+      "age": "Edad",
+      "birthDate": "Fecha de nacimiento",
+      "gender": "Género",
+      "birthInfo": "Información del Nacimiento",
+      "birthType": "Tipo de parto",
+      "gestationWeeks": "Semanas de gestación",
+      "birthWeight": "Peso al nacer",
+      "medicalInfo": "Información Médica",
+      "parents": "Padres/Tutores",
+      "primaryContact": "Contacto principal",
+      "portalAccess": "Acceso al Portal",
+      "copyCode": "Copiar código",
+      "codeCopied": "¡Código copiado!",
+      "addParent": "Agregar Padre/Tutor",
+      "removeParent": "Quitar",
+      "setAsPrimary": "Establecer como principal",
+      "confirmRemoveParent": "¿Está seguro de quitar este padre/tutor del bebé?",
+      "cannotRemoveOnlyParent": "No se puede quitar el único padre/tutor",
+      "cannotRemovePrimaryWithoutOther": "No se puede quitar el contacto principal sin asignar otro primero"
+    },
+    "packages": {
+      "activePackage": "Paquete Activo",
+      "noActivePackage": "Sin paquete activo",
+      "sessionsRemaining": "sesiones restantes",
+      "sellPackage": "Vender Paquete",
+      "history": "Historial de Paquetes",
+      "noHistory": "No hay paquetes anteriores"
+    },
+    "appointments": {
+      "upcoming": "Próximas Citas",
+      "noUpcoming": "No hay citas programadas",
+      "scheduleNew": "Agendar Cita",
+      "history": "Historial de Citas",
+      "noHistory": "No hay citas anteriores"
+    },
+    "sessions": {
+      "completed": "Sesiones Completadas",
+      "noSessions": "No hay sesiones completadas",
+      "viewEvaluation": "Ver evaluación",
+      "totalSessions": "Total de sesiones"
+    },
+    "notes": {
+      "title": "Notas Internas",
+      "addNote": "Agregar Nota",
+      "notePlaceholder": "Escribe una nota...",
+      "noNotes": "No hay notas registradas",
+      "addedBy": "Agregada por",
+      "deleteNote": "Eliminar nota",
+      "confirmDelete": "¿Estás seguro de eliminar esta nota?"
+    },
+    "actions": {
+      "edit": "Editar Bebé",
+      "deactivate": "Desactivar",
+      "activate": "Activar",
+      "whatsapp": "Enviar WhatsApp",
+      "call": "Llamar"
+    }
+  },
+
+  "age": {
+    "days": "{count} días",
+    "weeks": "{count} semanas",
+    "months": "{count} meses",
+    "monthsAndDays": "{months} meses y {days} días",
+    "years": "{count} año",
+    "yearsPlural": "{count} años",
+    "yearsAndMonths": "{years} año y {months} meses",
+    "yearsAndMonthsPlural": "{years} años y {months} meses",
+    "newborn": "Recién nacido",
+    "dayShort": "{count}d",
+    "monthShort": "{count}m",
+    "yearShort": "{count}a"
+  },
+
+  "addParentDialog": {
+    "title": "Agregar Padre/Tutor",
+    "subtitle": "Agregar a {babyName}",
+    "searchOrCreate": "Buscar existente o crear nuevo",
+    "relationship": "Relación con el bebé",
+    "setPrimary": "Establecer como contacto principal",
+    "primaryWarning": "Esto cambiará el contacto principal actual",
+    "adding": "Agregando...",
+    "success": "Padre/tutor agregado correctamente",
+    "error": "Error al agregar padre/tutor"
   }
 }
