@@ -27,6 +27,7 @@ import {
   Stethoscope,
   ClipboardList,
   Info,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -45,6 +46,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { calculateExactAge, formatAge } from "@/lib/utils/age";
 import { AddParentDialog } from "@/components/babies/add-parent-dialog";
+import { SellPackageDialog } from "@/components/packages/sell-package-dialog";
 
 interface BabyWithRelations {
   id: string;
@@ -126,6 +128,7 @@ export default function BabyProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showAddParentDialog, setShowAddParentDialog] = useState(false);
+  const [showSellPackageDialog, setShowSellPackageDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [parentActionLoading, setParentActionLoading] = useState<string | null>(null);
@@ -136,6 +139,12 @@ export default function BabyProfilePage() {
     parentName: string;
     isPrimary: boolean;
   }>({ open: false, parentId: "", parentName: "", isPrimary: false });
+  const [cancelPackageDialog, setCancelPackageDialog] = useState<{
+    open: boolean;
+    purchaseId: string;
+    packageName: string;
+  }>({ open: false, purchaseId: "", packageName: "" });
+  const [isCancellingPackage, setIsCancellingPackage] = useState(false);
 
   const fetchBaby = useCallback(async () => {
     try {
@@ -273,6 +282,29 @@ export default function BabyProfilePage() {
       console.error("Error removing parent:", error);
     } finally {
       setParentActionLoading(null);
+    }
+  };
+
+  const handleCancelPackage = async () => {
+    const { purchaseId } = cancelPackageDialog;
+    setCancelPackageDialog({ open: false, purchaseId: "", packageName: "" });
+    setIsCancellingPackage(true);
+
+    try {
+      const response = await fetch(`/api/package-purchases/${purchaseId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        fetchBaby();
+      } else {
+        const data = await response.json();
+        console.error("Error cancelling package:", data.error);
+      }
+    } catch (error) {
+      console.error("Error cancelling package:", error);
+    } finally {
+      setIsCancellingPackage(false);
     }
   };
 
@@ -755,6 +787,7 @@ export default function BabyProfilePage() {
 
         {/* Packages Tab */}
         <TabsContent value="packages" className="space-y-4">
+          {/* Active Package Card */}
           {activePackage ? (
             <Card className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6">
               <div className="flex items-center justify-between">
@@ -763,7 +796,9 @@ export default function BabyProfilePage() {
                     {t("babyProfile.packages.activePackage")}
                   </p>
                   <p className="mt-1 text-xl font-bold text-gray-800">
-                    {activePackage.package.name}
+                    {locale === "pt-BR" && activePackage.package.namePortuguese
+                      ? activePackage.package.namePortuguese
+                      : activePackage.package.name}
                   </p>
                   <p className="mt-2 text-sm text-gray-600">
                     {activePackage.usedSessions} / {activePackage.totalSessions}{" "}
@@ -781,21 +816,135 @@ export default function BabyProfilePage() {
               </div>
             </Card>
           ) : (
-            <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
-                  <Package className="h-8 w-8 text-amber-500" />
+            <Card className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+                    <Package className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">
+                      {t("babyProfile.packages.noActivePackage")}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {t("babyProfile.packages.sellPackageDescription")}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-600">
-                  {t("babyProfile.packages.noActivePackage")}
-                </h3>
-                <Button className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white">
+                <Button
+                  onClick={() => setShowSellPackageDialog(true)}
+                  className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   {t("babyProfile.packages.sellPackage")}
                 </Button>
               </div>
             </Card>
           )}
+
+          {/* Sell Package Button (when has active package) */}
+          {activePackage && (
+            <Button
+              onClick={() => setShowSellPackageDialog(true)}
+              className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 py-3 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              {t("babyProfile.packages.sellPackage")}
+            </Button>
+          )}
+
+          {/* Package History */}
+          <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+            <h3 className="mb-4 font-semibold text-gray-800">
+              {t("babyProfile.packages.history")}
+            </h3>
+            {baby.packagePurchases.length > 0 ? (
+              <div className="space-y-3">
+                {baby.packagePurchases.map((purchase) => (
+                  <div
+                    key={purchase.id}
+                    className={`flex items-center justify-between rounded-xl border p-4 ${
+                      purchase.isActive && purchase.remainingSessions > 0
+                        ? "border-emerald-200 bg-emerald-50/50"
+                        : "border-gray-200 bg-gray-50/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                          purchase.isActive && purchase.remainingSessions > 0
+                            ? "bg-emerald-100"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        <Package
+                          className={`h-5 w-5 ${
+                            purchase.isActive && purchase.remainingSessions > 0
+                              ? "text-emerald-600"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">
+                          {locale === "pt-BR" && purchase.package.namePortuguese
+                            ? purchase.package.namePortuguese
+                            : purchase.package.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {purchase.usedSessions} / {purchase.totalSessions}{" "}
+                          {t("common.sessionsUnit")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Cancel button - only show when no sessions have been used */}
+                      {purchase.usedSessions === 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setCancelPackageDialog({
+                              open: true,
+                              purchaseId: purchase.id,
+                              packageName:
+                                locale === "pt-BR" && purchase.package.namePortuguese
+                                  ? purchase.package.namePortuguese
+                                  : purchase.package.name,
+                            })
+                          }
+                          disabled={isCancellingPackage}
+                          className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                          title={t("babyProfile.packages.cancelPackage")}
+                        >
+                          <XCircle className="mr-1 h-4 w-4" />
+                          {t("babyProfile.packages.cancel")}
+                        </Button>
+                      )}
+                      {purchase.isActive && purchase.remainingSessions > 0 ? (
+                        <Badge className="rounded-full bg-emerald-100 text-emerald-700">
+                          {t("packages.active")}
+                        </Badge>
+                      ) : (
+                        <Badge className="rounded-full bg-gray-100 text-gray-600">
+                          {t("packages.completed")}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                  <Package className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="mt-3 text-sm text-gray-500">
+                  {t("babyProfile.packages.noHistory")}
+                </p>
+              </div>
+            )}
+          </Card>
         </TabsContent>
 
         {/* Appointments Tab */}
@@ -913,6 +1062,19 @@ export default function BabyProfilePage() {
         />
       )}
 
+      {/* Sell Package Dialog */}
+      {baby && (
+        <SellPackageDialog
+          open={showSellPackageDialog}
+          onOpenChange={setShowSellPackageDialog}
+          babyId={baby.id}
+          babyName={baby.name}
+          onSuccess={() => {
+            fetchBaby();
+          }}
+        />
+      )}
+
       {/* Remove Parent Confirmation Dialog */}
       <AlertDialog
         open={removeParentDialog.open}
@@ -938,6 +1100,36 @@ export default function BabyProfilePage() {
             </AlertDialogCancel>
             <AlertDialogDestructiveAction onClick={handleConfirmRemoveParent}>
               {t("babyProfile.info.removeParent")}
+            </AlertDialogDestructiveAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Package Confirmation Dialog */}
+      <AlertDialog
+        open={cancelPackageDialog.open}
+        onOpenChange={(open) =>
+          setCancelPackageDialog((prev) => ({ ...prev, open }))
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("babyProfile.packages.cancelPackageTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("babyProfile.packages.confirmCancelPackage")}
+              <span className="mt-2 block font-medium text-gray-800">
+                {cancelPackageDialog.packageName}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogDestructiveAction onClick={handleCancelPackage}>
+              {t("babyProfile.packages.cancelPackage")}
             </AlertDialogDestructiveAction>
           </AlertDialogFooter>
         </AlertDialogContent>
