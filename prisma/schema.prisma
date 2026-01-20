@@ -335,9 +335,11 @@ model Appointment {
   babyId String
   baby   Baby   @relation(fields: [babyId], references: [id])
 
-  date      DateTime          @db.Date
-  startTime DateTime          @db.Time
-  endTime   DateTime          @db.Time
+  // Fecha sin componente de hora (evita problemas de timezone)
+  date      DateTime @db.Date
+  // Horas como strings simples "09:00", "09:30", "14:30" (sin timezone)
+  startTime String   // HH:mm format
+  endTime   String   // HH:mm format
 
   status AppointmentStatus @default(SCHEDULED)
 
@@ -390,7 +392,7 @@ model Waitlist {
   parent   Parent @relation(fields: [parentId], references: [id])
 
   desiredDate DateTime @db.Date
-  desiredTime DateTime @db.Time
+  desiredTime String   // HH:mm format
 
   notified   Boolean   @default(false)
   notifiedAt DateTime?
@@ -631,13 +633,13 @@ model SystemConfig {
 // ============================================================
 
 model BusinessHours {
-  id             String    @id @default(cuid())
-  dayOfWeek      Int // 0=Dom, 1=Lun, ..., 6=Sab
-  morningOpen    DateTime? @db.Time
-  morningClose   DateTime? @db.Time
-  afternoonOpen  DateTime? @db.Time
-  afternoonClose DateTime? @db.Time
-  isOpen         Boolean   @default(true)
+  id             String   @id @default(cuid())
+  dayOfWeek      Int      // 0=Dom, 1=Lun, ..., 6=Sab
+  morningOpen    String?  // HH:mm format
+  morningClose   String?  // HH:mm format
+  afternoonOpen  String?  // HH:mm format
+  afternoonClose String?  // HH:mm format
+  isOpen         Boolean  @default(true)
 
   @@unique([dayOfWeek])
   @@map("business_hours")
