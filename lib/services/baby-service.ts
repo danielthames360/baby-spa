@@ -58,7 +58,6 @@ export interface BabyWithRelations {
     package: {
       id: string;
       name: string;
-      namePortuguese: string | null;
     };
   }[];
   _count?: {
@@ -87,7 +86,6 @@ export interface BabyListItem {
     isActive: boolean;
     package: {
       name: string;
-      namePortuguese: string | null;
     };
   }[];
   _count: {
@@ -223,7 +221,6 @@ export const babyService = {
               package: {
                 select: {
                   name: true,
-                  namePortuguese: true,
                 },
               },
             },
@@ -272,7 +269,6 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
-                namePortuguese: true,
               },
             },
           },
@@ -355,7 +351,6 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
-                namePortuguese: true,
               },
             },
           },
@@ -445,7 +440,6 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
-                namePortuguese: true,
               },
             },
           },
@@ -638,7 +632,6 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
-                namePortuguese: true,
               },
             },
           },

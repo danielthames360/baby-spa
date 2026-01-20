@@ -5,7 +5,6 @@ import { Prisma } from "@prisma/client";
 export interface PackageWithPurchases {
   id: string;
   name: string;
-  namePortuguese: string | null;
   description: string | null;
   sessionCount: number;
   basePrice: Prisma.Decimal;
@@ -20,7 +19,6 @@ export interface PackageWithPurchases {
 
 export interface PackageCreateInput {
   name: string;
-  namePortuguese?: string;
   description?: string;
   sessionCount: number;
   basePrice: number;
@@ -45,7 +43,6 @@ export interface PackagePurchaseWithDetails {
   package: {
     id: string;
     name: string;
-    namePortuguese: string | null;
   };
   payment: {
     id: string;
@@ -101,7 +98,6 @@ export const packageService = {
     const pkg = await prisma.package.create({
       data: {
         name: data.name,
-        namePortuguese: data.namePortuguese,
         description: data.description,
         sessionCount: data.sessionCount,
         basePrice: data.basePrice,
@@ -127,9 +123,6 @@ export const packageService = {
       where: { id },
       data: {
         ...(data.name && { name: data.name }),
-        ...(data.namePortuguese !== undefined && {
-          namePortuguese: data.namePortuguese,
-        }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.sessionCount && { sessionCount: data.sessionCount }),
         ...(data.basePrice && { basePrice: data.basePrice }),
@@ -234,7 +227,6 @@ export const packageService = {
             select: {
               id: true,
               name: true,
-              namePortuguese: true,
             },
           },
           payment: true,
@@ -257,7 +249,6 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            namePortuguese: true,
           },
         },
         payment: true,
@@ -282,7 +273,6 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            namePortuguese: true,
           },
         },
         payment: true,
@@ -317,7 +307,6 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            namePortuguese: true,
           },
         },
         payment: true,
@@ -352,7 +341,6 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            namePortuguese: true,
           },
         },
         payment: true,

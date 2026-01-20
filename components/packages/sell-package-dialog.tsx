@@ -42,7 +42,6 @@ import {
 interface PackageOption {
   id: string;
   name: string;
-  namePortuguese: string | null;
   description: string | null;
   sessionCount: number;
   basePrice: number | string;
@@ -129,9 +128,6 @@ export function SellPackageDialog({
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
   const getPackageName = (pkg: PackageOption) => {
-    if (locale === "pt-BR" && pkg.namePortuguese) {
-      return pkg.namePortuguese;
-    }
     return pkg.name;
   };
 

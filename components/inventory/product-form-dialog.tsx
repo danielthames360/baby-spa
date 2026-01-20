@@ -18,105 +18,127 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { packageSchema, type PackageFormData } from "@/lib/validations/package";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { productSchema, type ProductFormData } from "@/lib/validations/inventory";
+import { PRODUCT_CATEGORIES } from "@/lib/constants";
 
-interface PackageData {
+interface ProductData {
   id: string;
   name: string;
   description: string | null;
-  sessionCount: number;
-  basePrice: number | string;
+  category: string | null;
+  costPrice: number | string;
+  salePrice: number | string;
+  currentStock: number;
+  minStock: number;
   isActive: boolean;
-  sortOrder: number;
+  isChargeableByDefault: boolean;
 }
 
-interface PackageFormDialogProps {
+interface ProductFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  package?: PackageData | null;
+  product?: ProductData | null;
   onSuccess: () => void;
 }
 
-export function PackageFormDialog({
+export function ProductFormDialog({
   open,
   onOpenChange,
-  package: packageData,
+  product,
   onSuccess,
-}: PackageFormDialogProps) {
+}: ProductFormDialogProps) {
   const t = useTranslations();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<PackageFormData>({
-    resolver: zodResolver(packageSchema),
+  const form = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
       description: "",
-      sessionCount: 1,
-      basePrice: 0,
+      category: "",
+      costPrice: 0,
+      salePrice: 0,
+      currentStock: 0,
+      minStock: 5,
       isActive: true,
-      sortOrder: 0,
+      isChargeableByDefault: true,
     },
   });
 
   useEffect(() => {
     if (open) {
-      if (packageData) {
+      if (product) {
         form.reset({
-          name: packageData.name,
-          description: packageData.description || "",
-          sessionCount: packageData.sessionCount,
-          basePrice: Number(packageData.basePrice),
-          isActive: packageData.isActive,
-          sortOrder: packageData.sortOrder,
+          name: product.name,
+          description: product.description || "",
+          category: product.category || "",
+          costPrice: Number(product.costPrice),
+          salePrice: Number(product.salePrice),
+          currentStock: product.currentStock,
+          minStock: product.minStock,
+          isActive: product.isActive,
+          isChargeableByDefault: product.isChargeableByDefault,
         });
       } else {
         form.reset({
           name: "",
           description: "",
-          sessionCount: 1,
-          basePrice: 0,
+          category: "",
+          costPrice: 0,
+          salePrice: 0,
+          currentStock: 0,
+          minStock: 5,
           isActive: true,
-          sortOrder: 0,
+          isChargeableByDefault: true,
         });
       }
     }
-  }, [open, packageData, form]);
+  }, [open, product, form]);
 
   const translateZodError = (error: string | undefined): string => {
     if (!error) return "";
     if (error.includes("_")) {
-      return t(`packages.errors.${error}`);
+      return t(`inventory.errors.${error}`);
     }
     return error;
   };
 
-  const onSubmit = async (data: PackageFormData) => {
+  const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
     try {
-      const url = packageData
-        ? `/api/packages/${packageData.id}`
-        : "/api/packages";
-      const method = packageData ? "PUT" : "POST";
+      const url = product ? `/api/products/${product.id}` : "/api/products";
+      const method = product ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          category: data.category || null,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save package");
+        throw new Error("Failed to save product");
       }
 
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving package:", error);
+      console.error("Error saving product:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -124,16 +146,14 @@ export function PackageFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
+      <DialogContent className="max-w-lg rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
               <Package className="h-5 w-5 text-teal-600" />
             </div>
             <DialogTitle className="text-xl font-semibold text-gray-800">
-              {packageData
-                ? t("packages.editPackage")
-                : t("packages.newPackage")}
+              {product ? t("inventory.editProduct") : t("inventory.newProduct")}
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -146,12 +166,12 @@ export function PackageFormDialog({
               render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel className="text-gray-700">
-                    {t("packages.form.name")}
+                    {t("inventory.form.name")} (ES)
                   </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder={t("packages.form.namePlaceholder")}
+                      placeholder={t("inventory.form.namePlaceholder")}
                       className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
                     />
                   </FormControl>
@@ -168,12 +188,12 @@ export function PackageFormDialog({
               render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel className="text-gray-700">
-                    {t("packages.form.description")}
+                    {t("inventory.form.description")}
                   </FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
-                      placeholder={t("packages.form.descriptionPlaceholder")}
+                      placeholder={t("inventory.form.descriptionPlaceholder")}
                       className="min-h-[80px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
                     />
                   </FormControl>
@@ -184,19 +204,49 @@ export function PackageFormDialog({
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">
+                    {t("inventory.form.category")}
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20">
+                        <SelectValue placeholder={t("inventory.form.selectCategory")} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PRODUCT_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {t(`inventory.categories.${category}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="sessionCount"
+                name="costPrice"
                 render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel className="text-gray-700">
-                      {t("packages.form.sessionCount")}
+                      {t("inventory.form.costPrice")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        min={1}
+                        min={0}
+                        step="0.01"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
@@ -211,11 +261,11 @@ export function PackageFormDialog({
 
               <FormField
                 control={form.control}
-                name="basePrice"
+                name="salePrice"
                 render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel className="text-gray-700">
-                      {t("packages.form.price")}
+                      {t("inventory.form.salePrice")}
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -235,26 +285,80 @@ export function PackageFormDialog({
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              {!product && (
+                <FormField
+                  control={form.control}
+                  name="currentStock"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700">
+                        {t("inventory.form.currentStock")}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                        />
+                      </FormControl>
+                      <FormMessage>
+                        {translateZodError(fieldState.error?.message)}
+                      </FormMessage>
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="minStock"
+                render={({ field, fieldState }) => (
+                  <FormItem className={product ? "col-span-2" : ""}>
+                    <FormLabel className="text-gray-700">
+                      {t("inventory.form.minStock")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      {t("inventory.form.minStockHelp")}
+                    </FormDescription>
+                    <FormMessage>
+                      {translateZodError(fieldState.error?.message)}
+                    </FormMessage>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="sortOrder"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700">
-                    {t("packages.form.sortOrder")}
-                  </FormLabel>
+              name="isChargeableByDefault"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
+                  <div>
+                    <FormLabel className="text-gray-700">
+                      {t("inventory.form.isChargeableByDefault")}
+                    </FormLabel>
+                    <p className="text-sm text-gray-500">
+                      {t("inventory.form.isChargeableByDefaultDescription")}
+                    </p>
+                  </div>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                      className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormMessage>
-                    {translateZodError(fieldState.error?.message)}
-                  </FormMessage>
                 </FormItem>
               )}
             />
@@ -266,10 +370,10 @@ export function PackageFormDialog({
                 <FormItem className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
                   <div>
                     <FormLabel className="text-gray-700">
-                      {t("packages.form.isActive")}
+                      {t("inventory.form.isActive")}
                     </FormLabel>
                     <p className="text-sm text-gray-500">
-                      {t("packages.form.isActiveDescription")}
+                      {t("inventory.form.isActiveDescription")}
                     </p>
                   </div>
                   <FormControl>

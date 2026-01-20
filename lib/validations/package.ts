@@ -6,11 +6,6 @@ export const packageSchema = z.object({
     .string()
     .min(1, "NAME_REQUIRED")
     .max(100, "NAME_TOO_LONG"),
-  namePortuguese: z
-    .string()
-    .max(100, "NAME_TOO_LONG")
-    .optional()
-    .or(z.literal("")),
   description: z
     .string()
     .max(500, "DESCRIPTION_TOO_LONG")
@@ -34,7 +29,6 @@ export type PackageFormData = z.infer<typeof packageSchema>;
 // Input type for form - with optional fields that have defaults
 export type PackageFormInput = {
   name: string;
-  namePortuguese?: string;
   description?: string;
   sessionCount: number;
   basePrice: number;

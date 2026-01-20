@@ -19,7 +19,6 @@ import { PackageFormDialog } from "@/components/packages/package-form-dialog";
 interface PackageItem {
   id: string;
   name: string;
-  namePortuguese: string | null;
   description: string | null;
   sessionCount: number;
   basePrice: number | string;
@@ -91,9 +90,6 @@ export default function PackagesPage() {
   };
 
   const getPackageName = (pkg: PackageItem) => {
-    if (locale === "pt-BR" && pkg.namePortuguese) {
-      return pkg.namePortuguese;
-    }
     return pkg.name;
   };
 

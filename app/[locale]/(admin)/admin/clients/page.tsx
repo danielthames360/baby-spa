@@ -48,7 +48,6 @@ interface BabyListItem {
     isActive: boolean;
     package: {
       name: string;
-      namePortuguese: string | null;
     };
   }[];
   _count: {

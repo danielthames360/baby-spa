@@ -47,6 +47,7 @@ import {
 import { calculateExactAge, formatAge } from "@/lib/utils/age";
 import { AddParentDialog } from "@/components/babies/add-parent-dialog";
 import { SellPackageDialog } from "@/components/packages/sell-package-dialog";
+import { ScheduleAppointmentDialog } from "@/components/appointments/schedule-appointment-dialog";
 
 interface BabyWithRelations {
   id: string;
@@ -97,7 +98,6 @@ interface BabyWithRelations {
     package: {
       id: string;
       name: string;
-      namePortuguese: string | null;
     };
   }[];
   _count?: {
@@ -114,6 +114,15 @@ interface Note {
     id: string;
     name: string;
   };
+}
+
+interface Appointment {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  notes: string | null;
 }
 
 export default function BabyProfilePage() {
@@ -145,6 +154,9 @@ export default function BabyProfilePage() {
     packageName: string;
   }>({ open: false, purchaseId: "", packageName: "" });
   const [isCancellingPackage, setIsCancellingPackage] = useState(false);
+  const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
 
   const fetchBaby = useCallback(async () => {
     try {
@@ -173,10 +185,24 @@ export default function BabyProfilePage() {
     }
   }, [id]);
 
+  const fetchAppointments = useCallback(async () => {
+    setIsLoadingAppointments(true);
+    try {
+      const response = await fetch(`/api/appointments?babyId=${id}`);
+      const data = await response.json();
+      setAppointments(data.appointments || []);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    } finally {
+      setIsLoadingAppointments(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchBaby();
     fetchNotes();
-  }, [fetchBaby, fetchNotes]);
+    fetchAppointments();
+  }, [fetchBaby, fetchNotes, fetchAppointments]);
 
   const handleCopyCode = async (code: string) => {
     await navigator.clipboard.writeText(code);
@@ -796,9 +822,7 @@ export default function BabyProfilePage() {
                     {t("babyProfile.packages.activePackage")}
                   </p>
                   <p className="mt-1 text-xl font-bold text-gray-800">
-                    {locale === "pt-BR" && activePackage.package.namePortuguese
-                      ? activePackage.package.namePortuguese
-                      : activePackage.package.name}
+                    {activePackage.package.name}
                   </p>
                   <p className="mt-2 text-sm text-gray-600">
                     {activePackage.usedSessions} / {activePackage.totalSessions}{" "}
@@ -887,9 +911,7 @@ export default function BabyProfilePage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-800">
-                          {locale === "pt-BR" && purchase.package.namePortuguese
-                            ? purchase.package.namePortuguese
-                            : purchase.package.name}
+                          {purchase.package.name}
                         </p>
                         <p className="text-sm text-gray-500">
                           {purchase.usedSessions} / {purchase.totalSessions}{" "}
@@ -907,10 +929,7 @@ export default function BabyProfilePage() {
                             setCancelPackageDialog({
                               open: true,
                               purchaseId: purchase.id,
-                              packageName:
-                                locale === "pt-BR" && purchase.package.namePortuguese
-                                  ? purchase.package.namePortuguese
-                                  : purchase.package.name,
+                              packageName: purchase.package.name,
                             })
                           }
                           disabled={isCancellingPackage}
@@ -949,20 +968,107 @@ export default function BabyProfilePage() {
 
         {/* Appointments Tab */}
         <TabsContent value="appointments" className="space-y-4">
-          <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
-                <Calendar className="h-8 w-8 text-teal-400" />
-              </div>
-              <h3 className="mt-4 text-lg font-medium text-gray-600">
-                {t("babyProfile.appointments.noUpcoming")}
-              </h3>
-              <Button className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("babyProfile.appointments.scheduleNew")}
-              </Button>
+          {/* Schedule Button */}
+          <Button
+            onClick={() => setShowAppointmentDialog(true)}
+            className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 py-3 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            {t("babyProfile.appointments.scheduleNew")}
+          </Button>
+
+          {/* Appointments List */}
+          {isLoadingAppointments ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
             </div>
-          </Card>
+          ) : appointments.length > 0 ? (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <h3 className="mb-4 font-semibold text-gray-800">
+                {t("babyProfile.appointments.upcomingAppointments")}
+              </h3>
+              <div className="space-y-3">
+                {appointments.map((appointment) => (
+                  <div
+                    key={appointment.id}
+                    className={`flex items-center justify-between rounded-xl border p-4 ${
+                      appointment.status === "SCHEDULED"
+                        ? "border-teal-200 bg-teal-50/50"
+                        : appointment.status === "CANCELLED"
+                        ? "border-gray-200 bg-gray-50/50"
+                        : "border-emerald-200 bg-emerald-50/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                          appointment.status === "SCHEDULED"
+                            ? "bg-teal-100"
+                            : appointment.status === "CANCELLED"
+                            ? "bg-gray-100"
+                            : "bg-emerald-100"
+                        }`}
+                      >
+                        <Calendar
+                          className={`h-5 w-5 ${
+                            appointment.status === "SCHEDULED"
+                              ? "text-teal-600"
+                              : appointment.status === "CANCELLED"
+                              ? "text-gray-400"
+                              : "text-emerald-600"
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">
+                          {new Date(appointment.date).toLocaleDateString(
+                            locale === "pt-BR" ? "pt-BR" : "es-ES",
+                            {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "long",
+                            }
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {appointment.startTime} - {appointment.endTime}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      className={`rounded-full ${
+                        appointment.status === "SCHEDULED"
+                          ? "bg-teal-100 text-teal-700"
+                          : appointment.status === "CANCELLED"
+                          ? "bg-gray-100 text-gray-600"
+                          : appointment.status === "COMPLETED"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : appointment.status === "NO_SHOW"
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {t(`calendar.status.${appointment.status.toLowerCase()}`)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
+                  <Calendar className="h-8 w-8 text-teal-400" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-600">
+                  {t("babyProfile.appointments.noUpcoming")}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {t("babyProfile.appointments.scheduleDescription")}
+                </p>
+              </div>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Sessions Tab */}
@@ -1071,6 +1177,25 @@ export default function BabyProfilePage() {
           babyName={baby.name}
           onSuccess={() => {
             fetchBaby();
+          }}
+        />
+      )}
+
+      {/* Schedule Appointment Dialog */}
+      {baby && (
+        <ScheduleAppointmentDialog
+          open={showAppointmentDialog}
+          onOpenChange={setShowAppointmentDialog}
+          babyId={baby.id}
+          babyName={baby.name}
+          activePackage={activePackage ? {
+            id: activePackage.id,
+            remainingSessions: activePackage.remainingSessions,
+            package: { name: activePackage.package.name },
+          } : null}
+          onSuccess={() => {
+            fetchBaby();
+            fetchAppointments();
           }}
         />
       )}

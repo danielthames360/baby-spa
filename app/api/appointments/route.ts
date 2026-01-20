@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment-service";
 import { createAppointmentSchema } from "@/lib/validations/appointment";
 
-// GET /api/appointments - Get appointments by date range
+// GET /api/appointments - Get appointments by date range or baby
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const date = searchParams.get("date");
+    const babyId = searchParams.get("babyId");
+
+    // If babyId provided, get upcoming appointments for that baby
+    if (babyId) {
+      const appointments = await appointmentService.getUpcomingForBaby(babyId);
+      return NextResponse.json({ appointments });
+    }
 
     // If single date provided (YYYY-MM-DD format)
     if (date) {

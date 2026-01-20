@@ -271,10 +271,9 @@ model RegistrationLink {
 // ============================================================
 
 model Package {
-  id             String  @id @default(cuid())
-  name           String
-  namePortuguese String?
-  description    String?
+  id          String  @id @default(cuid())
+  name        String
+  description String?
   sessionCount   Int
   basePrice      Decimal @db.Decimal(10, 2)
   isActive       Boolean @default(true)
@@ -480,16 +479,18 @@ model Evaluation {
 // ============================================================
 
 model Product {
-  id             String  @id @default(cuid())
-  name           String
-  namePortuguese String?
-  description    String?
+  id          String  @id @default(cuid())
+  name        String
+  description String?
   category       String?
   costPrice      Decimal @db.Decimal(10, 2)
   salePrice      Decimal @db.Decimal(10, 2)
   currentStock   Int     @default(0)
   minStock       Int     @default(5)
   isActive       Boolean @default(true)
+
+  // Valor por defecto cuando se usa en sesiones
+  isChargeableByDefault Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

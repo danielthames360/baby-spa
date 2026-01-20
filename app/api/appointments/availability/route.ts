@@ -22,15 +22,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const date = new Date(dateStr);
+    // Parse date string as local date (YYYY-MM-DD format)
+    // Using new Date(string) parses as UTC which causes timezone issues
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day, 0, 0, 0, 0);
 
     // Validate date is not in the past
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const checkDate = new Date(date);
-    checkDate.setHours(0, 0, 0, 0);
 
-    if (checkDate < today) {
+    if (date < today) {
       return NextResponse.json(
         { error: "DATE_IN_PAST" },
         { status: 400 }

@@ -28,7 +28,6 @@ interface BabyCardProps {
       isActive: boolean;
       package: {
         name: string;
-        namePortuguese: string | null;
       };
     }[];
     _count: {
