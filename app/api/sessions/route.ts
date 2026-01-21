@@ -29,7 +29,13 @@ export async function GET(request: NextRequest) {
 
     // Default: get sessions for a specific date (or today)
     const dateParam = searchParams.get("date");
-    const targetDate = dateParam ? new Date(dateParam) : undefined;
+    let targetDate: Date | undefined;
+
+    if (dateParam) {
+      // Parse date string (YYYY-MM-DD) in local timezone to avoid UTC offset issues
+      const [year, month, day] = dateParam.split("-").map(Number);
+      targetDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
 
     if (session.user.role === "THERAPIST") {
       // Therapist sees only their sessions
