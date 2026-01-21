@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StartSessionDialog } from "@/components/sessions/start-session-dialog";
 import { CompleteSessionDialog } from "@/components/sessions/complete-session-dialog";
+import { ViewBabyDialog } from "@/components/sessions/view-baby-dialog";
 import {
   Baby,
   Calendar,
@@ -45,6 +46,7 @@ import {
   AlertCircle,
   ExternalLink,
   CalendarClock,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
@@ -130,6 +132,32 @@ export function AppointmentDetails({
   const [rescheduleTime, setRescheduleTime] = useState<string>("");
   const [rescheduleError, setRescheduleError] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+
+  // View baby state
+  const [showViewBabyDialog, setShowViewBabyDialog] = useState(false);
+  const [babyDetails, setBabyDetails] = useState<{
+    id: string;
+    name: string;
+    birthDate: string;
+    gender: string;
+    birthWeeks?: number | null;
+    birthWeight?: number | string | null;
+    birthType?: string | null;
+    birthDifficulty?: boolean;
+    birthDifficultyDesc?: string | null;
+    diagnosedIllness?: boolean;
+    diagnosedIllnessDesc?: string | null;
+    allergies?: string | null;
+    specialObservations?: string | null;
+    parents?: Array<{
+      isPrimary: boolean;
+      parent: {
+        id: string;
+        name: string;
+      };
+    }>;
+  } | null>(null);
+  const [isLoadingBaby, setIsLoadingBaby] = useState(false);
 
   // Generate dates for next 30 days (excluding closed days)
   const availableDates = useMemo(() => {
@@ -294,6 +322,26 @@ export function AppointmentDetails({
     }
   };
 
+  // Handle view baby details
+  const handleViewBaby = async () => {
+    setIsLoadingBaby(true);
+    try {
+      const response = await fetch(`/api/babies/${appointment.baby.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBabyDetails(data.baby);
+        setShowViewBabyDialog(true);
+      }
+    } catch (error) {
+      console.error("Error fetching baby details:", error);
+    } finally {
+      setIsLoadingBaby(false);
+    }
+  };
+
+  // Check if baby has medical alerts (based on current appointment data)
+  const hasMedicalAlerts = false; // Will be updated when baby details are fetched
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -351,15 +399,30 @@ export function AppointmentDetails({
                     )}
                   </div>
                 </div>
-                <Link href={`/admin/clients/${appointment.baby.id}`}>
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-teal-600 hover:bg-teal-100"
+                    onClick={handleViewBaby}
+                    disabled={isLoadingBaby}
+                    className="text-cyan-600 hover:bg-cyan-100"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    {isLoadingBaby ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Info className="h-4 w-4" />
+                    )}
                   </Button>
-                </Link>
+                  <Link href={`/admin/clients/${appointment.baby.id}`} target="_blank">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-teal-600 hover:bg-teal-100"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {/* WhatsApp button */}
@@ -665,6 +728,13 @@ export function AppointmentDetails({
           }}
         />
       )}
+
+      {/* View baby details dialog */}
+      <ViewBabyDialog
+        open={showViewBabyDialog}
+        onOpenChange={setShowViewBabyDialog}
+        baby={babyDetails}
+      />
     </>
   );
 }

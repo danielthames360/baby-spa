@@ -92,9 +92,23 @@ export function CalendarView() {
   const locale = useLocale();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
 
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    // Initialize from localStorage if available (client-side only)
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("calendar-view-mode");
+      if (saved === "day" || saved === "week") {
+        return saved;
+      }
+    }
+    return "week";
+  });
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekStart(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+
+  // Persist view mode preference to localStorage
+  useEffect(() => {
+    localStorage.setItem("calendar-view-mode", viewMode);
+  }, [viewMode]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
