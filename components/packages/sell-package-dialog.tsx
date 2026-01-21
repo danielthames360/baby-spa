@@ -38,11 +38,13 @@ import {
   sellPackageSchema,
   type SellPackageFormData,
 } from "@/lib/validations/package";
+import { PACKAGE_CATEGORIES } from "@/lib/constants";
 
 interface PackageOption {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   sessionCount: number;
   basePrice: number | string;
 }
@@ -80,6 +82,12 @@ export function SellPackageDialog({
     null
   );
   const [showDiscount, setShowDiscount] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("HIDROTERAPIA");
+
+  // Filter packages by category
+  const filteredPackages = packages.filter((pkg) => {
+    return pkg.category === selectedCategory;
+  });
 
   const form = useForm<SellPackageFormData>({
     resolver: zodResolver(sellPackageSchema),
@@ -105,6 +113,7 @@ export function SellPackageDialog({
       });
       setSelectedPackageId(null);
       setShowDiscount(false);
+      setSelectedCategory("HIDROTERAPIA");
       fetchPackages();
     }
   }, [open, babyId, form]);
@@ -235,13 +244,32 @@ export function SellPackageDialog({
               <FormLabel className="text-gray-700 mb-3 block">
                 {t("packages.selectPackage")}
               </FormLabel>
+
+              {/* Category Filter */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {PACKAGE_CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                      selectedCategory === category
+                        ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {t(`packages.categories.${category}`)}
+                  </button>
+                ))}
+              </div>
+
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
                 </div>
-              ) : packages.length > 0 ? (
+              ) : filteredPackages.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {packages.map((pkg) => {
+                  {filteredPackages.map((pkg) => {
                     const colors = getPackageColors(pkg.sessionCount);
                     const isSelected = selectedPackageId === pkg.id;
 
@@ -265,7 +293,7 @@ export function SellPackageDialog({
                                 </span>
                               )}
                             </div>
-                            <div className="mt-1 flex items-center gap-2">
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
                               <span
                                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gradient-to-r ${colors.gradient} text-white`}
                               >

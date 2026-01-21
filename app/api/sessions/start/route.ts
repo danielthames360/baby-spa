@@ -7,6 +7,7 @@ import { z } from "zod";
 const startSessionSchema = z.object({
   appointmentId: z.string().min(1),
   therapistId: z.string().min(1),
+  packagePurchaseId: z.string().optional().nullable(), // null or undefined = trial session
 });
 
 // POST /api/sessions/start - Start a session
@@ -33,11 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { appointmentId, therapistId } = validationResult.data;
+    const { appointmentId, therapistId, packagePurchaseId } = validationResult.data;
 
     const result = await sessionService.startSession({
       appointmentId,
       therapistId,
+      packagePurchaseId: packagePurchaseId || null,
       userId: session.user.id,
       userName: session.user.name || "Unknown",
     });
@@ -58,6 +60,18 @@ export async function POST(request: NextRequest) {
           status: 400,
         },
         INVALID_THERAPIST: { message: "INVALID_THERAPIST", status: 400 },
+        PACKAGE_PURCHASE_NOT_FOUND: {
+          message: "PACKAGE_PURCHASE_NOT_FOUND",
+          status: 404,
+        },
+        PACKAGE_NOT_FOR_THIS_BABY: {
+          message: "PACKAGE_NOT_FOR_THIS_BABY",
+          status: 400,
+        },
+        NO_SESSIONS_REMAINING: {
+          message: "NO_SESSIONS_REMAINING",
+          status: 400,
+        },
       };
 
       const mappedError = errorMap[error.message];

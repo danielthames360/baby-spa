@@ -275,6 +275,7 @@ model Package {
   id          String  @id @default(cuid())
   name        String
   description String?
+  category    String? // HIDROTERAPIA, CUMPLE_MES, GRUPAL
   sessionCount   Int
   basePrice      Decimal @db.Decimal(10, 2)
   isActive       Boolean @default(true)

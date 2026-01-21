@@ -195,6 +195,11 @@
     "completeSession": "Completar Sesión",
     "selectTherapist": "Seleccionar Terapeuta",
     "selectTherapistPlaceholder": "Selecciona un terapeuta...",
+    "selectPackage": "Seleccionar Paquete",
+    "trialSession": "Sesión a definir",
+    "trialSessionDescription": "El bebé no tiene paquetes con sesiones disponibles. El paquete se definirá al finalizar la cita.",
+    "trialSessionShort": "Se definirá al finalizar la cita",
+    "sessionsRemaining": "{remaining} de {total} sesiones",
     "sessionsToday": "sesiones hoy",
     "pendingEvaluations": "evaluaciones pendientes",
     "pendingEvaluation": "Evaluación pendiente",
@@ -360,6 +365,7 @@
     "errors": {
       "SESSION_NOT_FOUND": "Sesión no encontrada",
       "SELECT_THERAPIST": "Debe seleccionar un terapeuta",
+      "SELECT_PACKAGE": "Debe seleccionar un paquete para la sesión",
       "NO_ACTIVITIES": "Debe seleccionar al menos una actividad",
       "PAYMENT_METHOD_REQUIRED": "El método de pago es requerido",
       "PACKAGE_REQUIRED": "Debe seleccionar un paquete o sesión para cobrar",
@@ -369,6 +375,9 @@
       "INVALID_STATUS": "Estado de sesión inválido",
       "PRODUCT_NOT_FOUND": "Producto no encontrado",
       "INSUFFICIENT_STOCK": "Stock insuficiente",
+      "PACKAGE_PURCHASE_NOT_FOUND": "Paquete no encontrado",
+      "PACKAGE_NOT_FOR_THIS_BABY": "Este paquete no pertenece a este bebé",
+      "NO_SESSIONS_REMAINING": "No quedan sesiones en este paquete",
       "UNKNOWN_ERROR": "Error desconocido"
     }
   },
@@ -451,11 +460,20 @@
       "namePlaceholderPT": "Nombre en portugués (opcional)",
       "description": "Descripción",
       "descriptionPlaceholder": "Descripción del paquete...",
+      "category": "Categoría",
+      "categoryPlaceholder": "Selecciona una categoría",
       "sessionCount": "Número de sesiones",
       "price": "Precio",
       "sortOrder": "Orden de visualización",
       "isActive": "Paquete activo",
       "isActiveDescription": "Los paquetes inactivos no se muestran para la venta"
+    },
+    "categories": {
+      "all": "Todas las categorías",
+      "HIDROTERAPIA": "Hidroterapia",
+      "CUMPLE_MES": "Cumple Mes",
+      "GRUPAL": "Grupal",
+      "uncategorized": "Sin categoría"
     },
     "errors": {
       "NAME_REQUIRED": "El nombre es requerido",

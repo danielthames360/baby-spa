@@ -38,6 +38,7 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PACKAGE_CATEGORIES } from "@/lib/constants";
 
 interface CompleteSessionDialogProps {
   open: boolean;
@@ -61,6 +62,14 @@ interface SessionProduct {
 interface SessionData {
   id: string;
   sessionNumber: number;
+  packagePurchaseId: string | null;
+  packagePurchase: {
+    id: string;
+    remainingSessions: number;
+    package: {
+      name: string;
+    };
+  } | null;
   appointment: {
     isEvaluated: boolean;
     baby: {
@@ -83,16 +92,9 @@ interface PackageOption {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   sessionCount: number;
   basePrice: number | string;
-}
-
-interface ActivePackage {
-  id: string;
-  remainingSessions: number;
-  package: {
-    name: string;
-  };
 }
 
 const paymentMethods = [
@@ -114,7 +116,6 @@ export function CompleteSessionDialog({
   const [session, setSession] = useState<SessionData | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [packages, setPackages] = useState<PackageOption[]>([]);
-  const [activePackage, setActivePackage] = useState<ActivePackage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +131,12 @@ export function CompleteSessionDialog({
 
   // Package selection state
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedPackageCategory, setSelectedPackageCategory] = useState<string>("HIDROTERAPIA");
+
+  // Filter packages by category
+  const filteredPackages = packages.filter((pkg) => {
+    return pkg.category === selectedPackageCategory;
+  });
 
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
@@ -139,25 +146,6 @@ export function CompleteSessionDialog({
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState<string>("");
-
-  const fetchSession = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}`);
-      const data = await response.json();
-      if (response.ok) {
-        setSession(data.session);
-        // Fetch baby's active package
-        if (data.session?.appointment?.baby?.id) {
-          fetchActivePackage(data.session.appointment.baby.id);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching session:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionId]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -183,18 +171,20 @@ export function CompleteSessionDialog({
     }
   }, []);
 
-  const fetchActivePackage = useCallback(async (babyId: string) => {
+  const fetchSession = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/babies/${babyId}/active-package`);
+      const response = await fetch(`/api/sessions/${sessionId}`);
       const data = await response.json();
-      if (response.ok && data.package) {
-        setActivePackage(data.package);
-        // Don't auto-select if baby has an active package with sessions
+      if (response.ok) {
+        setSession(data.session);
       }
     } catch (error) {
-      console.error("Error fetching active package:", error);
+      console.error("Error fetching session:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     if (open && sessionId) {
@@ -206,7 +196,6 @@ export function CompleteSessionDialog({
       setDiscountAmount(0);
       setDiscountReason("");
       setError(null);
-      setActivePackage(null);
 
       fetchSession();
       fetchProducts();
@@ -336,10 +325,11 @@ export function CompleteSessionDialog({
   };
 
   const handleComplete = async () => {
-    // Require either an active package with sessions OR a selected package to sell
-    const hasActivePackageWithSessions = activePackage && activePackage.remainingSessions > 0;
+    // Session can be linked to a package (started with package) or be a trial session
+    const sessionIsTrialSession = !session?.packagePurchaseId;
 
-    if (!hasActivePackageWithSessions && !selectedPackageId) {
+    // For trial sessions, require selecting a package to sell
+    if (sessionIsTrialSession && !selectedPackageId) {
       setError(t("session.errors.PACKAGE_REQUIRED"));
       return;
     }
@@ -384,7 +374,9 @@ export function CompleteSessionDialog({
     }
   };
 
-  const hasActivePackageWithSessions = activePackage && activePackage.remainingSessions > 0;
+  // Check if session was started with a package (not a trial session)
+  const hasLinkedPackage = session?.packagePurchase && session.packagePurchase.remainingSessions > 0;
+  const isTrialSession = session && !session.packagePurchaseId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -421,12 +413,17 @@ export function CompleteSessionDialog({
                   {t("session.sessionNumber", { number: session.sessionNumber })}
                 </p>
               </div>
-              {hasActivePackageWithSessions && (
+              {hasLinkedPackage && session.packagePurchase && (
                 <div className="rounded-lg bg-white/80 px-3 py-1.5 text-right shadow-sm">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">{t("session.activePackage")}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">{t("session.packageUsed")}</p>
                   <p className="text-sm font-semibold text-emerald-600">
-                    {activePackage.package.name} ({activePackage.remainingSessions} {t("common.sessionsUnit")})
+                    {session.packagePurchase.package.name} ({session.packagePurchase.remainingSessions} {t("common.sessionsUnit")})
                   </p>
+                </div>
+              )}
+              {isTrialSession && (
+                <div className="rounded-lg bg-amber-50 px-3 py-1.5 text-right shadow-sm border border-amber-200">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600">{t("session.trialSession")}</p>
                 </div>
               )}
             </div>
@@ -434,24 +431,42 @@ export function CompleteSessionDialog({
 
             {/* Two column layout for desktop */}
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* LEFT COLUMN: Package Selection OR Active Package Info */}
+              {/* LEFT COLUMN: Package Selection OR Linked Package Info */}
               <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
                 <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
                   <Package className="h-5 w-5 text-teal-600" />
-                  {hasActivePackageWithSessions ? t("session.activePackage") : t("session.selectPackageToSell")}
+                  {hasLinkedPackage ? t("session.packageUsed") : t("session.selectPackageToSell")}
                 </h3>
 
-                {/* Package Selection - Only show if baby doesn't have active package with sessions */}
-                {!hasActivePackageWithSessions && (
+                {/* Package Selection - Only show for trial sessions (no linked package) */}
+                {isTrialSession && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-700 border border-blue-200">
                       <AlertCircle className="h-4 w-4 flex-shrink-0" />
                       {t("session.noActivePackageInfo")}
                     </div>
 
-                    {packages.length > 0 ? (
+                    {/* Category Filter */}
+                    <div className="flex flex-wrap gap-2">
+                      {PACKAGE_CATEGORIES.map((category) => (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => setSelectedPackageCategory(category)}
+                          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                            selectedPackageCategory === category
+                              ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-sm"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {t(`packages.categories.${category}`)}
+                        </button>
+                      ))}
+                    </div>
+
+                    {filteredPackages.length > 0 ? (
                       <div className="grid gap-3 lg:grid-cols-2">
-                        {packages.map((pkg) => {
+                        {filteredPackages.map((pkg) => {
                           const colors = getPackageColors(pkg.sessionCount);
                           const isSelected = selectedPackageId === pkg.id;
 
@@ -474,7 +489,7 @@ export function CompleteSessionDialog({
                                     <h4 className="font-semibold text-gray-800">
                                       {pkg.name}
                                     </h4>
-                                    <div className="mt-1 flex items-center gap-2">
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
                                       <span
                                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gradient-to-r ${colors.gradient} text-white`}
                                       >
@@ -502,19 +517,19 @@ export function CompleteSessionDialog({
                   </div>
                 )}
 
-                {/* Info when baby HAS active package */}
-                {hasActivePackageWithSessions && (
+                {/* Info when session has linked package */}
+                {hasLinkedPackage && session.packagePurchase && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-4 rounded-xl bg-emerald-100 p-4 border border-emerald-200">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
                         <CheckCircle className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-lg font-semibold text-emerald-800">{activePackage.package.name}</p>
+                        <p className="text-lg font-semibold text-emerald-800">{session.packagePurchase.package.name}</p>
                         <p className="text-sm text-emerald-700">
                           {t("session.willDeductFromPackage", {
-                            package: activePackage.package.name,
-                            remaining: activePackage.remainingSessions
+                            package: session.packagePurchase.package.name,
+                            remaining: session.packagePurchase.remainingSessions
                           })}
                         </p>
                       </div>
@@ -902,10 +917,10 @@ export function CompleteSessionDialog({
               </Button>
               <Button
                 onClick={handleComplete}
-                disabled={isSubmitting || (!hasActivePackageWithSessions && !selectedPackageId)}
+                disabled={isSubmitting || (!!isTrialSession && !selectedPackageId)}
                 className={cn(
                   "rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-white shadow-lg shadow-emerald-300/50 transition-all hover:from-emerald-600 hover:to-teal-600",
-                  (!hasActivePackageWithSessions && !selectedPackageId) && "opacity-50"
+                  (!!isTrialSession && !selectedPackageId) && "opacity-50"
                 )}
               >
                 {isSubmitting ? (

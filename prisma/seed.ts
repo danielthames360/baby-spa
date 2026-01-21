@@ -126,45 +126,85 @@ async function main() {
 
     await prisma.package.createMany({
       data: [
+        // HIDROTERAPIA packages
         {
           name: "Individual",
           description: "Sesión individual de hidroterapia",
+          category: "HIDROTERAPIA",
           sessionCount: 1,
           basePrice: 150,
           sortOrder: 1,
         },
         {
           name: "Mini",
-          description: "Paquete de 4 sesiones",
+          description: "Paquete de 4 sesiones de hidroterapia",
+          category: "HIDROTERAPIA",
           sessionCount: 4,
           basePrice: 550,
           sortOrder: 2,
         },
         {
           name: "Estándar",
-          description: "Paquete de 8 sesiones",
+          description: "Paquete de 8 sesiones de hidroterapia",
+          category: "HIDROTERAPIA",
           sessionCount: 8,
           basePrice: 1000,
           sortOrder: 3,
         },
         {
           name: "Plus",
-          description: "Paquete de 10 sesiones - El más popular",
+          description: "Paquete de 10 sesiones de hidroterapia - El más popular",
+          category: "HIDROTERAPIA",
           sessionCount: 10,
           basePrice: 1200,
           sortOrder: 4,
         },
         {
           name: "Premium",
-          description: "Paquete de 20 sesiones",
+          description: "Paquete de 20 sesiones de hidroterapia",
+          category: "HIDROTERAPIA",
           sessionCount: 20,
           basePrice: 2200,
           sortOrder: 5,
         },
+        // CUMPLE_MES packages
+        {
+          name: "Cumple Mes Individual",
+          description: "Sesión especial de cumple mes para tu bebé",
+          category: "CUMPLE_MES",
+          sessionCount: 1,
+          basePrice: 180,
+          sortOrder: 10,
+        },
+        {
+          name: "Cumple Mes Mensual",
+          description: "4 sesiones de cumple mes (un mes completo)",
+          category: "CUMPLE_MES",
+          sessionCount: 4,
+          basePrice: 650,
+          sortOrder: 11,
+        },
+        // GRUPAL packages
+        {
+          name: "Grupal Individual",
+          description: "Sesión grupal de hidroterapia",
+          category: "GRUPAL",
+          sessionCount: 1,
+          basePrice: 100,
+          sortOrder: 20,
+        },
+        {
+          name: "Grupal Mensual",
+          description: "4 sesiones grupales (un mes completo)",
+          category: "GRUPAL",
+          sessionCount: 4,
+          basePrice: 350,
+          sortOrder: 21,
+        },
       ],
     });
 
-    console.log("   ✅ 5 packages created");
+    console.log("   ✅ 9 packages created (5 hidroterapia + 2 cumple mes + 2 grupal)");
   } else {
     console.log(`📦 Packages table already has ${existingPackages} records - skipping`);
   }

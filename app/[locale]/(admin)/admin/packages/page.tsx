@@ -15,11 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PackageFormDialog } from "@/components/packages/package-form-dialog";
+import { PACKAGE_CATEGORIES } from "@/lib/constants";
 
 interface PackageItem {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   sessionCount: number;
   basePrice: number | string;
   isActive: boolean;
@@ -41,6 +43,14 @@ export default function PackagesPage() {
     null
   );
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Filter packages by category
+  const filteredPackages = packages.filter((pkg) => {
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "uncategorized") return !pkg.category;
+    return pkg.category === selectedCategory;
+  });
 
   const fetchPackages = useCallback(async () => {
     setIsLoading(true);
@@ -160,6 +170,43 @@ export default function PackagesPage() {
         </Button>
       </div>
 
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setSelectedCategory("all")}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+            selectedCategory === "all"
+              ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md"
+              : "bg-white/70 text-gray-600 hover:bg-teal-50 hover:text-teal-700"
+          }`}
+        >
+          {t("packages.categories.all")}
+        </button>
+        {PACKAGE_CATEGORIES.map((category) => (
+          <button
+            key={category}
+            onClick={() => setSelectedCategory(category)}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+              selectedCategory === category
+                ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md"
+                : "bg-white/70 text-gray-600 hover:bg-teal-50 hover:text-teal-700"
+            }`}
+          >
+            {t(`packages.categories.${category}`)}
+          </button>
+        ))}
+        <button
+          onClick={() => setSelectedCategory("uncategorized")}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+            selectedCategory === "uncategorized"
+              ? "bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md"
+              : "bg-white/70 text-gray-600 hover:bg-gray-50 hover:text-gray-700"
+          }`}
+        >
+          {t("packages.categories.uncategorized")}
+        </button>
+      </div>
+
       {/* Package Form Dialog */}
       <PackageFormDialog
         open={showDialog}
@@ -173,9 +220,9 @@ export default function PackagesPage() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
         </div>
-      ) : packages.length > 0 ? (
+      ) : filteredPackages.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {packages.map((pkg) => {
+          {filteredPackages.map((pkg) => {
             const colors = getPackageColors(pkg.sessionCount);
             const isToggling = togglingId === pkg.id;
 
@@ -204,7 +251,7 @@ export default function PackagesPage() {
                         <h3 className="font-semibold text-gray-800">
                           {getPackageName(pkg)}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gradient-to-r ${colors.gradient} text-white`}
                           >

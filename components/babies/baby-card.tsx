@@ -43,9 +43,12 @@ export function BabyCard({ baby, locale = "es" }: BabyCardProps) {
   const primaryParent = baby.parents.find((p) => p.isPrimary)?.parent ||
     baby.parents[0]?.parent;
 
-  const activePackage = baby.packagePurchases.find(
-    (p) => p.isActive && p.remainingSessions > 0
+  // Calculate total remaining sessions from ALL packages with sessions
+  const totalRemainingSessions = baby.packagePurchases.reduce(
+    (sum, pkg) => sum + (pkg.remainingSessions > 0 ? pkg.remainingSessions : 0),
+    0
   );
+  const hasActiveSessions = totalRemainingSessions > 0;
 
   const ageResult = calculateExactAge(baby.birthDate);
   const age = formatAgeShort(ageResult, t);
@@ -84,10 +87,10 @@ export function BabyCard({ baby, locale = "es" }: BabyCardProps) {
             )}
 
             <div className="mt-2 flex items-center gap-2">
-              {activePackage ? (
+              {hasActiveSessions ? (
                 <Badge className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 text-xs text-white shadow-sm">
                   <Package className="mr-1 h-3 w-3" />
-                  {activePackage.remainingSessions} {t("common.sessionsUnit")}
+                  {totalRemainingSessions} {t("common.sessionsUnit")}
                 </Badge>
               ) : (
                 <Badge

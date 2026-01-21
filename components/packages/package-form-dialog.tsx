@@ -19,16 +19,25 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { packageSchema, type PackageFormData } from "@/lib/validations/package";
+import { PACKAGE_CATEGORIES } from "@/lib/constants";
 
 interface PackageData {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   sessionCount: number;
   basePrice: number | string;
   isActive: boolean;
@@ -56,6 +65,7 @@ export function PackageFormDialog({
     defaultValues: {
       name: "",
       description: "",
+      category: null,
       sessionCount: 1,
       basePrice: 0,
       isActive: true,
@@ -69,6 +79,7 @@ export function PackageFormDialog({
         form.reset({
           name: packageData.name,
           description: packageData.description || "",
+          category: packageData.category as PackageFormData["category"],
           sessionCount: packageData.sessionCount,
           basePrice: Number(packageData.basePrice),
           isActive: packageData.isActive,
@@ -78,6 +89,7 @@ export function PackageFormDialog({
         form.reset({
           name: "",
           description: "",
+          category: null,
           sessionCount: 1,
           basePrice: 0,
           isActive: true,
@@ -180,6 +192,35 @@ export function PackageFormDialog({
                   <FormMessage>
                     {translateZodError(fieldState.error?.message)}
                   </FormMessage>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">
+                    {t("packages.form.category")}
+                  </FormLabel>
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={(value) => field.onChange(value || null)}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20">
+                        <SelectValue placeholder={t("packages.form.categoryPlaceholder")} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PACKAGE_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {t(`packages.categories.${category}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormItem>
               )}
             />

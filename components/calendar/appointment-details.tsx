@@ -643,6 +643,7 @@ export function AppointmentDetails({
           open={showStartSessionDialog}
           onOpenChange={setShowStartSessionDialog}
           appointmentId={appointment.id}
+          babyId={appointment.baby.id}
           babyName={appointment.baby.name}
           startTime={appointment.startTime}
           onSuccess={() => {

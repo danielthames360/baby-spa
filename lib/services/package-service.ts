@@ -6,6 +6,7 @@ export interface PackageWithPurchases {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
   sessionCount: number;
   basePrice: Prisma.Decimal;
   isActive: boolean;
@@ -20,6 +21,7 @@ export interface PackageWithPurchases {
 export interface PackageCreateInput {
   name: string;
   description?: string;
+  category?: string | null;
   sessionCount: number;
   basePrice: number;
   isActive?: boolean;
@@ -43,6 +45,7 @@ export interface PackagePurchaseWithDetails {
   package: {
     id: string;
     name: string;
+    category?: string | null;
   };
   payment: {
     id: string;
@@ -99,6 +102,7 @@ export const packageService = {
       data: {
         name: data.name,
         description: data.description,
+        category: data.category,
         sessionCount: data.sessionCount,
         basePrice: data.basePrice,
         isActive: data.isActive ?? true,
@@ -124,6 +128,7 @@ export const packageService = {
       data: {
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
+        ...(data.category !== undefined && { category: data.category }),
         ...(data.sessionCount && { sessionCount: data.sessionCount }),
         ...(data.basePrice && { basePrice: data.basePrice }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
@@ -176,16 +181,8 @@ export const packageService = {
       throw new Error("BABY_NOT_FOUND");
     }
 
-    // Deactivate any current active packages for this baby
-    await prisma.packagePurchase.updateMany({
-      where: {
-        babyId: data.babyId,
-        isActive: true,
-      },
-      data: {
-        isActive: false,
-      },
-    });
+    // NOTE: We no longer deactivate previous packages
+    // Multiple packages can now be active simultaneously
 
     // Calculate final price
     const basePrice = Number(pkg.basePrice);
@@ -249,6 +246,7 @@ export const packageService = {
           select: {
             id: true,
             name: true,
+            category: true,
           },
         },
         payment: true,
@@ -258,21 +256,23 @@ export const packageService = {
     return purchases as PackagePurchaseWithDetails[];
   },
 
-  // Get active package for a baby
+  // Get active package for a baby (legacy - returns first package with sessions)
+  // Consider using getPackagesWithSessionsForBaby instead
   async getActivePackageForBaby(
     babyId: string
   ): Promise<PackagePurchaseWithDetails | null> {
     const purchase = await prisma.packagePurchase.findFirst({
       where: {
         babyId,
-        isActive: true,
         remainingSessions: { gt: 0 },
       },
+      orderBy: { createdAt: "asc" },
       include: {
         package: {
           select: {
             id: true,
             name: true,
+            category: true,
           },
         },
         payment: true,
@@ -379,5 +379,45 @@ export const packageService = {
         });
       }
     });
+  },
+
+  // Get all packages with remaining sessions for a baby
+  async getPackagesWithSessionsForBaby(
+    babyId: string
+  ): Promise<PackagePurchaseWithDetails[]> {
+    const purchases = await prisma.packagePurchase.findMany({
+      where: {
+        babyId,
+        remainingSessions: { gt: 0 },
+      },
+      orderBy: { createdAt: "asc" },
+      include: {
+        package: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+          },
+        },
+        payment: true,
+      },
+    });
+
+    return purchases as PackagePurchaseWithDetails[];
+  },
+
+  // Get total remaining sessions across all packages for a baby
+  async getTotalRemainingSessionsForBaby(babyId: string): Promise<number> {
+    const result = await prisma.packagePurchase.aggregate({
+      where: {
+        babyId,
+        remainingSessions: { gt: 0 },
+      },
+      _sum: {
+        remainingSessions: true,
+      },
+    });
+
+    return result._sum.remainingSessions || 0;
   },
 };

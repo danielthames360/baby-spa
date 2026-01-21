@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PACKAGE_CATEGORIES } from "@/lib/constants";
 
 // Package validation schema
 export const packageSchema = z.object({
@@ -11,6 +12,10 @@ export const packageSchema = z.object({
     .max(500, "DESCRIPTION_TOO_LONG")
     .optional()
     .or(z.literal("")),
+  category: z
+    .enum(PACKAGE_CATEGORIES)
+    .optional()
+    .nullable(),
   sessionCount: z
     .number()
     .int()
@@ -30,6 +35,7 @@ export type PackageFormData = z.infer<typeof packageSchema>;
 export type PackageFormInput = {
   name: string;
   description?: string;
+  category?: string | null;
   sessionCount: number;
   basePrice: number;
   isActive?: boolean;

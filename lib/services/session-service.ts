@@ -7,6 +7,7 @@ import { packageService } from "./package-service";
 interface StartSessionInput {
   appointmentId: string;
   therapistId: string;
+  packagePurchaseId?: string | null; // If null/undefined: trial session, if provided: use that package
   userId: string;
   userName: string;
 }
@@ -71,23 +72,17 @@ export const sessionService = {
    * - Assign therapist
    * - Change status to IN_PROGRESS
    * - Create session record
+   * - If packagePurchaseId is provided, link to that package
+   * - If packagePurchaseId is null/undefined, it's a trial session
    */
   async startSession(input: StartSessionInput) {
-    const { appointmentId, therapistId, userId, userName } = input;
+    const { appointmentId, therapistId, packagePurchaseId, userId, userName } = input;
 
-    // Get appointment with baby and package info
+    // Get appointment with baby info
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: {
-        baby: {
-          include: {
-            packagePurchases: {
-              where: { isActive: true, remainingSessions: { gt: 0 } },
-              orderBy: { createdAt: "asc" },
-              take: 1,
-            },
-          },
-        },
+        baby: true,
         session: true,
       },
     });
@@ -113,11 +108,29 @@ export const sessionService = {
       throw new Error("INVALID_THERAPIST");
     }
 
-    // Get active package purchase for session number
-    const activePackage = appointment.baby.packagePurchases[0];
-    const sessionNumber = activePackage
-      ? activePackage.totalSessions - activePackage.remainingSessions + 1
-      : 1;
+    // Get the selected package purchase (if provided)
+    let selectedPackage = null;
+    let sessionNumber = 1;
+
+    if (packagePurchaseId) {
+      selectedPackage = await prisma.packagePurchase.findUnique({
+        where: { id: packagePurchaseId },
+      });
+
+      if (!selectedPackage) {
+        throw new Error("PACKAGE_PURCHASE_NOT_FOUND");
+      }
+
+      if (selectedPackage.babyId !== appointment.babyId) {
+        throw new Error("PACKAGE_NOT_FOR_THIS_BABY");
+      }
+
+      if (selectedPackage.remainingSessions <= 0) {
+        throw new Error("NO_SESSIONS_REMAINING");
+      }
+
+      sessionNumber = selectedPackage.usedSessions + 1;
+    }
 
     // Create session and update appointment in transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -131,12 +144,13 @@ export const sessionService = {
       });
 
       // Create session
+      // Note: packagePurchaseId can be null for trial sessions
       const session = await tx.session.create({
         data: {
           appointmentId,
           babyId: appointment.babyId,
           therapistId,
-          packagePurchaseId: activePackage?.id,
+          packagePurchaseId: selectedPackage?.id || null,
           sessionNumber,
           status: "PENDING",
           startedAt: new Date(),
@@ -156,7 +170,12 @@ export const sessionService = {
           performedBy: userId,
           performerType: "USER",
           performerName: userName,
-          newValue: { status: "IN_PROGRESS", therapistId },
+          newValue: {
+            status: "IN_PROGRESS",
+            therapistId,
+            packagePurchaseId: selectedPackage?.id || null,
+            isTrialSession: !selectedPackage,
+          },
         },
       });
 
