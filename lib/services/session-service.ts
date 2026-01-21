@@ -681,18 +681,18 @@ export const sessionService = {
   },
 
   /**
-   * Get today's sessions for a therapist
+   * Get sessions for a specific date for a therapist
    * - SCHEDULED: visible to ALL therapists (no actions available)
    * - IN_PROGRESS/COMPLETED: visible only to the ASSIGNED therapist
    */
-  async getTodayForTherapist(therapistId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async getSessionsForTherapist(therapistId: string, date?: Date) {
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
 
-    // Get ALL scheduled appointments for today (visible to all therapists)
+    // Get ALL scheduled appointments for the date (visible to all therapists)
     const scheduledAppointments = await prisma.appointment.findMany({
       where: {
-        date: today,
+        date: targetDate,
         status: "SCHEDULED",
       },
       include: {
@@ -726,7 +726,7 @@ export const sessionService = {
     const assignedAppointments = await prisma.appointment.findMany({
       where: {
         therapistId,
-        date: today,
+        date: targetDate,
         status: {
           in: ["IN_PROGRESS", "COMPLETED"],
         },

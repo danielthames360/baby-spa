@@ -27,11 +27,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ appointments, count });
     }
 
-    // Default: get today's sessions
+    // Default: get sessions for a specific date (or today)
+    const dateParam = searchParams.get("date");
+    const targetDate = dateParam ? new Date(dateParam) : undefined;
+
     if (session.user.role === "THERAPIST") {
       // Therapist sees only their sessions
-      const appointments = await sessionService.getTodayForTherapist(
-        session.user.id
+      const appointments = await sessionService.getSessionsForTherapist(
+        session.user.id,
+        targetDate
       );
       return NextResponse.json({ appointments });
     }

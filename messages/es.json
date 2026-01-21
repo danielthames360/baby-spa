@@ -201,6 +201,8 @@
     "trialSessionShort": "Se definirá al finalizar la cita",
     "sessionsRemaining": "{remaining} de {total} sesiones",
     "sessionsToday": "sesiones hoy",
+    "sessions": "sesiones",
+    "sessionsForDate": "Sesiones del Día",
     "pendingEvaluations": "evaluaciones pendientes",
     "pendingEvaluation": "Evaluación pendiente",
     "waitingToStart": "Esperando inicio",

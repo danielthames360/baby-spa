@@ -201,6 +201,8 @@
     "trialSessionShort": "Será definido ao finalizar a consulta",
     "sessionsRemaining": "{remaining} de {total} sessões",
     "sessionsToday": "sessões hoje",
+    "sessions": "sessões",
+    "sessionsForDate": "Sessões do Dia",
     "pendingEvaluations": "avaliações pendentes",
     "pendingEvaluation": "Avaliação pendente",
     "waitingToStart": "Aguardando início",
