@@ -106,86 +106,122 @@ export function TherapistSessionCard({
   return (
     <div
       className={cn(
-        "group flex items-center gap-4 rounded-2xl border border-white/50 bg-white/70 p-4 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
+        "group rounded-2xl border border-white/50 bg-white/70 p-4 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
         appointment.status === "IN_PROGRESS" && "ring-2 ring-blue-300"
       )}
     >
-      {/* Time badge */}
-      <div
-        className={cn(
-          "flex h-14 w-14 flex-col items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md",
-          `${statusConfig.gradient} ${statusConfig.shadow}`
-        )}
-      >
-        <Clock className="h-4 w-4 opacity-80" />
-        <span className="text-sm font-bold">{appointment.startTime}</span>
-      </div>
-
-      {/* Baby avatar */}
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100">
-        <Baby className="h-6 w-6 text-teal-600" />
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="font-semibold text-gray-800">{appointment.baby.name}</p>
-          {appointment.baby.parents?.[0]?.parent?.name && (
-            <span className="flex items-center gap-1 text-xs text-gray-400">
-              <User className="h-3 w-3" />
-              {appointment.baby.parents[0].parent.name}
-            </span>
+      {/* Main content row */}
+      <div className="flex items-start gap-3 sm:items-center sm:gap-4">
+        {/* Time badge */}
+        <div
+          className={cn(
+            "flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md sm:h-14 sm:w-14",
+            `${statusConfig.gradient} ${statusConfig.shadow}`
           )}
+        >
+          <Clock className="h-3 w-3 opacity-80 sm:h-4 sm:w-4" />
+          <span className="text-xs font-bold sm:text-sm">{appointment.startTime}</span>
         </div>
-        <p className="text-sm text-gray-500">{ageDisplay}</p>
-        <div className="flex items-center gap-2">
-          {/* Status badge */}
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-              statusConfig.bg,
-              statusConfig.text
-            )}
-          >
-            {statusConfig.label}
-          </span>
 
-          {/* Evaluation status badge */}
-          {appointment.status !== "SCHEDULED" && (
+        {/* Baby avatar - hidden on mobile */}
+        <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 sm:flex">
+          <Baby className="h-6 w-6 text-teal-600" />
+        </div>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="font-semibold text-gray-800">{appointment.baby.name}</p>
+            {appointment.baby.parents?.[0]?.parent?.name && (
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <User className="h-3 w-3" />
+                {appointment.baby.parents[0].parent.name}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500">{ageDisplay}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status badge */}
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                appointment.isEvaluated
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-amber-100 text-amber-700"
+                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                statusConfig.bg,
+                statusConfig.text
               )}
             >
-              {appointment.isEvaluated ? (
-                <>
-                  <CheckCircle className="h-3 w-3" />
-                  {t("session.evaluated")}
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-3 w-3" />
-                  {t("session.pendingEvaluation")}
-                </>
+              {statusConfig.label}
+            </span>
+
+            {/* Evaluation status badge */}
+            {appointment.status !== "SCHEDULED" && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                  appointment.isEvaluated
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-amber-100 text-amber-700"
+                )}
+              >
+                {appointment.isEvaluated ? (
+                  <>
+                    <CheckCircle className="h-3 w-3" />
+                    {t("session.evaluated")}
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3 w-3" />
+                    {t("session.pendingEvaluation")}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons - desktop only */}
+        <div className="hidden flex-shrink-0 items-center gap-2 sm:flex">
+          {canEvaluate && (
+            <Button
+              onClick={() => onEvaluate(appointment.session!.id)}
+              className={cn(
+                "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-4 text-white shadow-md shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-lg"
               )}
+            >
+              <FileEdit className="mr-2 h-4 w-4" />
+              {t("session.evaluate")}
+            </Button>
+          )}
+
+          {hasEvaluation && (
+            <Button
+              variant="outline"
+              onClick={() => onViewEvaluation(appointment.session!.id)}
+              className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              {t("session.viewEvaluation")}
+            </Button>
+          )}
+
+          {appointment.status === "SCHEDULED" && (
+            <span className="text-sm text-gray-400">
+              {t("session.waitingToStart")}
             </span>
           )}
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-2">
+      {/* Action buttons - mobile only */}
+      <div className="mt-3 flex items-center justify-end gap-2 sm:hidden">
         {canEvaluate && (
           <Button
             onClick={() => onEvaluate(appointment.session!.id)}
+            size="sm"
             className={cn(
-              "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-4 text-white shadow-md shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-lg"
+              "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600"
             )}
           >
-            <FileEdit className="mr-2 h-4 w-4" />
+            <FileEdit className="mr-1.5 h-3.5 w-3.5" />
             {t("session.evaluate")}
           </Button>
         )}
@@ -193,16 +229,17 @@ export function TherapistSessionCard({
         {hasEvaluation && (
           <Button
             variant="outline"
+            size="sm"
             onClick={() => onViewEvaluation(appointment.session!.id)}
             className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
           >
-            <Eye className="mr-2 h-4 w-4" />
+            <Eye className="mr-1.5 h-3.5 w-3.5" />
             {t("session.viewEvaluation")}
           </Button>
         )}
 
         {appointment.status === "SCHEDULED" && (
-          <span className="text-sm text-gray-400">
+          <span className="text-xs text-gray-400">
             {t("session.waitingToStart")}
           </span>
         )}

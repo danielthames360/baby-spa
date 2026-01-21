@@ -258,65 +258,66 @@ export function CalendarView() {
   return (
     <div className="flex h-full flex-col space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-nunito text-2xl font-bold text-transparent">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Title and Date */}
+        <div className="flex items-center justify-between sm:justify-start sm:gap-4">
+          <h1 className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-nunito text-xl font-bold text-transparent sm:text-2xl">
             {t("calendar.title")}
           </h1>
-          <div className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-1.5 backdrop-blur-sm">
+          <div className="flex items-center gap-2 rounded-xl bg-white/70 px-2 py-1 backdrop-blur-sm sm:px-3 sm:py-1.5">
             <Calendar className="h-4 w-4 text-teal-600" />
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-xs font-medium text-gray-700 sm:text-sm">
               {viewMode === "week" ? formatWeekRange(currentWeekStart, dateLocale) : formatSingleDate(selectedDate, dateLocale)}
             </span>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* View mode toggle */}
           <div className="flex rounded-xl bg-white/70 p-1 backdrop-blur-sm">
             <button
               onClick={() => setViewMode("week")}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
+                "flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm",
                 viewMode === "week"
                   ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md"
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              <CalendarRange className="h-4 w-4" />
+              <CalendarRange className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               {t("calendar.weekView")}
             </button>
             <button
               onClick={() => setViewMode("day")}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
+                "flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm",
                 viewMode === "day"
                   ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md"
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              <CalendarDays className="h-4 w-4" />
+              <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               {t("calendar.dayView")}
             </button>
           </div>
 
           {/* Navigation controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="outline"
               size="icon"
               onClick={viewMode === "week" ? goToPreviousWeek : goToPreviousDay}
-              className="h-10 w-10 rounded-xl border-2 border-teal-200 hover:bg-teal-50"
+              className="h-8 w-8 rounded-xl border-2 border-teal-200 hover:bg-teal-50 sm:h-10 sm:w-10"
             >
-              <ChevronLeft className="h-5 w-5 text-teal-600" />
+              <ChevronLeft className="h-4 w-4 text-teal-600 sm:h-5 sm:w-5" />
             </Button>
 
             <Button
               variant="outline"
               onClick={goToToday}
               disabled={viewMode === "week" ? isCurrentWeek : isToday}
-              className="h-10 rounded-xl border-2 border-teal-200 px-4 text-teal-600 hover:bg-teal-50 disabled:opacity-50"
+              className="h-8 rounded-xl border-2 border-teal-200 px-2 text-xs text-teal-600 hover:bg-teal-50 disabled:opacity-50 sm:h-10 sm:px-4 sm:text-sm"
             >
               {t("common.today")}
             </Button>
@@ -325,9 +326,9 @@ export function CalendarView() {
               variant="outline"
               size="icon"
               onClick={viewMode === "week" ? goToNextWeek : goToNextDay}
-              className="h-10 w-10 rounded-xl border-2 border-teal-200 hover:bg-teal-50"
+              className="h-8 w-8 rounded-xl border-2 border-teal-200 hover:bg-teal-50 sm:h-10 sm:w-10"
             >
-              <ChevronRight className="h-5 w-5 text-teal-600" />
+              <ChevronRight className="h-4 w-4 text-teal-600 sm:h-5 sm:w-5" />
             </Button>
           </div>
         </div>
