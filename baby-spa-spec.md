@@ -1182,13 +1182,13 @@ baby-spa/
 2. Link Registro Temporal
 3. Paquetes y Ventas
 4. Calendario y Agendamiento
+3. Inventario
 5. Sesiones y Evaluaciones
 6. Portal Padres (básico)
 
 ## Fase 3: Secundarios (3-4 días)
 1. Notificaciones + Cron Jobs
 2. Lista de Espera
-3. Inventario
 4. Notas Internas + Historial Citas
 5. Staff Payments
 6. Gastos

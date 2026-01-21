@@ -299,14 +299,14 @@ export function AppointmentDialog({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-xl bg-amber-50 p-4">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
+                  <AlertCircle className="h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="font-medium text-amber-800">
-                      {t("calendar.noActivePackage")}
+                    <p className="font-medium text-blue-800">
+                      {t("calendar.trialSession")}
                     </p>
-                    <p className="text-sm text-amber-600">
-                      {t("calendar.needsPackage")}
+                    <p className="text-sm text-blue-600">
+                      {t("calendar.trialSessionDesc")}
                     </p>
                   </div>
                 </div>
@@ -344,10 +344,10 @@ export function AppointmentDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!selectedBaby || !activePackage || isSubmitting}
+              disabled={!selectedBaby || isSubmitting}
               className={cn(
                 "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
-                (!selectedBaby || !activePackage) && "opacity-50"
+                !selectedBaby && "opacity-50"
               )}
             >
               {isSubmitting ? (

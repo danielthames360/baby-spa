@@ -48,6 +48,7 @@ import { calculateExactAge, formatAge } from "@/lib/utils/age";
 import { AddParentDialog } from "@/components/babies/add-parent-dialog";
 import { SellPackageDialog } from "@/components/packages/sell-package-dialog";
 import { ScheduleAppointmentDialog } from "@/components/appointments/schedule-appointment-dialog";
+import { SessionHistoryCard } from "@/components/sessions/session-history-card";
 
 interface BabyWithRelations {
   id: string;
@@ -125,6 +126,51 @@ interface Appointment {
   notes: string | null;
 }
 
+interface SessionHistory {
+  id: string;
+  sessionNumber: number;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  evaluatedAt: string | null;
+  appointment: {
+    date: string;
+    startTime: string;
+    endTime: string;
+  };
+  therapist: {
+    id: string;
+    name: string;
+  };
+  evaluation: {
+    id: string;
+    babyAgeMonths: number;
+    hydrotherapy: boolean;
+    massage: boolean;
+    motorStimulation: boolean;
+    sensoryStimulation: boolean;
+    relaxation: boolean;
+    otherActivities: string | null;
+    visualTracking: boolean | null;
+    eyeContact: boolean | null;
+    auditoryResponse: boolean | null;
+    muscleTone: "LOW" | "NORMAL" | "TENSE" | null;
+    cervicalControl: boolean | null;
+    headUp: boolean | null;
+    sits: boolean | null;
+    crawls: boolean | null;
+    walks: boolean | null;
+    mood: "CALM" | "IRRITABLE" | null;
+    internalNotes: string | null;
+    externalNotes: string | null;
+  } | null;
+  packagePurchase: {
+    package: {
+      name: string;
+    };
+  } | null;
+}
+
 export default function BabyProfilePage() {
   const t = useTranslations();
   const params = useParams();
@@ -157,6 +203,8 @@ export default function BabyProfilePage() {
   const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
+  const [sessions, setSessions] = useState<SessionHistory[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
   const fetchBaby = useCallback(async () => {
     try {
@@ -198,11 +246,25 @@ export default function BabyProfilePage() {
     }
   }, [id]);
 
+  const fetchSessions = useCallback(async () => {
+    setIsLoadingSessions(true);
+    try {
+      const response = await fetch(`/api/babies/${id}/sessions`);
+      const data = await response.json();
+      setSessions(data.sessions || []);
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchBaby();
     fetchNotes();
     fetchAppointments();
-  }, [fetchBaby, fetchNotes, fetchAppointments]);
+    fetchSessions();
+  }, [fetchBaby, fetchNotes, fetchAppointments, fetchSessions]);
 
   const handleCopyCode = async (code: string) => {
     await navigator.clipboard.writeText(code);
@@ -1073,16 +1135,62 @@ export default function BabyProfilePage() {
 
         {/* Sessions Tab */}
         <TabsContent value="sessions" className="space-y-4">
-          <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
-                <FileText className="h-8 w-8 text-teal-400" />
-              </div>
-              <h3 className="mt-4 text-lg font-medium text-gray-600">
-                {t("babyProfile.sessions.noSessions")}
-              </h3>
+          {isLoadingSessions ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
             </div>
-          </Card>
+          ) : sessions.length > 0 ? (
+            <>
+              {/* Sessions summary */}
+              <div className="flex items-center justify-between rounded-2xl border border-white/50 bg-gradient-to-r from-teal-500 to-cyan-500 p-4 text-white shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-teal-100">{t("babyProfile.sessions.completed")}</p>
+                    <p className="text-2xl font-bold">{sessions.length}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                    <ClipboardList className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-teal-100">{t("babyProfile.sessions.evaluated")}</p>
+                    <p className="text-2xl font-bold">
+                      {sessions.filter((s) => s.evaluation).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sessions list */}
+              <div className="space-y-4">
+                {sessions.map((session) => (
+                  <SessionHistoryCard
+                    key={session.id}
+                    session={session}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-12 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
+                  <FileText className="h-8 w-8 text-teal-400" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-600">
+                  {t("babyProfile.sessions.noSessions")}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {t("babyProfile.sessions.noSessionsDescription")}
+                </p>
+              </div>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Notes Tab */}

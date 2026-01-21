@@ -41,7 +41,25 @@
       "Bash(curl:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=yes npx prisma migrate reset:*)",
+      "mcp__chrome-devtools__get_console_message",
+      "Bash(npm ls:*)",
+      "Bash(npx next dev -p 3000)",
+      "Bash(ping:*)",
+      "Bash(npx next:*)",
+      "mcp__context7__resolve-library-id",
+      "Bash(git diff:*)",
+      "Bash(wc:*)",
+      "Bash(npx prisma db seed:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(ls:*)",
+      "Bash(git restore:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(git reset:*)",
+      "Bash(del nul)"
     ]
   }
 }

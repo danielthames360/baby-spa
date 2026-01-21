@@ -227,171 +227,167 @@ export function ScheduleAppointmentDialog({
             </div>
           </div>
 
-          {/* No package warning */}
+          {/* Info when no package - trial session */}
           {!activePackage && (
-            <div className="flex items-center gap-3 rounded-xl bg-amber-50 p-4">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+            <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
+              <AlertCircle className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="font-medium text-amber-800">
-                  {t("calendar.noActivePackage")}
+                <p className="font-medium text-blue-800">
+                  {t("calendar.trialSession")}
                 </p>
-                <p className="text-sm text-amber-600">
-                  {t("calendar.needsPackage")}
+                <p className="text-sm text-blue-600">
+                  {t("calendar.trialSessionDesc")}
                 </p>
               </div>
             </div>
           )}
 
-          {activePackage && (
-            <>
-              {/* Step 1: Date selection */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Calendar className="h-4 w-4" />
-                  {t("babyProfile.appointments.selectDate")}
-                </Label>
+          {/* Step 1: Date selection */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <Calendar className="h-4 w-4" />
+              {t("babyProfile.appointments.selectDate")}
+            </Label>
 
-                {/* Calendar header */}
-                <div className="flex items-center justify-between rounded-xl bg-gray-50 p-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                    disabled={currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear()}
-                    className="h-8 w-8 rounded-lg"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium text-gray-700">
-                    {currentMonth.toLocaleDateString(dateLocale, { month: "long", year: "numeric" })}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                    className="h-8 w-8 rounded-lg"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+            {/* Calendar header */}
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                disabled={currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear()}
+                className="h-8 w-8 rounded-lg"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium text-gray-700">
+                {currentMonth.toLocaleDateString(dateLocale, { month: "long", year: "numeric" })}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                className="h-8 w-8 rounded-lg"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {weekDays.map((day) => (
+                <div key={day} className="p-2 text-center text-xs font-medium text-gray-500">
+                  {day}
                 </div>
+              ))}
+              {calendarDays.map((date, i) => {
+                if (!date) {
+                  return <div key={`empty-${i}`} className="p-2" />;
+                }
 
-                {/* Calendar grid */}
-                <div className="grid grid-cols-7 gap-1">
-                  {weekDays.map((day) => (
-                    <div key={day} className="p-2 text-center text-xs font-medium text-gray-500">
-                      {day}
-                    </div>
-                  ))}
-                  {calendarDays.map((date, i) => {
-                    if (!date) {
-                      return <div key={`empty-${i}`} className="p-2" />;
-                    }
+                const disabled = isDateDisabled(date);
+                const isSelected = selectedDate &&
+                  date.getDate() === selectedDate.getDate() &&
+                  date.getMonth() === selectedDate.getMonth() &&
+                  date.getFullYear() === selectedDate.getFullYear();
+                const isToday = date.getDate() === today.getDate() &&
+                  date.getMonth() === today.getMonth() &&
+                  date.getFullYear() === today.getFullYear();
 
-                    const disabled = isDateDisabled(date);
-                    const isSelected = selectedDate &&
-                      date.getDate() === selectedDate.getDate() &&
-                      date.getMonth() === selectedDate.getMonth() &&
-                      date.getFullYear() === selectedDate.getFullYear();
-                    const isToday = date.getDate() === today.getDate() &&
-                      date.getMonth() === today.getMonth() &&
-                      date.getFullYear() === today.getFullYear();
+                return (
+                  <button
+                    key={date.toISOString()}
+                    onClick={() => !disabled && handleDateSelect(date)}
+                    disabled={disabled}
+                    className={cn(
+                      "p-2 text-sm rounded-lg transition-all",
+                      disabled && "text-gray-300 cursor-not-allowed",
+                      !disabled && !isSelected && "hover:bg-teal-50 text-gray-700",
+                      isSelected && "bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium",
+                      isToday && !isSelected && "ring-2 ring-teal-300"
+                    )}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-                    return (
-                      <button
-                        key={date.toISOString()}
-                        onClick={() => !disabled && handleDateSelect(date)}
-                        disabled={disabled}
-                        className={cn(
-                          "p-2 text-sm rounded-lg transition-all",
-                          disabled && "text-gray-300 cursor-not-allowed",
-                          !disabled && !isSelected && "hover:bg-teal-50 text-gray-700",
-                          isSelected && "bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium",
-                          isToday && !isSelected && "ring-2 ring-teal-300"
-                        )}
-                      >
-                        {date.getDate()}
-                      </button>
-                    );
-                  })}
+          {/* Step 2: Time selection */}
+          {selectedDate && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2 text-gray-700">
+                <Clock className="h-4 w-4" />
+                {t("babyProfile.appointments.selectTime")}
+              </Label>
+
+              {isLoadingAvailability ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
                 </div>
-              </div>
-
-              {/* Step 2: Time selection */}
-              {selectedDate && (
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2 text-gray-700">
-                    <Clock className="h-4 w-4" />
-                    {t("babyProfile.appointments.selectTime")}
-                  </Label>
-
-                  {isLoadingAvailability ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-                    </div>
-                  ) : availability?.isClosed ? (
-                    <div className="rounded-xl bg-gray-100 p-4 text-center">
-                      <p className="text-gray-600">{t("calendar.closed")}</p>
-                      {availability.closedReason && (
-                        <p className="text-sm text-gray-500">{availability.closedReason}</p>
-                      )}
-                    </div>
-                  ) : availableSlots.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                      {availableSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          onClick={() => setSelectedTime(slot.time)}
-                          className={cn(
-                            "rounded-lg p-2 text-sm transition-all",
-                            selectedTime === slot.time
-                              ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium"
-                              : "bg-gray-100 text-gray-700 hover:bg-teal-50"
-                          )}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl bg-amber-50 p-4 text-center">
-                      <p className="text-amber-700">{t("babyProfile.appointments.noSlots")}</p>
-                    </div>
+              ) : availability?.isClosed ? (
+                <div className="rounded-xl bg-gray-100 p-4 text-center">
+                  <p className="text-gray-600">{t("calendar.closed")}</p>
+                  {availability.closedReason && (
+                    <p className="text-sm text-gray-500">{availability.closedReason}</p>
                   )}
                 </div>
-              )}
-
-              {/* Step 3: Notes */}
-              {selectedTime && (
-                <div className="space-y-3">
-                  <Label className="text-gray-700">{t("calendar.notes")}</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder={t("calendar.notesPlaceholder")}
-                    className="min-h-[80px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
-                  />
+              ) : availableSlots.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                  {availableSlots.map((slot) => (
+                    <button
+                      key={slot.time}
+                      onClick={() => setSelectedTime(slot.time)}
+                      className={cn(
+                        "rounded-lg p-2 text-sm transition-all",
+                        selectedTime === slot.time
+                          ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium"
+                          : "bg-gray-100 text-gray-700 hover:bg-teal-50"
+                      )}
+                    >
+                      {slot.time}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-amber-50 p-4 text-center">
+                  <p className="text-amber-700">{t("babyProfile.appointments.noSlots")}</p>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Summary */}
-              {selectedDate && selectedTime && (
-                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-4">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
-                  <div className="text-sm">
-                    <p className="font-medium text-emerald-800">
-                      {selectedDate.toLocaleDateString(dateLocale, {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </p>
-                    <p className="text-emerald-600">
-                      {selectedTime} - {t("babyProfile.appointments.sessionWillBeDeducted")}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </>
+          {/* Step 3: Notes */}
+          {selectedTime && (
+            <div className="space-y-3">
+              <Label className="text-gray-700">{t("calendar.notes")}</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t("calendar.notesPlaceholder")}
+                className="min-h-[80px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+              />
+            </div>
+          )}
+
+          {/* Summary */}
+          {selectedDate && selectedTime && (
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-4">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <div className="text-sm">
+                <p className="font-medium text-emerald-800">
+                  {selectedDate.toLocaleDateString(dateLocale, {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </p>
+                <p className="text-emerald-600">
+                  {selectedTime}
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Error message */}
@@ -413,10 +409,10 @@ export function ScheduleAppointmentDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!activePackage || !selectedDate || !selectedTime || isSubmitting}
+              disabled={!selectedDate || !selectedTime || isSubmitting}
               className={cn(
                 "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
-                (!activePackage || !selectedDate || !selectedTime) && "opacity-50"
+                (!selectedDate || !selectedTime) && "opacity-50"
               )}
             >
               {isSubmitting ? (

@@ -29,6 +29,8 @@ import {
   AlertDialogCancel,
   AlertDialogDestructiveAction,
 } from "@/components/ui/alert-dialog";
+import { StartSessionDialog } from "@/components/sessions/start-session-dialog";
+import { CompleteSessionDialog } from "@/components/sessions/complete-session-dialog";
 import {
   Baby,
   Calendar,
@@ -58,6 +60,9 @@ interface AppointmentDetailsProps {
     status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
     notes: string | null;
     cancelReason: string | null;
+    session?: {
+      id: string;
+    } | null;
     baby: {
       id: string;
       name: string;
@@ -112,6 +117,12 @@ export function AppointmentDetails({
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showNoShowDialog, setShowNoShowDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+
+  // Start session state
+  const [showStartSessionDialog, setShowStartSessionDialog] = useState(false);
+
+  // Complete session state
+  const [showCompleteSessionDialog, setShowCompleteSessionDialog] = useState(false);
 
   // Reschedule state
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
@@ -391,7 +402,7 @@ export function AppointmentDetails({
                   <div className="flex gap-2">
                     {canStart && (
                       <Button
-                        onClick={() => handleAction("start")}
+                        onClick={() => setShowStartSessionDialog(true)}
                         disabled={isUpdating}
                         className="flex-1 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 py-6 text-base font-semibold text-white shadow-lg shadow-blue-200 hover:from-blue-600 hover:to-blue-700"
                       >
@@ -404,9 +415,9 @@ export function AppointmentDetails({
                       </Button>
                     )}
 
-                    {canComplete && (
+                    {canComplete && appointment.session?.id && (
                       <Button
-                        onClick={() => handleAction("complete")}
+                        onClick={() => setShowCompleteSessionDialog(true)}
                         disabled={isUpdating}
                         className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-6 text-base font-semibold text-white shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700"
                       >
@@ -625,6 +636,34 @@ export function AppointmentDetails({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Start session dialog with therapist selection */}
+      {appointment && (
+        <StartSessionDialog
+          open={showStartSessionDialog}
+          onOpenChange={setShowStartSessionDialog}
+          appointmentId={appointment.id}
+          babyName={appointment.baby.name}
+          startTime={appointment.startTime}
+          onSuccess={() => {
+            onUpdate?.();
+            onOpenChange(false);
+          }}
+        />
+      )}
+
+      {/* Complete session dialog with package selection */}
+      {appointment?.session?.id && (
+        <CompleteSessionDialog
+          open={showCompleteSessionDialog}
+          onOpenChange={setShowCompleteSessionDialog}
+          sessionId={appointment.session.id}
+          onSuccess={() => {
+            onUpdate?.();
+            onOpenChange(false);
+          }}
+        />
+      )}
     </>
   );
 }

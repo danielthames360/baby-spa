@@ -480,17 +480,10 @@ export const appointmentService = {
       throw new Error("TIME_SLOT_FULL");
     }
 
-    // Check if baby has active package with sessions
-    const activePackage = await packageService.getActivePackageForBaby(babyId);
-    if (!activePackage) {
-      throw new Error("NO_ACTIVE_PACKAGE");
-    }
+    // Note: We no longer require a package to book an appointment
+    // The session will be charged/associated with a package when completed by reception
 
-    if (activePackage.remainingSessions <= 0) {
-      throw new Error("NO_SESSIONS_REMAINING");
-    }
-
-    // Create appointment and deduct session in transaction
+    // Create appointment (no session deduction at booking time)
     const appointment = await prisma.$transaction(async (tx) => {
       // Create appointment
       const newAppointment = await tx.appointment.create({
@@ -530,15 +523,6 @@ export const appointmentService = {
               status: true,
             },
           },
-        },
-      });
-
-      // Deduct session from package
-      await tx.packagePurchase.update({
-        where: { id: activePackage.id },
-        data: {
-          usedSessions: { increment: 1 },
-          remainingSessions: { decrement: 1 },
         },
       });
 
@@ -640,21 +624,11 @@ export const appointmentService = {
       newValue.status = input.status;
       updateData.status = input.status;
 
-      // If cancelling, return session to package
+      // If cancelling, just update the reason
+      // Note: We no longer return sessions to packages because sessions are
+      // only deducted at completion time, not at booking time
       if (input.status === AppointmentStatus.CANCELLED) {
         updateData.cancelReason = input.cancelReason;
-
-        // Find active package and return session
-        const activePackage = await packageService.getActivePackageForBaby(existing.babyId);
-        if (activePackage) {
-          await prisma.packagePurchase.update({
-            where: { id: activePackage.id },
-            data: {
-              usedSessions: { decrement: 1 },
-              remainingSessions: { increment: 1 },
-            },
-          });
-        }
       }
     }
 

@@ -109,10 +109,11 @@ model User {
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
-  sessionsAsTherapist Session[]
-  registrationLinks   RegistrationLink[]
-  babyNotes           BabyNote[]
-  staffPayments       StaffPayment[]
+  sessionsAsTherapist  Session[]
+  appointmentsAssigned Appointment[]
+  registrationLinks    RegistrationLink[]
+  babyNotes            BabyNote[]
+  staffPayments        StaffPayment[]
 
   @@map("users")
 }
@@ -342,6 +343,13 @@ model Appointment {
 
   status AppointmentStatus @default(SCHEDULED)
 
+  // Terapeuta asignado (se asigna al iniciar la cita)
+  therapistId String?
+  therapist   User?   @relation(fields: [therapistId], references: [id])
+
+  // Indica si el terapeuta registró la evaluación (independiente del status)
+  isEvaluated Boolean @default(false)
+
   reminder24hSent   Boolean   @default(false)
   reminder24hSentAt DateTime?
 
@@ -445,6 +453,14 @@ model Evaluation {
 
   babyAgeMonths Int
   babyWeight    Decimal? @db.Decimal(4, 2)
+
+  // Actividades realizadas en la sesión
+  hydrotherapy       Boolean @default(false)
+  massage            Boolean @default(false)
+  motorStimulation   Boolean @default(false)
+  sensoryStimulation Boolean @default(false)
+  relaxation         Boolean @default(false)
+  otherActivities    String? // Otras actividades (texto libre)
 
   // Evaluación sensorial
   visualTracking   Boolean?

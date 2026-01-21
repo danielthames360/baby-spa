@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
-import { ClipboardList, Calendar, LogOut, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -18,20 +16,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navigation = [
-  { key: "todaySessions", href: "/therapist/today", icon: ClipboardList },
-  { key: "calendar", href: "/therapist/schedule", icon: Calendar },
-];
-
 export function TherapistNav() {
-  const pathname = usePathname();
   const { data: session } = useSession();
   const t = useTranslations();
-
-  const isActive = (href: string) => {
-    const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");
-    return pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`);
-  };
 
   const userInitials = session?.user?.name
     ?.split(" ")
@@ -58,32 +45,6 @@ export function TherapistNav() {
             Baby Spa
           </span>
         </Link>
-
-        {/* Navigation */}
-        <nav className="flex items-center gap-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
-                  active
-                    ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-200"
-                    : "text-gray-600 hover:bg-teal-50 hover:text-teal-700"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {t(`session.${item.key}`)}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
 
         {/* User menu */}
         <DropdownMenu>
