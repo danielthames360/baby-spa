@@ -1,9 +1,32 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Baby, Clock, CheckCircle, AlertCircle, FileEdit, Eye, User } from "lucide-react";
+import { Baby, Clock, CheckCircle, AlertCircle, FileEdit, Eye, User, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface BabyData {
+  id: string;
+  name: string;
+  birthDate: string;
+  gender: string;
+  birthWeeks?: number | null;
+  birthWeight?: number | string | null;
+  birthType?: string | null;
+  birthDifficulty?: boolean;
+  birthDifficultyDesc?: string | null;
+  diagnosedIllness?: boolean;
+  diagnosedIllnessDesc?: string | null;
+  allergies?: string | null;
+  specialObservations?: string | null;
+  parents?: Array<{
+    isPrimary: boolean;
+    parent: {
+      id: string;
+      name: string;
+    };
+  }>;
+}
 
 interface TherapistSessionCardProps {
   appointment: {
@@ -13,18 +36,11 @@ interface TherapistSessionCardProps {
     endTime: string;
     status: string;
     isEvaluated: boolean;
-    baby: {
+    therapist?: {
       id: string;
       name: string;
-      birthDate: string;
-      parents?: Array<{
-        isPrimary: boolean;
-        parent: {
-          id: string;
-          name: string;
-        };
-      }>;
-    };
+    } | null;
+    baby: BabyData;
     session?: {
       id: string;
       sessionNumber: number;
@@ -33,16 +49,27 @@ interface TherapistSessionCardProps {
       } | null;
     } | null;
   };
+  currentTherapistId?: string;
   onEvaluate: (sessionId: string) => void;
   onViewEvaluation: (sessionId: string) => void;
+  onViewBaby: (baby: BabyData) => void;
 }
 
 export function TherapistSessionCard({
   appointment,
+  currentTherapistId,
   onEvaluate,
   onViewEvaluation,
+  onViewBaby,
 }: TherapistSessionCardProps) {
   const t = useTranslations();
+
+  // Check if this therapist is assigned to this appointment
+  const isAssignedTherapist = currentTherapistId && appointment.therapist?.id === currentTherapistId;
+
+  // For SCHEDULED appointments, no actions are available (only viewing)
+  // For IN_PROGRESS/COMPLETED, only assigned therapist can see actions
+  const canPerformActions = appointment.status !== "SCHEDULED" && isAssignedTherapist;
 
   // Calculate baby age
   const birthDate = new Date(appointment.baby.birthDate);
@@ -97,11 +124,21 @@ export function TherapistSessionCard({
   };
 
   const statusConfig = getStatusConfig();
+
+  // Can evaluate only if assigned and session is in progress or completed
   const canEvaluate =
+    canPerformActions &&
     !appointment.isEvaluated &&
     appointment.session &&
     (appointment.status === "IN_PROGRESS" || appointment.status === "COMPLETED");
-  const hasEvaluation = appointment.isEvaluated && appointment.session;
+
+  const hasEvaluation = canPerformActions && appointment.isEvaluated && appointment.session;
+
+  // Check if baby has medical alerts
+  const hasMedicalAlerts =
+    appointment.baby.allergies ||
+    appointment.baby.diagnosedIllness ||
+    appointment.baby.birthDifficulty;
 
   return (
     <div
@@ -180,6 +217,24 @@ export function TherapistSessionCard({
 
         {/* Action buttons - desktop only */}
         <div className="hidden flex-shrink-0 items-center gap-2 sm:flex">
+          {/* Ver Bebé button - always available */}
+          <Button
+            variant="outline"
+            onClick={() => onViewBaby(appointment.baby)}
+            className={cn(
+              "rounded-xl border-2 px-3 transition-all hover:shadow-md",
+              hasMedicalAlerts
+                ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+                : "border-cyan-200 text-cyan-600 hover:bg-cyan-50"
+            )}
+          >
+            <Info className="mr-2 h-4 w-4" />
+            {t("session.viewBaby")}
+            {hasMedicalAlerts && (
+              <span className="ml-1 flex h-2 w-2 rounded-full bg-rose-500" />
+            )}
+          </Button>
+
           {canEvaluate && (
             <Button
               onClick={() => onEvaluate(appointment.session!.id)}
@@ -203,7 +258,7 @@ export function TherapistSessionCard({
             </Button>
           )}
 
-          {appointment.status === "SCHEDULED" && (
+          {appointment.status === "SCHEDULED" && !canEvaluate && !hasEvaluation && (
             <span className="text-sm text-gray-400">
               {t("session.waitingToStart")}
             </span>
@@ -212,7 +267,26 @@ export function TherapistSessionCard({
       </div>
 
       {/* Action buttons - mobile only */}
-      <div className="mt-3 flex items-center justify-end gap-2 sm:hidden">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2 sm:hidden">
+        {/* Ver Bebé button - always available */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onViewBaby(appointment.baby)}
+          className={cn(
+            "rounded-xl border-2 transition-all",
+            hasMedicalAlerts
+              ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+              : "border-cyan-200 text-cyan-600 hover:bg-cyan-50"
+          )}
+        >
+          <Info className="mr-1.5 h-3.5 w-3.5" />
+          {t("session.viewBaby")}
+          {hasMedicalAlerts && (
+            <span className="ml-1 flex h-2 w-2 rounded-full bg-rose-500" />
+          )}
+        </Button>
+
         {canEvaluate && (
           <Button
             onClick={() => onEvaluate(appointment.session!.id)}
@@ -238,7 +312,7 @@ export function TherapistSessionCard({
           </Button>
         )}
 
-        {appointment.status === "SCHEDULED" && (
+        {appointment.status === "SCHEDULED" && !canEvaluate && !hasEvaluation && (
           <span className="text-xs text-gray-400">
             {t("session.waitingToStart")}
           </span>

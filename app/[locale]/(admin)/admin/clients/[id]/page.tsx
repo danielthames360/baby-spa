@@ -28,6 +28,8 @@ import {
   ClipboardList,
   Info,
   XCircle,
+  AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -608,7 +610,162 @@ export default function BabyProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* Special Observations */}
+            {baby.specialObservations && (
+              <div className="mt-4 rounded-xl border border-teal-100 bg-gradient-to-r from-teal-50/50 to-cyan-50/50 p-4">
+                <p className="text-sm font-medium text-gray-600">
+                  {t("babyForm.babyData.specialObservations")}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-700">{baby.specialObservations}</p>
+              </div>
+            )}
           </Card>
+
+          {/* Medical Alerts - Critical Information */}
+          {(baby.allergies || baby.diagnosedIllness || baby.birthDifficulty) && (
+            <Card className="rounded-2xl border border-rose-200/70 bg-white/70 p-6 shadow-lg shadow-rose-500/10 backdrop-blur-md">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100">
+                  <ShieldAlert className="h-5 w-5 text-rose-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-rose-700">
+                    {t("babyProfile.info.medicalAlerts")}
+                  </h3>
+                  <p className="text-xs text-rose-500/70">
+                    {t("babyProfile.info.medicalAlertsDescription")}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {/* Allergies - Most Critical */}
+                {baby.allergies && (
+                  <div className="flex gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-rose-100/80">
+                      <AlertTriangle className="h-4 w-4 text-rose-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-rose-600">
+                        {t("babyProfile.info.alertAllergies")}
+                      </p>
+                      <p className="mt-1 text-sm text-rose-800">{baby.allergies}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Diagnosed Illness */}
+                {baby.diagnosedIllness && (
+                  <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100/80">
+                      <Stethoscope className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-amber-600">
+                        {t("babyProfile.info.alertDiagnosedIllness")}
+                      </p>
+                      {baby.diagnosedIllnessDesc && (
+                        <p className="mt-1 text-sm text-amber-800">{baby.diagnosedIllnessDesc}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Birth Difficulty */}
+                {baby.birthDifficulty && (
+                  <div className="flex gap-3 rounded-xl border border-orange-200 bg-orange-50/50 p-4">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100/80">
+                      <Heart className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-orange-600">
+                        {t("babyProfile.info.alertBirthDifficulty")}
+                      </p>
+                      {baby.birthDifficultyDesc && (
+                        <p className="mt-1 text-sm text-orange-800">{baby.birthDifficultyDesc}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Other Medical Info */}
+          {(baby.pregnancyIssues || baby.priorStimulation ||
+            baby.developmentDiagnosis || baby.recentMedication) && (
+            <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100">
+                  <Stethoscope className="h-4 w-4 text-teal-600" />
+                </div>
+                <h3 className="font-semibold text-gray-800">
+                  {t("babyForm.babyData.medicalInfo")}
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {/* Pregnancy Issues */}
+                {baby.pregnancyIssues && (
+                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
+                    <Activity className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {t("babyForm.babyData.pregnancyIssues")}
+                      </p>
+                      {baby.pregnancyIssuesDesc && (
+                        <p className="mt-1 text-sm text-gray-500">{baby.pregnancyIssuesDesc}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Prior Stimulation */}
+                {baby.priorStimulation && (
+                  <div className="flex gap-3 rounded-xl border-l-4 border-cyan-400 bg-gray-50/80 p-3 pl-4">
+                    <Baby className="mt-0.5 h-4 w-4 flex-shrink-0 text-cyan-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {t("babyForm.babyData.priorStimulation")}
+                      </p>
+                      {baby.priorStimulationType && (
+                        <p className="mt-1 text-sm text-gray-500">{baby.priorStimulationType}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Development Diagnosis */}
+                {baby.developmentDiagnosis && (
+                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
+                    <ClipboardList className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {t("babyForm.babyData.developmentDiagnosis")}
+                      </p>
+                      {baby.developmentDiagnosisDesc && (
+                        <p className="mt-1 text-sm text-gray-500">{baby.developmentDiagnosisDesc}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Medication */}
+                {baby.recentMedication && (
+                  <div className="flex gap-3 rounded-xl border-l-4 border-cyan-400 bg-gray-50/80 p-3 pl-4">
+                    <Pill className="mt-0.5 h-4 w-4 flex-shrink-0 text-cyan-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {t("babyForm.babyData.recentMedication")}
+                      </p>
+                      {baby.recentMedicationDesc && (
+                        <p className="mt-1 text-sm text-gray-500">{baby.recentMedicationDesc}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Parents */}
           <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
@@ -741,136 +898,6 @@ export default function BabyProfilePage() {
               </div>
             )}
           </Card>
-
-          {/* Medical Info */}
-          {(baby.birthDifficulty || baby.pregnancyIssues || baby.priorStimulation ||
-            baby.developmentDiagnosis || baby.diagnosedIllness || baby.recentMedication ||
-            baby.allergies || baby.specialObservations) && (
-            <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100">
-                  <Stethoscope className="h-4 w-4 text-teal-600" />
-                </div>
-                <h3 className="font-semibold text-gray-800">
-                  {t("babyForm.babyData.medicalInfo")}
-                </h3>
-              </div>
-              <div className="space-y-3">
-                {/* Birth Difficulty */}
-                {baby.birthDifficulty && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
-                    <Heart className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.birthDifficulty")}
-                      </p>
-                      {baby.birthDifficultyDesc && (
-                        <p className="mt-1 text-sm text-gray-500">{baby.birthDifficultyDesc}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Pregnancy Issues */}
-                {baby.pregnancyIssues && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
-                    <Activity className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.pregnancyIssues")}
-                      </p>
-                      {baby.pregnancyIssuesDesc && (
-                        <p className="mt-1 text-sm text-gray-500">{baby.pregnancyIssuesDesc}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Prior Stimulation */}
-                {baby.priorStimulation && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-cyan-400 bg-gray-50/80 p-3 pl-4">
-                    <Baby className="mt-0.5 h-4 w-4 flex-shrink-0 text-cyan-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.priorStimulation")}
-                      </p>
-                      {baby.priorStimulationType && (
-                        <p className="mt-1 text-sm text-gray-500">{baby.priorStimulationType}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Development Diagnosis */}
-                {baby.developmentDiagnosis && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
-                    <ClipboardList className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.developmentDiagnosis")}
-                      </p>
-                      {baby.developmentDiagnosisDesc && (
-                        <p className="mt-1 text-sm text-gray-500">{baby.developmentDiagnosisDesc}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Diagnosed Illness */}
-                {baby.diagnosedIllness && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
-                    <Stethoscope className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.diagnosedIllness")}
-                      </p>
-                      {baby.diagnosedIllnessDesc && (
-                        <p className="mt-1 text-sm text-gray-500">{baby.diagnosedIllnessDesc}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recent Medication */}
-                {baby.recentMedication && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-cyan-400 bg-gray-50/80 p-3 pl-4">
-                    <Pill className="mt-0.5 h-4 w-4 flex-shrink-0 text-cyan-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.recentMedication")}
-                      </p>
-                      {baby.recentMedicationDesc && (
-                        <p className="mt-1 text-sm text-gray-500">{baby.recentMedicationDesc}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Allergies */}
-                {baby.allergies && (
-                  <div className="flex gap-3 rounded-xl border-l-4 border-teal-400 bg-gray-50/80 p-3 pl-4">
-                    <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {t("babyForm.babyData.allergies")}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500">{baby.allergies}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Special Observations */}
-                {baby.specialObservations && (
-                  <div className="mt-4 rounded-xl bg-gradient-to-r from-teal-50/50 to-cyan-50/50 p-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      {t("babyForm.babyData.specialObservations")}
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-700">{baby.specialObservations}</p>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
         </TabsContent>
 
         {/* Packages Tab */}

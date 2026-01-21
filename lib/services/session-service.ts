@@ -682,18 +682,18 @@ export const sessionService = {
 
   /**
    * Get today's sessions for a therapist
+   * - SCHEDULED: visible to ALL therapists (no actions available)
+   * - IN_PROGRESS/COMPLETED: visible only to the ASSIGNED therapist
    */
   async getTodayForTherapist(therapistId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const appointments = await prisma.appointment.findMany({
+    // Get ALL scheduled appointments for today (visible to all therapists)
+    const scheduledAppointments = await prisma.appointment.findMany({
       where: {
-        therapistId,
         date: today,
-        status: {
-          in: ["SCHEDULED", "IN_PROGRESS", "COMPLETED"],
-        },
+        status: "SCHEDULED",
       },
       include: {
         baby: {
@@ -703,6 +703,12 @@ export const sessionService = {
               include: { parent: true },
               take: 1,
             },
+          },
+        },
+        therapist: {
+          select: {
+            id: true,
+            name: true,
           },
         },
         session: {
@@ -716,7 +722,48 @@ export const sessionService = {
       },
     });
 
-    return appointments;
+    // Get only IN_PROGRESS and COMPLETED appointments assigned to this therapist
+    const assignedAppointments = await prisma.appointment.findMany({
+      where: {
+        therapistId,
+        date: today,
+        status: {
+          in: ["IN_PROGRESS", "COMPLETED"],
+        },
+      },
+      include: {
+        baby: {
+          include: {
+            parents: {
+              where: { isPrimary: true },
+              include: { parent: true },
+              take: 1,
+            },
+          },
+        },
+        therapist: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        session: {
+          include: {
+            evaluation: true,
+          },
+        },
+      },
+      orderBy: {
+        startTime: "asc",
+      },
+    });
+
+    // Combine and sort by startTime
+    const allAppointments = [...scheduledAppointments, ...assignedAppointments].sort(
+      (a, b) => a.startTime.localeCompare(b.startTime)
+    );
+
+    return allAppointments;
   },
 
   /**

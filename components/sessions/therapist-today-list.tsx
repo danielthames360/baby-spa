@@ -2,10 +2,35 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useSession } from "next-auth/react";
 import { Calendar, Loader2 } from "lucide-react";
 import { TherapistSessionCard } from "./therapist-session-card";
 import { EvaluationForm } from "./evaluation-form";
 import { ViewEvaluationDialog } from "./view-evaluation-dialog";
+import { ViewBabyDialog } from "./view-baby-dialog";
+
+interface BabyData {
+  id: string;
+  name: string;
+  birthDate: string;
+  gender: string;
+  birthWeeks?: number | null;
+  birthWeight?: number | string | null;
+  birthType?: string | null;
+  birthDifficulty?: boolean;
+  birthDifficultyDesc?: string | null;
+  diagnosedIllness?: boolean;
+  diagnosedIllnessDesc?: string | null;
+  allergies?: string | null;
+  specialObservations?: string | null;
+  parents?: Array<{
+    isPrimary: boolean;
+    parent: {
+      id: string;
+      name: string;
+    };
+  }>;
+}
 
 interface Appointment {
   id: string;
@@ -14,18 +39,11 @@ interface Appointment {
   endTime: string;
   status: string;
   isEvaluated: boolean;
-  baby: {
+  therapist?: {
     id: string;
     name: string;
-    birthDate: string;
-    parents?: Array<{
-      isPrimary: boolean;
-      parent: {
-        id: string;
-        name: string;
-      };
-    }>;
-  };
+  } | null;
+  baby: BabyData;
   session?: {
     id: string;
     sessionNumber: number;
@@ -39,6 +57,7 @@ export function TherapistTodayList() {
   const t = useTranslations();
   const locale = useLocale();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
+  const { data: session } = useSession();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,10 +66,15 @@ export function TherapistTodayList() {
   // Dialog states
   const [evaluationDialogOpen, setEvaluationDialogOpen] = useState(false);
   const [viewEvaluationDialogOpen, setViewEvaluationDialogOpen] = useState(false);
+  const [viewBabyDialogOpen, setViewBabyDialogOpen] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedBabyName, setSelectedBabyName] = useState<string>("");
   const [selectedBabyAge, setSelectedBabyAge] = useState<number>(0);
   const [selectedParentName, setSelectedParentName] = useState<string>("");
+  const [selectedBaby, setSelectedBaby] = useState<BabyData | null>(null);
+
+  // Current therapist ID from session
+  const currentTherapistId = session?.user?.id;
 
   const fetchAppointments = useCallback(async () => {
     setIsLoading(true);
@@ -101,6 +125,11 @@ export function TherapistTodayList() {
   const handleViewEvaluation = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setViewEvaluationDialogOpen(true);
+  };
+
+  const handleViewBaby = (baby: BabyData) => {
+    setSelectedBaby(baby);
+    setViewBabyDialogOpen(true);
   };
 
   const handleEvaluationSuccess = () => {
@@ -163,8 +192,10 @@ export function TherapistTodayList() {
             <TherapistSessionCard
               key={appointment.id}
               appointment={appointment}
+              currentTherapistId={currentTherapistId}
               onEvaluate={handleEvaluate}
               onViewEvaluation={handleViewEvaluation}
+              onViewBaby={handleViewBaby}
             />
           ))}
         </div>
@@ -203,6 +234,13 @@ export function TherapistTodayList() {
           sessionId={selectedSessionId}
         />
       )}
+
+      {/* View Baby Dialog */}
+      <ViewBabyDialog
+        open={viewBabyDialogOpen}
+        onOpenChange={setViewBabyDialogOpen}
+        baby={selectedBaby}
+      />
     </div>
   );
 }

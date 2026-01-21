@@ -227,6 +227,7 @@
     "packageSubtotal": "Pacote/Sessão",
     "total": "Total a cobrar",
     "viewEvaluation": "Ver Avaliação",
+    "viewBaby": "Ver Bebê",
     "saveEvaluation": "Salvar Avaliação",
     "viewEvaluationTitle": "Avaliação da Sessão",
     "noEvaluation": "Sem avaliação registrada",
@@ -809,7 +810,13 @@
       "setAsPrimary": "Definir como principal",
       "confirmRemoveParent": "Tem certeza que deseja remover este pai/responsável do bebê?",
       "cannotRemoveOnlyParent": "Não é possível remover o único pai/responsável",
-      "cannotRemovePrimaryWithoutOther": "Não é possível remover o contato principal sem atribuir outro primeiro"
+      "cannotRemovePrimaryWithoutOther": "Não é possível remover o contato principal sem atribuir outro primeiro",
+      "medicalAlerts": "Alertas Médicos",
+      "medicalAlertsDescription": "Informações importantes a considerar durante as sessões",
+      "noMedicalAlerts": "Sem alertas médicos registrados",
+      "alertAllergies": "Alergias",
+      "alertDiagnosedIllness": "Doença Diagnosticada",
+      "alertBirthDifficulty": "Dificuldade no Parto"
     },
     "packages": {
       "activePackage": "Pacote Ativo",
