@@ -9,7 +9,7 @@ import {
   SLOT_DURATION_MINUTES,
   timeToMinutes,
 } from "@/lib/constants/business-hours";
-import { Baby, Clock, User, Phone, GripVertical } from "lucide-react";
+import { Baby, Clock, User, Phone, GripVertical, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Appointment {
@@ -31,6 +31,13 @@ interface Appointment {
       };
     }[];
   };
+  packagePurchase?: {
+    id: string;
+    package: {
+      id: string;
+      name: string;
+    };
+  } | null;
 }
 
 interface DayViewProps {
@@ -283,7 +290,21 @@ export function DayView({
                             </div>
                           )}
 
-                          <div className="mt-2">
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {/* Package badge */}
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                                apt.packagePurchase
+                                  ? "bg-teal-100 text-teal-700"
+                                  : "bg-amber-100 text-amber-700"
+                              )}
+                            >
+                              <Package className="h-3 w-3" />
+                              {apt.packagePurchase?.package.name || t("calendar.sessionToDefine")}
+                            </span>
+
+                            {/* Status badge */}
                             <span
                               className={cn(
                                 "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",

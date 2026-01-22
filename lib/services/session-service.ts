@@ -73,7 +73,8 @@ export const sessionService = {
    * - Change status to IN_PROGRESS
    * - Create session record
    * - If packagePurchaseId is provided, link to that package
-   * - If packagePurchaseId is null/undefined, it's a trial session
+   * - If packagePurchaseId is null/undefined but appointment has one pre-selected, use that
+   * - If both are null/undefined, it's a trial session ("sesión a definir")
    */
   async startSession(input: StartSessionInput) {
     const { appointmentId, therapistId, packagePurchaseId, userId, userName } = input;
@@ -108,13 +109,19 @@ export const sessionService = {
       throw new Error("INVALID_THERAPIST");
     }
 
-    // Get the selected package purchase (if provided)
+    // Determine which packagePurchaseId to use:
+    // 1. If explicitly provided in input, use that
+    // 2. Otherwise, use the one pre-selected in the appointment (from Portal booking)
+    // 3. If both are null, it's a trial session ("sesión a definir")
+    const effectivePackagePurchaseId = packagePurchaseId ?? appointment.packagePurchaseId;
+
+    // Get the selected package purchase (if any)
     let selectedPackage = null;
     let sessionNumber = 1;
 
-    if (packagePurchaseId) {
+    if (effectivePackagePurchaseId) {
       selectedPackage = await prisma.packagePurchase.findUnique({
-        where: { id: packagePurchaseId },
+        where: { id: effectivePackagePurchaseId },
       });
 
       if (!selectedPackage) {
@@ -321,9 +328,14 @@ export const sessionService = {
 
     const babyId = session.appointment.babyId;
 
-    // Check if baby has an active package with sessions
-    const activePackage = await packageService.getActivePackageForBaby(babyId);
-    const hasActivePackageWithSessions = activePackage && activePackage.remainingSessions > 0;
+    // Determine which package to use for deduction:
+    // 1. First, use the package linked to the session (pre-selected at booking/start)
+    // 2. Otherwise, fall back to any active package with remaining sessions
+    const sessionPackage = session.packagePurchase;
+    const activePackage = !sessionPackage ? await packageService.getActivePackageForBaby(babyId) : null;
+    const hasActivePackageWithSessions =
+      (sessionPackage && sessionPackage.remainingSessions > 0) ||
+      (activePackage && activePackage.remainingSessions > 0);
 
     // Calculate chargeable amount from products
     let productsAmount = new Prisma.Decimal(0);
@@ -364,7 +376,8 @@ export const sessionService = {
 
     const result = await prisma.$transaction(async (tx) => {
       let newPackagePurchase = null;
-      let packagePurchaseToDeduct = activePackage;
+      // Use session's pre-selected package, or fall back to any active package
+      let packagePurchaseToDeduct = sessionPackage || activePackage;
 
       // Create payment first if there's a total amount (needed for package purchase link)
       let payment = null;
@@ -514,8 +527,8 @@ export const sessionService = {
    * Mark appointment as No-Show
    * - Increment parent noShowCount
    * - Set requiresPrepayment if >= 3
-   * - Return session to package
    * - Mark as NO_SHOW
+   * Note: No session return needed since deduction happens at completion, not booking
    */
   async markNoShow(input: MarkNoShowInput) {
     const { appointmentId, userId, userName } = input;
@@ -529,11 +542,6 @@ export const sessionService = {
             parents: {
               where: { isPrimary: true },
               include: { parent: true },
-            },
-            packagePurchases: {
-              where: { isActive: true },
-              orderBy: { createdAt: "asc" },
-              take: 1,
             },
           },
         },
@@ -572,17 +580,8 @@ export const sessionService = {
         });
       }
 
-      // Return session to package (if session was already deducted during booking)
-      const activePackage = appointment.baby.packagePurchases[0];
-      if (activePackage) {
-        await tx.packagePurchase.update({
-          where: { id: activePackage.id },
-          data: {
-            usedSessions: { decrement: 1 },
-            remainingSessions: { increment: 1 },
-          },
-        });
-      }
+      // Note: No session return needed here since sessions are only deducted
+      // when the session is completed, not when the appointment is booked
 
       // Record history
       await tx.appointmentHistory.create({
@@ -716,6 +715,17 @@ export const sessionService = {
             evaluation: true,
           },
         },
+        packagePurchase: {
+          select: {
+            id: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         startTime: "asc",
@@ -750,6 +760,17 @@ export const sessionService = {
         session: {
           include: {
             evaluation: true,
+          },
+        },
+        packagePurchase: {
+          select: {
+            id: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },

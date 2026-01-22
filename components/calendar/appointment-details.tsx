@@ -47,6 +47,7 @@ import {
   ExternalLink,
   CalendarClock,
   Info,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
@@ -62,6 +63,7 @@ interface AppointmentDetailsProps {
     status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
     notes: string | null;
     cancelReason: string | null;
+    packagePurchaseId?: string | null;
     session?: {
       id: string;
     } | null;
@@ -77,6 +79,13 @@ interface AppointmentDetailsProps {
         };
       }[];
     };
+    packagePurchase?: {
+      id: string;
+      package: {
+        id: string;
+        name: string;
+      };
+    } | null;
   } | null;
   onUpdate?: () => void;
 }
@@ -357,36 +366,90 @@ export function AppointmentDetails({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Date & Time */}
-            <div className="flex gap-4 rounded-xl bg-gray-50 p-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">
+          <div className="space-y-4">
+            {/* Info cards grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Date card */}
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Calendar className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    {t("calendar.date")}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-semibold text-gray-800">
                   {formattedDate}
-                </span>
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">
+
+              {/* Time card */}
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    {t("calendar.time")}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-semibold text-gray-800">
                   {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
-                </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Package card - full width */}
+            <div className={cn(
+              "rounded-xl p-3",
+              appointment.packagePurchase
+                ? "bg-teal-50 border border-teal-200"
+                : "bg-amber-50 border border-amber-200"
+            )}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-lg",
+                    appointment.packagePurchase
+                      ? "bg-teal-100"
+                      : "bg-amber-100"
+                  )}>
+                    <Package className={cn(
+                      "h-4 w-4",
+                      appointment.packagePurchase
+                        ? "text-teal-600"
+                        : "text-amber-600"
+                    )} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      {t("calendar.package")}
+                    </p>
+                    <p className={cn(
+                      "text-sm font-semibold",
+                      appointment.packagePurchase
+                        ? "text-teal-700"
+                        : "text-amber-700"
+                    )}>
+                      {appointment.packagePurchase
+                        ? appointment.packagePurchase.package.name
+                        : t("calendar.sessionToDefine")}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Baby info */}
-            <div className="rounded-xl border-2 border-teal-100 bg-teal-50/50 p-4">
+            <div className="rounded-xl border-2 border-teal-100 bg-white p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500">
-                    <Baby className="h-6 w-6 text-white" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 shadow-md shadow-teal-200">
+                    <Baby className="h-5 w-5 text-white" />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800">
                       {appointment.baby.name}
                     </p>
                     {primaryParent && (
-                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
                           <User className="h-3 w-3" />
                           {primaryParent.name}
@@ -405,7 +468,7 @@ export function AppointmentDetails({
                     size="sm"
                     onClick={handleViewBaby}
                     disabled={isLoadingBaby}
-                    className="text-cyan-600 hover:bg-cyan-100"
+                    className="h-8 w-8 p-0 text-cyan-600 hover:bg-cyan-100"
                   >
                     {isLoadingBaby ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -417,7 +480,7 @@ export function AppointmentDetails({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-teal-600 hover:bg-teal-100"
+                      className="h-8 w-8 p-0 text-teal-600 hover:bg-teal-100"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
@@ -709,6 +772,7 @@ export function AppointmentDetails({
           babyId={appointment.baby.id}
           babyName={appointment.baby.name}
           startTime={appointment.startTime}
+          preselectedPackageId={appointment.packagePurchaseId || undefined}
           onSuccess={() => {
             onUpdate?.();
             onOpenChange(false);

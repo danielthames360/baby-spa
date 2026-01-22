@@ -322,7 +322,8 @@ model PackagePurchase {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sessions Session[]
+  sessions     Session[]
+  appointments Appointment[]
 
   @@map("package_purchases")
 }
@@ -335,6 +336,10 @@ model Appointment {
   id     String @id @default(cuid())
   babyId String
   baby   Baby   @relation(fields: [babyId], references: [id])
+
+  // Paquete pre-seleccionado al agendar (null = sesión a definir)
+  packagePurchaseId String?
+  packagePurchase   PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
 
   // Fecha sin componente de hora (evita problemas de timezone)
   date      DateTime @db.Date

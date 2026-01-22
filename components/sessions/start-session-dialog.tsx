@@ -36,6 +36,7 @@ interface StartSessionDialogProps {
   babyId: string;
   babyName: string;
   startTime: string;
+  preselectedPackageId?: string; // Package pre-selected in appointment
   onSuccess?: () => void;
 }
 
@@ -63,6 +64,7 @@ export function StartSessionDialog({
   babyId,
   babyName,
   startTime,
+  preselectedPackageId,
   onSuccess,
 }: StartSessionDialogProps) {
   const t = useTranslations();
@@ -101,9 +103,21 @@ export function StartSessionDialog({
         const availablePackages = data.packages || [];
         setPackages(availablePackages);
 
-        // If no packages, auto-select trial
-        // If packages available, user must choose (including trial option)
-        if (availablePackages.length === 0) {
+        // Auto-select logic:
+        // 1. If preselectedPackageId is provided and exists in available packages, use it
+        // 2. If no packages, auto-select trial
+        // 3. Otherwise, user must choose (including trial option)
+        if (preselectedPackageId) {
+          const preselected = availablePackages.find(
+            (pkg: PackagePurchase) => pkg.id === preselectedPackageId
+          );
+          if (preselected) {
+            setSelectedPackage(preselectedPackageId);
+          } else {
+            // Preselected package not found (might have been used up), fallback to trial
+            setSelectedPackage("trial");
+          }
+        } else if (availablePackages.length === 0) {
           setSelectedPackage("trial");
         } else {
           setSelectedPackage(""); // User must choose between packages and trial
@@ -114,7 +128,7 @@ export function StartSessionDialog({
     } finally {
       setIsLoadingPackages(false);
     }
-  }, [babyId]);
+  }, [babyId, preselectedPackageId]);
 
   useEffect(() => {
     if (open) {

@@ -49,7 +49,7 @@ lib/
 ├── db.ts               # Prisma client
 ├── auth.ts             # NextAuth config
 ├── utils.ts            # Helper functions
-├── validations.ts      # Zod schemas
+├── validations/        # Zod schemas
 └── services/           # Business logic
 
 messages/
@@ -188,19 +188,6 @@ import { FloatingBubbles } from "@/components/ui/floating-bubbles";
 <div class="rounded-2xl border border-teal-100 bg-white/80 p-6 shadow-lg backdrop-blur-md">
 ```
 
-**Utility classes disponibles:**
-```css
-.glass-card {
-  background-color: rgb(255 255 255 / 0.7);
-  backdrop-filter: blur(4px);
-  border-radius: 1.5rem;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-  border: 1px solid rgb(255 255 255 / 0.5);
-}
-
-.glass-card-hover { /* Igual + hover effects */ }
-```
-
 ---
 
 ### 🔘 Buttons
@@ -225,13 +212,6 @@ import { FloatingBubbles } from "@/components/ui/floating-bubbles";
 <button class="rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 font-medium text-white shadow-md shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600">
 ```
 
-**Icon button:**
-```html
-<button class="flex h-10 w-10 items-center justify-center rounded-xl transition-all hover:bg-teal-50">
-  <Icon class="h-5 w-5 text-teal-600" />
-</button>
-```
-
 ---
 
 ### 📝 Inputs
@@ -247,11 +227,6 @@ import { FloatingBubbles } from "@/components/ui/floating-bubbles";
   <Icon class="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-teal-500" />
   <input class="h-12 w-full rounded-xl border-2 border-teal-100 pl-12 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20" />
 </div>
-```
-
-**Select:**
-```html
-<select class="h-12 w-full rounded-xl border-2 border-teal-100 px-4 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20">
 ```
 
 ---
@@ -273,547 +248,43 @@ import { FloatingBubbles } from "@/components/ui/floating-bubbles";
 <span class="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-sm font-medium text-teal-700">
 ```
 
-**Badge con gradiente:**
-```html
-<span class="inline-flex items-center rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-3 py-1 text-sm font-medium text-white shadow-sm">
-```
-
----
-
-### 🧭 Navigation
-
-**Nav item activo:**
-```html
-<a class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-md shadow-teal-200">
-```
-
-**Nav item inactivo:**
-```html
-<a class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition-all hover:bg-teal-50 hover:text-teal-700">
-```
-
-**Header/Navbar glassmorphism:**
-```html
-<header class="sticky top-0 z-50 border-b border-white/50 bg-white/70 backdrop-blur-md">
-```
-
-**Sidebar glassmorphism:**
-```html
-<aside class="flex h-full flex-col border-r border-white/50 bg-white/70 backdrop-blur-md">
-```
-
----
-
-### 🎭 Avatars & Icons
-
-**Avatar con ring:**
-```html
-<div class="h-10 w-10 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 ring-2 ring-teal-200 ring-offset-2">
-  <span class="flex h-full w-full items-center justify-center text-sm font-medium text-white">AB</span>
-</div>
-```
-
-**Icon container (decorativo):**
-```html
-<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
-  <Icon class="h-6 w-6 text-teal-600" />
-</div>
-```
-
-**Logo container:**
-```html
-<div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white shadow-md shadow-teal-200">
-  <Image src="/images/logoBabySpa.png" alt="Baby Spa" width={36} height={36} class="h-9 w-9 object-contain" />
-</div>
-```
-
----
-
-### 📏 Spacing & Layout
-
-```
-Padding cards:     p-4 (sm), p-6 (md), p-8 (lg)
-Gap entre items:   gap-2 (tight), gap-4 (normal), gap-6 (loose)
-Margin sections:   my-6, my-8
-Max-width:         max-w-4xl (content), max-w-5xl (wide), max-w-md (forms)
-Border radius:     rounded-xl (cards), rounded-2xl (large cards), rounded-full (pills)
-```
-
----
-
-### ✨ Animations
-
-**Clases disponibles en globals.css:**
-```css
-.animate-float      /* Flotar suave arriba/abajo */
-.animate-fadeIn     /* Fade in con slide up */
-.animate-slideUp    /* Slide up */
-.animate-softPulse  /* Pulso suave de opacidad */
-.hover-lift         /* Levanta en hover */
-.transition-smooth  /* Transición suave 300ms */
-```
-
-**Uso de FloatingBubbles:**
-```tsx
-// Burbujas glassmorphism que flotan hacia arriba
-import { FloatingBubbles } from "@/components/ui/floating-bubbles";
-
-<FloatingBubbles count={15} />  // Normal
-<FloatingBubbles count={20} />  // Más burbujas (login pages)
-<FloatingBubbles count={12} />  // Menos burbujas (areas pequeñas)
-```
-
----
-
-### 🎯 Component Examples
-
-**Stat Card:**
-```html
-<div class="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
-  <div class="flex items-center gap-4">
-    <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
-      <Icon class="h-7 w-7 text-teal-600" />
-    </div>
-    <div>
-      <p class="text-sm text-gray-500">Label</p>
-      <p class="text-3xl font-bold text-gray-800">123</p>
-    </div>
-  </div>
-</div>
-```
-
-**Empty State:**
-```html
-<div class="flex flex-col items-center justify-center py-12 text-center">
-  <div class="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100">
-    <Icon class="h-8 w-8 text-teal-400" />
-  </div>
-  <h3 class="mt-4 text-lg font-medium text-gray-600">No hay datos</h3>
-  <p class="mt-1 text-sm text-gray-400">Descripción aquí</p>
-</div>
-```
-
-**Login Page Structure:**
-```html
-<div class="flex min-h-screen flex-col bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
-  <!-- Background blurs -->
-  <div class="pointer-events-none fixed inset-0 overflow-hidden">
-    <div class="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-teal-200/40 blur-3xl" />
-    <!-- más circles... -->
-  </div>
-
-  <!-- Floating bubbles -->
-  <FloatingBubbles count={20} />
-
-  <!-- Content -->
-  <div class="relative z-10 flex flex-1 items-center justify-center p-4">
-    <!-- Card con glassmorphism -->
-  </div>
-</div>
-```
-
----
-
-### 🚫 Anti-Patterns (NO USAR)
-
-```
-❌ Colores planos sin gradientes en CTAs principales
-❌ Bordes duros (usar siempre rounded-xl mínimo)
-❌ Sombras negras (usar shadow-teal-xxx/xx)
-❌ Backgrounds sólidos en layouts (usar gradientes + blur circles)
-❌ Cards sin backdrop-blur en layouts con gradiente
-❌ Hover states sin transición
-❌ Colores saturados fuertes (mantener suave y delicado)
-```
-
----
-
-## 📝 Coding Conventions
-
-### File Naming
-```
-components/babies/baby-form.tsx     ✅ kebab-case
-lib/services/appointment-service.ts ✅ kebab-case
-```
-
-### Component Naming
-```typescript
-// PascalCase for components
-export function BabyForm() {}
-export function CalendarView() {}
-```
-
-### Variables & Functions
-```typescript
-// camelCase
-const getBabyById = async (id: string) => {}
-const isValidAppointment = true;
-```
-
-### Constants
-```typescript
-// UPPER_SNAKE_CASE
-const MAX_SLOTS_PER_HOUR = 2;
-const SESSION_DURATION_MINUTES = 60;
-```
-
-### Types & Interfaces
-```typescript
-// PascalCase, descriptive suffixes
-interface BabyCreateInput {}
-interface AppointmentWithBaby {}
-type SessionStatus = 'PENDING' | 'COMPLETED';
-```
-
----
-
-## 🔐 Authentication & Authorization
-
-### Roles
-```typescript
-enum UserRole {
-  ADMIN      // Full access
-  RECEPTION  // Calendar, appointments, payments, inventory
-  THERAPIST  // Today's sessions, evaluations only
-}
-
-// Parent role is separate (portal access via code)
-```
-
-### Protected Routes
-```typescript
-// Always check session in API routes
-const session = await getServerSession(authOptions);
-if (!session) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-}
-
-// Check role for specific actions
-if (session.user.role !== 'ADMIN') {
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-}
-```
-
----
-
-## 🗄️ Database Patterns
-
-### Multi-tenant (2 Databases)
-```typescript
-// Middleware detects subdomain and sets correct DB
-// bo.babyspa.online → babyspa_bolivia
-// br.babyspa.online → babyspa_brazil
-```
-
-### Common Queries
-```typescript
-// Always include necessary relations
-const baby = await prisma.baby.findUnique({
-  where: { id },
-  include: {
-    parents: { include: { parent: true } },
-    packagePurchases: { where: { isActive: true } },
-  },
-});
-
-// Use transactions for related operations
-await prisma.$transaction([
-  prisma.appointment.update({ ... }),
-  prisma.packagePurchase.update({ ... }),
-]);
-```
-
----
-
-## 🌐 Internationalization (i18n)
-
-### ⚠️ REGLA CRÍTICA: NO TEXTOS HARDCODEADOS
-
-**NUNCA escribas texto visible al usuario directamente en el código.**
-Todo texto debe venir de los archivos de traducción.
-
-```typescript
-// ❌ MAL - Texto hardcodeado
-<h1>Bienvenido</h1>
-<p>Cargando...</p>
-<button>Guardar</button>
-
-// ✅ BIEN - Usando traducciones
-<h1>{t("auth.welcome")}</h1>
-<p>{t("common.loading")}</p>
-<button>{t("common.save")}</button>
-```
-
----
-
-### Uso en Client Components
-```typescript
-'use client';
-import { useTranslations } from 'next-intl';
-
-export function BabyForm() {
-  const t = useTranslations();
-
-  return (
-    <div>
-      <h1>{t('baby.title')}</h1>
-      <label>{t('baby.name')}</label>
-      <button>{t('common.save')}</button>
-    </div>
-  );
-}
-```
-
-### Uso en Server Components
-```typescript
-import { getTranslations, getLocale } from 'next-intl/server';
-
-export default async function BabyPage() {
-  const t = await getTranslations();
-  const locale = await getLocale();
-
-  // Para formatear fechas según el locale
-  const dateLocale = locale === 'pt-BR' ? 'pt-BR' : 'es-ES';
-  const formattedDate = new Date().toLocaleDateString(dateLocale, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  return <h1>{t('baby.title')}</h1>;
-}
-```
-
----
-
-### Estructura de archivos de traducción
-
-```
-messages/
-├── es.json      # Español (Bolivia)
-└── pt-BR.json   # Portugués (Brasil)
-```
-
-**Organización por secciones:**
-```json
-{
-  "common": {
-    "save": "Guardar",
-    "cancel": "Cancelar",
-    "loading": "Cargando...",
-    "error": "Error"
-  },
-  "auth": {
-    "login": "Iniciar sesión",
-    "logout": "Cerrar sesión",
-    "errors": {
-      "INVALID_CREDENTIALS": "Credenciales inválidas"
-    }
-  },
-  "baby": {
-    "title": "Bebés",
-    "name": "Nombre"
-  },
-  "appointment": {
-    "title": "Citas"
-  }
-}
-```
-
----
-
-### Validaciones con Zod (Traducidas)
-
-Las validaciones usan claves que se traducen automáticamente:
-
-```typescript
-// lib/validations/auth.ts
-export const staffLoginSchema = z.object({
-  username: z
-    .string()
-    .min(1, "USERNAME_REQUIRED")      // ← Clave de traducción
-    .min(3, "USERNAME_TOO_SHORT"),
-  password: z
-    .string()
-    .min(1, "PASSWORD_REQUIRED")
-    .min(6, "PASSWORD_TOO_SHORT"),
-});
-```
-
-```json
-// messages/es.json
-{
-  "auth": {
-    "errors": {
-      "USERNAME_REQUIRED": "El nombre de usuario es requerido",
-      "USERNAME_TOO_SHORT": "El usuario debe tener al menos 3 caracteres",
-      "PASSWORD_REQUIRED": "La contraseña es requerida",
-      "PASSWORD_TOO_SHORT": "La contraseña debe tener al menos 6 caracteres"
-    }
-  }
-}
-```
-
-**En el formulario, traducir errores de Zod:**
-```tsx
-const translateZodError = (error: string | undefined): string => {
-  if (!error) return "";
-  if (error.includes("_")) {
-    return t(`auth.errors.${error}`);
-  }
-  return error;
-};
-
-// En FormMessage, pasar el error traducido como children:
-<FormMessage>
-  {translateZodError(fieldState.error?.message)}
-</FormMessage>
-```
-
----
-
-### 📋 Checklist para NUEVAS FEATURES
-
-Cuando crees un nuevo módulo o feature, sigue estos pasos:
-
-#### 1. Identificar todos los textos
-```
-□ Títulos de página
-□ Labels de formularios
-□ Placeholders de inputs
-□ Textos de botones
-□ Mensajes de error
-□ Mensajes de éxito
-□ Estados vacíos
-□ Tooltips
-□ Breadcrumbs
-□ Mensajes de confirmación
-```
-
-#### 2. Agregar claves a AMBOS archivos
-```bash
-# Editar messages/es.json Y messages/pt-BR.json
-# Agregar las mismas claves en ambos
-```
-
-#### 3. Usar convención de nombres
-```json
-{
-  "moduleName": {
-    "title": "...",
-    "subtitle": "...",
-    "form": {
-      "fieldName": "...",
-      "placeholder": "..."
-    },
-    "actions": {
-      "create": "...",
-      "edit": "...",
-      "delete": "..."
-    },
-    "messages": {
-      "success": "...",
-      "error": "...",
-      "empty": "..."
-    }
-  }
-}
-```
-
-#### 4. Verificar
-```
-□ Probar en español (/es/...)
-□ Probar en portugués (/pt-BR/...)
-□ Verificar que no hay claves sin traducir (aparecen como la clave misma)
-```
-
----
-
-### Claves comunes reutilizables
-
-Usa estas claves existentes antes de crear nuevas:
-
-```typescript
-// Acciones comunes
-t("common.save")      // Guardar / Salvar
-t("common.cancel")    // Cancelar / Cancelar
-t("common.delete")    // Eliminar / Excluir
-t("common.edit")      // Editar / Editar
-t("common.add")       // Agregar / Adicionar
-t("common.create")    // Crear / Criar
-t("common.update")    // Actualizar / Atualizar
-t("common.search")    // Buscar / Buscar
-t("common.close")     // Cerrar / Fechar
-t("common.confirm")   // Confirmar / Confirmar
-t("common.back")      // Volver / Voltar
-
-// Estados
-t("common.loading")   // Cargando... / Carregando...
-t("common.error")     // Error / Erro
-t("common.success")   // Éxito / Sucesso
-
-// Navegación
-t("nav.dashboard")    // Panel Principal
-t("nav.calendar")     // Calendario
-t("nav.settings")     // Configuración
-
-// Tiempo
-t("common.today")     // Hoy / Hoje
-t("common.yesterday") // Ayer / Ontem
-t("common.tomorrow")  // Mañana / Amanhã
-```
-
----
-
-### Ejemplo completo: Nuevo módulo
-
-```typescript
-// 1. Agregar traducciones
-// messages/es.json
-{
-  "inventory": {
-    "title": "Inventario",
-    "addProduct": "Agregar Producto",
-    "form": {
-      "name": "Nombre del producto",
-      "quantity": "Cantidad",
-      "price": "Precio"
-    },
-    "messages": {
-      "created": "Producto creado exitosamente",
-      "empty": "No hay productos en el inventario"
-    }
-  }
-}
-
-// 2. Usar en componente
-export function InventoryPage() {
-  const t = useTranslations();
-
-  return (
-    <div>
-      <h1>{t("inventory.title")}</h1>
-      <Button>{t("inventory.addProduct")}</Button>
-
-      {products.length === 0 && (
-        <p>{t("inventory.messages.empty")}</p>
-      )}
-    </div>
-  );
-}
-```
-
 ---
 
 ## ✅ Business Rules (IMPORTANT!)
 
+### ⚠️ REGLAS CRÍTICAS - LEER SIEMPRE
+
+```
+1. PAQUETES:
+   - Siempre se selecciona un paquete (NO existe "sesión a definir")
+   - Default: Paquete Individual (1 sesión)
+   - El paquete es PROVISIONAL hasta el checkout
+   - Puede cambiarse en: detalle cita, iniciar sesión, checkout
+   - Sesión se descuenta al COMPLETAR, NO al agendar
+
+2. PAGOS:
+   - Algunos paquetes requieren pago anticipado
+   - Citas PENDING_PAYMENT no bloquean slot
+   - Paquetes pueden pagarse en cuotas
+   - Alertas según tramo de sesiones
+
+3. EVALUACIONES:
+   - Solo THERAPIST puede evaluar
+   - Cita puede completarse SIN evaluación
+   - Una vez evaluada, no se puede modificar
+   - Notas internas ≠ notas externas (padres solo ven externas)
+
+4. SLOTS:
+   - Staff: hasta 5 citas por slot de 30 min
+   - Portal padres: hasta 2 citas por slot
+   - Citas ocupan slots según duración del paquete
+```
+
 ### Appointments
-- **Maximum 2 appointments per hour** (2 therapists)
 - Validate business hours (Mon: 9-17, Tue-Sat: 9-12 & 14:30-18:30)
 - Check closed dates before allowing booking
-- Deduct session from package when booking
-- Return session to package when cancelling
+- 1 baby = max 1 appointment per day
+- PENDING_PAYMENT appointments don't block slots
 
 ### No-Show Penalty
 ```typescript
@@ -822,6 +293,7 @@ parent.noShowCount += 1;
 if (parent.noShowCount >= 3) {
   parent.requiresPrepayment = true;
 }
+// If advance payment was made → NOT refunded
 
 // When baby attends (COMPLETED):
 parent.noShowCount = 0;  // Reset!
@@ -829,20 +301,24 @@ parent.noShowCount = 0;  // Reset!
 
 ### Sessions
 - Only THERAPIST can submit evaluations
-- Only RECEPTION can complete session (payment)
+- Only RECEPTION/ADMIN can complete session (checkout)
+- Session can be completed WITHOUT evaluation
 - Products always deduct from inventory
-- Products marked "chargeable" add to total
+- Products marked "isChargeable" add to total
 
 ### Packages
 - Never expire (valid until baby turns 3)
 - Sessions not transferable between babies
 - Track: totalSessions, usedSessions, remainingSessions
+- Can be paid in installments
+- Session deducted at CHECKOUT, not at booking
 
 ### Portal Parents
 - Login ONLY with access code (BSB-XXXXX)
 - Can only see their own babies
 - Can only see external notes (not internal)
 - Block booking if requiresPrepayment = true
+- Max 2 appointments per slot (vs 5 for staff)
 
 ---
 
@@ -851,10 +327,11 @@ parent.noShowCount = 0;  // Reset!
 ```
 ❌ Don't use localStorage/sessionStorage for auth (use cookies)
 ❌ Don't expose internal notes to parents
-❌ Don't allow more than 2 appointments per hour
+❌ Don't allow more than 5 appointments per slot (staff) or 2 (portal)
 ❌ Don't delete data - use soft delete (isActive = false)
 ❌ Don't mix tenant data (always verify correct DB)
 ❌ Don't skip validation (use Zod schemas)
+❌ Don't use "sesión a definir" - ALWAYS select a package
 
 ⚠️ TRADUCCIONES - MUY IMPORTANTE:
 ❌ Don't hardcode ANY user-visible text
@@ -877,6 +354,8 @@ parent.noShowCount = 0;  // Reset!
 ✅ Always follow the established patterns
 ✅ Always test after implementing
 ✅ Always commit working code
+✅ Always select a package when booking (default: Individual)
+✅ Always deduct session at CHECKOUT, not at booking
 
 ✅ TRADUCCIONES:
 ✅ Always use t("key") for ALL user-visible text
@@ -915,9 +394,10 @@ TRADUCCIONES (OBLIGATORIO):
 
 When implementing new features, reference these existing files:
 - API pattern: `app/api/babies/route.ts`
-- Page pattern: `app/[locale]/(admin)/clients/page.tsx`
+- Page pattern: `app/[locale]/(admin)/admin/clients/page.tsx`
 - Form pattern: `components/babies/baby-form.tsx`
-- Service pattern: `lib/services/appointment-service.ts`
+- Service pattern: `lib/services/baby-service.ts`
+- Validation pattern: `lib/validations/baby.ts`
 
 ---
 
@@ -956,55 +436,12 @@ npx tsc --noEmit
 npx eslint . --ext .ts,.tsx --max-warnings 0
 ```
 - Must complete with 0 errors AND 0 warnings
-- Common issues to check:
-  - Unused imports/variables → Remove or use them
-  - `any` types → Add proper TypeScript interfaces
-  - React hooks rules → Ensure proper dependencies and order
-  - `<img>` tags → Use `<Image>` from next/image
-  - setState in useEffect → Add eslint-disable comment if intentional (hydration patterns)
 
 ### 3. Build Verification
 ```bash
 npm run build
 ```
 - Must complete successfully
-- Checks for:
-  - Server/client component boundaries
-  - Dynamic imports
-  - Missing exports
-  - SSR compatibility
-
-### 4. Translations Verification
-```
-□ All visible text uses t("key") - NO hardcoded text
-□ Keys exist in BOTH messages/es.json AND messages/pt-BR.json
-□ Test /es/... route - all text in Spanish
-□ Test /pt-BR/... route - all text in Portuguese
-□ Form validation errors show translated messages
-□ Dates formatted according to locale
-```
-
-### 5. Visual/UX Verification
-```
-□ Design follows Baby Spa style (glassmorphism, teal gradients, floating bubbles)
-□ Responsive on mobile, tablet, desktop
-□ No console errors in browser DevTools
-□ Loading states display correctly
-□ Error states handled gracefully
-□ Empty states have appropriate messages
-```
-
-### 6. Security Verification
-```
-□ API routes check session authentication
-□ Role-based access enforced where needed
-□ No sensitive data exposed to unauthorized roles
-□ Input validation with Zod schemas
-□ No SQL injection vulnerabilities (using Prisma)
-□ No XSS vulnerabilities (React escapes by default)
-```
-
----
 
 ### Quick Verification Command
 ```bash
@@ -1012,60 +449,9 @@ npm run build
 npx tsc --noEmit && npx eslint . --ext .ts,.tsx --max-warnings 0 && npm run build
 ```
 
-### Common ESLint Fixes
-
-**Unused variables:**
-```typescript
-// Before: const foo = getValue();  // foo never used
-// After: Remove the line, or use _ prefix if intentional
-const _foo = getValue();
-```
-
-**Missing hook dependencies:**
-```typescript
-// Before
-useEffect(() => {
-  doSomething(value);
-}, []);  // Missing 'value'
-
-// After
-useEffect(() => {
-  doSomething(value);
-}, [value]);
-```
-
-**setState in useEffect (for hydration patterns):**
-```typescript
-// eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: hydration-safe initialization
-setState(localStorageValue);
-```
-
-**Any types:**
-```typescript
-// Before
-const data: any = response;
-
-// After - Define proper interface
-interface ResponseData {
-  id: string;
-  name: string;
-}
-const data: ResponseData = response;
-```
-
-**Using img instead of Image:**
-```typescript
-// Before
-<img src="/logo.png" alt="Logo" />
-
-// After
-import Image from 'next/image';
-<Image src="/logo.png" alt="Logo" width={100} height={100} />
-```
-
 ---
 
-### Architecture Best Practices Verified
+## 🏗️ Architecture Best Practices
 
 The project follows these Next.js App Router best practices:
 

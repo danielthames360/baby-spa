@@ -33,10 +33,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ appointments });
     }
 
-    // If date range provided
+    // If date range provided (YYYY-MM-DD format)
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
+      const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
+      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
       const appointments = await appointmentService.getByDateRange(start, end);
       return NextResponse.json({ appointments });
     }

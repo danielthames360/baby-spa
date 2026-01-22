@@ -16,6 +16,7 @@ interface Appointment {
   id: string;
   babyName: string;
   parentName?: string;
+  packageName?: string;
   startTime: string;
   endTime: string;
   status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
@@ -222,6 +223,7 @@ export function DayColumn({
                           id={apt.id}
                           babyName={apt.babyName}
                           parentName={apt.parentName}
+                          packageName={apt.packageName}
                           time={`${apt.startTime}-${apt.endTime}`}
                           status={apt.status}
                           onClick={() => onAppointmentClick?.(apt.id)}

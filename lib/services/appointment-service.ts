@@ -20,6 +20,7 @@ export const MAX_APPOINTMENTS_PER_HOUR = MAX_APPOINTMENTS_PER_SLOT;
 export interface AppointmentWithRelations {
   id: string;
   babyId: string;
+  packagePurchaseId: string | null;
   date: Date;
   startTime: string; // "09:00", "09:30", etc.
   endTime: string;   // "10:00", "10:30", etc.
@@ -45,6 +46,13 @@ export interface AppointmentWithRelations {
   session?: {
     id: string;
     status: string;
+  } | null;
+  packagePurchase?: {
+    id: string;
+    package: {
+      id: string;
+      name: string;
+    };
   } | null;
 }
 
@@ -168,6 +176,17 @@ export const appointmentService = {
           select: {
             id: true,
             status: true,
+          },
+        },
+        packagePurchase: {
+          select: {
+            id: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },

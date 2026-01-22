@@ -1,12 +1,13 @@
 "use client";
 
-import { Baby, User, Clock } from "lucide-react";
+import { Baby, User, Clock, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppointmentCardProps {
   id: string;
   babyName: string;
   parentName?: string;
+  packageName?: string;
   time: string;
   status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
   onClick?: () => void;
@@ -50,6 +51,7 @@ const statusConfig = {
 export function AppointmentCard({
   babyName,
   parentName,
+  packageName,
   time,
   status,
   onClick,
@@ -85,11 +87,14 @@ export function AppointmentCard({
             <span className="truncate text-xs font-medium">{babyName}</span>
           </div>
 
-          {/* Parent name - show in fillHeight mode */}
-          {fillHeight && parentName && (
-            <div className="flex items-center gap-1 text-[10px] opacity-75 mt-0.5 min-w-0">
-              <User className="h-2.5 w-2.5 flex-shrink-0" />
-              <span className="truncate">{parentName}</span>
+          {/* Package name - show in fillHeight mode */}
+          {fillHeight && (
+            <div className={cn(
+              "flex items-center gap-1 text-[10px] mt-0.5 min-w-0",
+              packageName ? "text-teal-700" : "text-amber-600"
+            )}>
+              <Package className="h-2.5 w-2.5 flex-shrink-0" />
+              <span className="truncate">{packageName || "A definir"}</span>
             </div>
           )}
 
@@ -132,6 +137,15 @@ export function AppointmentCard({
         <div className="flex items-center gap-1">
           <Baby className="h-3.5 w-3.5 flex-shrink-0" />
           <span className="truncate text-sm font-medium">{babyName}</span>
+        </div>
+
+        {/* Package name */}
+        <div className={cn(
+          "flex items-center gap-1 text-xs",
+          packageName ? "text-teal-700" : "text-amber-600"
+        )}>
+          <Package className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{packageName || "A definir"}</span>
         </div>
 
         {/* Parent name */}

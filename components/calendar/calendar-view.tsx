@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 interface Appointment {
   id: string;
   babyId: string;
+  packagePurchaseId: string | null;
   date: Date;
   startTime: string; // HH:mm format
   endTime: string;   // HH:mm format
@@ -33,6 +34,16 @@ interface Appointment {
       };
     }[];
   };
+  session?: {
+    id: string;
+  } | null;
+  packagePurchase?: {
+    id: string;
+    package: {
+      id: string;
+      name: string;
+    };
+  } | null;
 }
 
 interface ClosedDate {
@@ -41,6 +52,14 @@ interface ClosedDate {
 }
 
 type ViewMode = "week" | "day";
+
+// Format date as local YYYY-MM-DD (no UTC conversion)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 // Get start of week (Monday)
 function getWeekStart(date: Date): Date {
@@ -130,7 +149,7 @@ export function CalendarView() {
     try {
       const weekEnd = getWeekEnd(currentWeekStart);
       const response = await fetch(
-        `/api/appointments?startDate=${currentWeekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+        `/api/appointments?startDate=${formatLocalDate(currentWeekStart)}&endDate=${formatLocalDate(weekEnd)}`
       );
       const data = await response.json();
       setAppointments(data.appointments || []);

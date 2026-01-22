@@ -509,6 +509,9 @@
 
   "calendar": {
     "title": "Calendário",
+    "date": "Data",
+    "time": "Hora",
+    "package": "Pacote",
     "day": "Dia",
     "week": "Semana",
     "month": "Mês",
@@ -534,6 +537,7 @@
     "needsPackage": "O bebê precisa de um pacote para agendar",
     "trialSession": "Sessão avulsa",
     "trialSessionDesc": "O bebê não tem pacote. Será cobrado ao concluir a sessão.",
+    "sessionToDefine": "Sessão a definir",
     "sessionsAvailable": "sessões disponíveis",
     "notes": "Notas",
     "notesPlaceholder": "Observações para o agendamento...",
@@ -1041,6 +1045,116 @@
       "PRODUCT_NOT_FOUND": "Produto não encontrado",
       "INSUFFICIENT_STOCK": "Estoque insuficiente",
       "REASON_REQUIRED": "O motivo do ajuste é obrigatório"
+    }
+  },
+
+  "portal": {
+    "dashboard": {
+      "title": "Meu Painel",
+      "welcomeMessage": "Bem-vindo/a ao Portal dos Pais",
+      "welcomeSubtitle": "Aqui você pode ver as informações dos seus bebês, próximas consultas e sessões",
+      "myBabies": "Meus Bebês",
+      "noBabies": "Você não tem bebês registrados",
+      "noBabiesDescription": "Entre em contato com a recepção para registrar seu bebê",
+      "totalSessions": "Total de Sessões Disponíveis",
+      "nextAppointment": "Próxima Consulta",
+      "noAppointments": "Sem consultas agendadas",
+      "scheduleNow": "Agendar agora",
+      "sessionsAvailable": "sessões disponíveis",
+      "viewHistory": "Ver histórico",
+      "viewAppointments": "Ver consultas"
+    },
+    "baby": {
+      "ageInMonths": "{count} meses",
+      "packages": "Pacotes",
+      "noPackages": "Sem pacotes",
+      "sessionsOf": "de",
+      "sessionsLeft": "restantes"
+    },
+    "prepayment": {
+      "title": "Atenção Necessária",
+      "message": "Você tem consultas pendentes de pagamento. Entre em contato com a recepção para agendar novas consultas.",
+      "contact": "Contatar recepção"
+    },
+    "appointments": {
+      "title": "Minhas Consultas",
+      "subtitle": "Histórico e próximas consultas dos seus bebês",
+      "upcoming": "Próximas Consultas",
+      "past": "Consultas Anteriores",
+      "noUpcoming": "Não há consultas agendadas",
+      "noPast": "Não há consultas anteriores",
+      "scheduleNew": "Agendar Nova Consulta",
+      "cannotSchedule": "Você não pode agendar consultas neste momento",
+      "contactReception": "Entre em contato com a recepção para agendar",
+      "selectBaby": "Selecione um bebê",
+      "selectDate": "Selecione uma data",
+      "selectTime": "Selecione um horário",
+      "noSessions": "Sem sessões disponíveis",
+      "needPackage": "Você precisa adquirir um pacote para agendar",
+      "confirmAppointment": "Confirmar Consulta",
+      "appointmentConfirmed": "Consulta agendada!",
+      "sessionToDefine": "Sessão a definir",
+      "sessionToDefineDescription": "Você não tem pacotes com sessões disponíveis. Você pode agendar e definir o pacote na recepção.",
+      "contactForPackage": "Contatar para adquirir pacote",
+      "status": {
+        "SCHEDULED": "Agendada",
+        "IN_PROGRESS": "Em andamento",
+        "COMPLETED": "Concluída",
+        "CANCELLED": "Cancelada",
+        "NO_SHOW": "Não compareceu"
+      }
+    },
+    "history": {
+      "title": "Histórico de Sessões",
+      "subtitle": "Acompanhe o progresso e avaliações dos seus bebês",
+      "noSessions": "Não há sessões concluídas",
+      "noSessionsDescription": "As sessões concluídas aparecerão aqui",
+      "selectBaby": "Selecione um bebê",
+      "allBabies": "Todos os bebês",
+      "viewEvaluation": "Ver avaliação",
+      "sessionNumber": "Sessão #{number}",
+      "therapist": "Terapeuta",
+      "activities": "Atividades realizadas",
+      "evaluation": "Avaliação",
+      "notes": "Observações",
+      "noNotes": "Sem observações",
+      "babyAge": "Idade do bebê",
+      "babyWeight": "Peso",
+      "downloadReport": "Baixar PDF"
+    },
+    "evaluation": {
+      "sensory": "Desenvolvimento Sensorial",
+      "motor": "Desenvolvimento Motor",
+      "milestones": "Marcos do Desenvolvimento",
+      "mood": "Estado de Humor",
+      "visualTracking": "Acompanhamento visual",
+      "eyeContact": "Contato visual",
+      "auditoryResponse": "Resposta auditiva",
+      "muscleTone": "Tônus muscular",
+      "cervicalControl": "Controle cervical",
+      "headUp": "Sustenta cabeça",
+      "sits": "Senta",
+      "crawls": "Engatinha",
+      "walks": "Anda",
+      "muscleTones": {
+        "LOW": "Baixo",
+        "NORMAL": "Normal",
+        "TENSE": "Tenso"
+      },
+      "moods": {
+        "CALM": "Calmo",
+        "IRRITABLE": "Irritável"
+      },
+      "yes": "Sim",
+      "no": "Não",
+      "notEvaluated": "Não avaliado"
+    },
+    "activities": {
+      "hydrotherapy": "Hidroterapia",
+      "massage": "Massagem",
+      "motorStimulation": "Estimulação motora",
+      "sensoryStimulation": "Estimulação sensorial",
+      "relaxation": "Relaxamento"
     }
   }
 }

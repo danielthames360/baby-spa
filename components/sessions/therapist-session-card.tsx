@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Baby, Clock, CheckCircle, AlertCircle, FileEdit, Eye, User, Info } from "lucide-react";
+import { Baby, Clock, CheckCircle, AlertCircle, FileEdit, Eye, User, Info, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,13 @@ interface TherapistSessionCardProps {
       evaluation?: {
         id: string;
       } | null;
+    } | null;
+    packagePurchase?: {
+      id: string;
+      package: {
+        id: string;
+        name: string;
+      };
     } | null;
   };
   currentTherapistId?: string;
@@ -178,6 +185,19 @@ export function TherapistSessionCard({
           </div>
           <p className="text-sm text-gray-500">{ageDisplay}</p>
           <div className="flex flex-wrap items-center gap-2">
+            {/* Package badge */}
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                appointment.packagePurchase
+                  ? "bg-teal-100 text-teal-700"
+                  : "bg-amber-100 text-amber-700"
+              )}
+            >
+              <Package className="h-3 w-3" />
+              {appointment.packagePurchase?.package.name || t("calendar.sessionToDefine")}
+            </span>
+
             {/* Status badge */}
             <span
               className={cn(

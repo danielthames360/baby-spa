@@ -59,7 +59,8 @@
       "Bash(npx prisma migrate:*)",
       "Bash(npx ts-node:*)",
       "Bash(git reset:*)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(npx prisma validate:*)"
     ]
   }
 }

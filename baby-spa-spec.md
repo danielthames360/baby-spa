@@ -1,6 +1,9 @@
 # 🏊 BABY SPA - ESPECIFICACIÓN TÉCNICA COMPLETA
 ## Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
 
+**Última actualización:** Enero 2026  
+**Versión:** 3.0
+
 ---
 
 # 📋 ÍNDICE
@@ -9,9 +12,9 @@
 2. [Stack Tecnológico](#2-stack-tecnológico)
 3. [Arquitectura del Sistema](#3-arquitectura-del-sistema)
 4. [Modelo de Base de Datos](#4-modelo-de-base-de-datos)
-5. [Módulos y Funcionalidades](#5-módulos-y-funcionalidades)
+5. [Flujos de Negocio](#5-flujos-de-negocio)
 6. [Reglas de Negocio](#6-reglas-de-negocio)
-7. [Estructura de Carpetas](#7-estructura-de-carpetas)
+7. [Módulos Implementados](#7-módulos-implementados)
 8. [Plan de Implementación](#8-plan-de-implementación)
 9. [Instrucciones para Claude Code](#9-instrucciones-para-claude-code)
 
@@ -25,6 +28,9 @@
 - Hidroterapia
 - Psicomotricidad  
 - Fisioterapia infantil
+- Vacunas
+- Cumple Mes (celebraciones)
+- Eventos grupales
 
 ### Ubicaciones:
 - **Bolivia** (existente) - Dominio: `bo.babyspa.online`
@@ -39,20 +45,23 @@
 
 1. ✅ Automatizar agendamiento (admin + portal padres)
 2. ✅ Control financiero completo (ingresos/egresos/inventario)
-3. ✅ Notificaciones inteligentes (mesversarios automáticos)
-4. ✅ Seguimiento desarrollo bebés (historial + gráficas)
-5. ✅ Portal para padres (ver progreso, agendar citas)
+3. ⏳ Notificaciones inteligentes (mesversarios automáticos)
+4. ✅ Seguimiento desarrollo bebés (historial + evaluaciones)
+5. ⏳ Portal para padres (ver progreso, agendar citas)
 6. ✅ Inventario productos
 7. ✅ Multiidioma (Español + Portugués Brasil)
 8. ✅ Multi-base de datos (Bolivia y Brasil separadas)
 9. ✅ Sistema de penalización por no-shows
-10. ✅ Lista de espera para horarios llenos
+10. ⏳ Pagos anticipados y financiamiento
+11. ⏳ Eventos grupales
+12. ⏳ Auto-agendado masivo
 
 ## 1.3 Operación
 
 ### Capacidad:
-- **2 terapeutas simultáneos** = 2 slots por hora
-- **1 terapeuta por bebé**
+- **Hasta 5 citas por slot de 30 min** (para staff)
+- **2 citas por slot** (para padres en portal)
+- **2 terapeutas simultáneos**
 
 ### Horarios:
 ```
@@ -61,6 +70,8 @@ LUNES: 9:00 AM - 5:00 PM (continuo)
 MARTES a SÁBADO:
 ├── Mañana: 9:00 AM - 12:00 PM
 └── Tarde: 2:30 PM - 6:30 PM
+
+DOMINGO: Cerrado
 ```
 
 ### Personal:
@@ -68,17 +79,23 @@ MARTES a SÁBADO:
 - 1 Recepcionista
 - 3 Administradores
 
-## 1.4 Paquetes Disponibles
+## 1.4 Paquetes y Servicios
 
-| Paquete | Sesiones | Notas |
-|---------|----------|-------|
-| Individual | 1 | Pago post-sesión |
-| Mini | 4 | - |
-| Estándar | 8 | - |
-| Plus | 10 | - |
-| Premium | 20 | Casos terapéuticos |
+| Categoría | Paquete | Sesiones | Duración | Notas |
+|-----------|---------|----------|----------|-------|
+| Hidroterapia | Individual | 1 | 60 min | Default |
+| Hidroterapia | Mini | 4 | 60 min | - |
+| Hidroterapia | Estándar | 8 | 60 min | - |
+| Hidroterapia | Plus | 10 | 60 min | - |
+| Hidroterapia | Premium | 20 | 60 min | Casos terapéuticos |
+| Cumple Mes | Individual | 1 | 90 min | Incluye decoración |
+| Vacunas | Individual | 1 | 30 min | Requiere pago anticipado |
 
-**Importante:** Los paquetes NO vencen (válidos hasta que bebé cumpla 3 años).
+**Reglas de Paquetes:**
+- Los paquetes **NO vencen** (válidos hasta que bebé cumpla 3 años)
+- Sesiones **NO transferibles** entre bebés
+- Pueden pagarse en **cuotas** (financiamiento)
+- Algunos requieren **pago anticipado**
 
 ---
 
@@ -107,14 +124,7 @@ MARTES a SÁBADO:
 | SSL | Let's Encrypt |
 | VPS | DigitalOcean/Contabo |
 
-## 2.3 Servicios Externos
-
-| Servicio | Uso | Costo |
-|----------|-----|-------|
-| SendGrid | Emails automáticos | Gratis (100/día) |
-| WhatsApp | Manual via wa.me links | $0 |
-
-## 2.4 Dominio
+## 2.3 Dominio
 
 - **Dominio principal:** `babyspa.online`
 - **Subdominios:**
@@ -142,20 +152,6 @@ MARTES a SÁBADO:
 │  │   br.babyspa.online ──┘                                 │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                              │                               │
-│                              ▼                               │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │                    NEXT.JS APP                          │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │ │
-│  │  │   FRONTEND   │  │     API      │  │    CRON      │  │ │
-│  │  │    React     │  │   Routes     │  │    Jobs      │  │ │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘  │ │
-│  │                            │                            │ │
-│  │                            ▼                            │ │
-│  │                    ┌──────────────┐                     │ │
-│  │                    │    PRISMA    │                     │ │
-│  │                    └──────────────┘                     │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                              │                               │
 │              ┌───────────────┴───────────────┐               │
 │              ▼                               ▼               │
 │  ┌─────────────────────┐         ┌─────────────────────┐   │
@@ -167,1056 +163,829 @@ MARTES a SÁBADO:
 
 ## 3.2 Multi-Tenant (2 Bases de Datos)
 
-El sistema usa **2 bases de datos separadas** (NO tenant_id):
-
-```javascript
-// Detección por subdominio en middleware.ts
-const host = request.headers.get('host');
-
-if (host.startsWith('bo.')) {
-  // Conectar a babyspa_bolivia
-  process.env.DATABASE_URL = process.env.DATABASE_URL_BOLIVIA;
-} else if (host.startsWith('br.')) {
-  // Conectar a babyspa_brazil
-  process.env.DATABASE_URL = process.env.DATABASE_URL_BRAZIL;
-}
-```
+El sistema usa **2 bases de datos completamente separadas** (NO tenant_id):
+- Cada país tiene su propia configuración, paquetes, precios
+- Las descripciones de paquetes se escriben en el idioma local
+- QR de pago diferente por país
 
 ## 3.3 Roles y Permisos
 
 | Rol | Permisos |
 |-----|----------|
 | **ADMIN** | Acceso total a todo el sistema |
-| **RECEPTION** | Calendario, agendar, cobrar, notificar, inventario |
-| **THERAPIST** | Ver agenda del día, registrar evaluaciones |
-| **PARENT** | Portal: ver historial, agendar citas (solo su bebé) |
+| **RECEPTION** | Calendario, agendar, iniciar/completar sesiones, cobrar, inventario |
+| **THERAPIST** | Ver citas asignadas del día, registrar evaluaciones |
+| **PARENT** | Portal: ver historial, agendar citas (solo sus bebés) |
 
 ---
 
 # 4. MODELO DE BASE DE DATOS
 
-## 4.1 Schema Prisma Completo
+## 4.1 Entidades Principales
 
+```
+┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
+│   Package   │◄──────│ PackagePurchase │──────►│    Baby     │
+│  (catálogo) │       │   (compra)      │       │             │
+└─────────────┘       └────────┬────────┘       └──────┬──────┘
+                               │                       │
+                               │                       │
+                               ▼                       ▼
+                      ┌────────────────┐      ┌───────────────┐
+                      │    Session     │◄─────│  Appointment  │
+                      │  (ejecución)   │      │   (agenda)    │
+                      └───────┬────────┘      └───────────────┘
+                              │                       
+              ┌───────────────┼───────────────┐       
+              ▼               ▼               ▼       
+        ┌──────────┐   ┌────────────┐   ┌─────────┐  
+        │Evaluation│   │SessionProd.│   │ Payment │  
+        └──────────┘   └────────────┘   └─────────┘  
+```
+
+## 4.2 Modelos Clave
+
+### Package (Catálogo de Paquetes)
 ```prisma
-// ============================================================
-// ENUMS
-// ============================================================
-
-enum UserRole {
-  ADMIN
-  RECEPTION
-  THERAPIST
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
-
-enum BirthType {
-  NATURAL
-  CESAREAN
-}
-
-enum AppointmentStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
-enum SessionStatus {
-  PENDING
-  EVALUATED
-  COMPLETED
-}
-
-enum PaymentMethod {
-  CASH
-  TRANSFER
-  CARD
-  OTHER
-}
-
-enum PaymentType {
-  SALARY
-  ADVANCE
-  BONUS
-  DEDUCTION
-  OTHER
-}
-
-enum MovementType {
-  PURCHASE
-  SALE
-  USAGE
-  ADJUSTMENT
-}
-
-enum MuscleTone {
-  LOW
-  NORMAL
-  TENSE
-}
-
-enum Mood {
-  CALM
-  IRRITABLE
-}
-
-enum NotificationType {
-  MESVERSARY
-  BIRTHDAY
-  APPOINTMENT_24H
-  PATTERN_REMINDER
-  INACTIVE_CLIENT
-}
-
-// ============================================================
-// USUARIOS DEL SISTEMA (Staff)
-// ============================================================
-
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  name          String
-  role          UserRole
-  phone         String?
-  isActive      Boolean   @default(true)
-  
-  // Para control de sueldos
-  baseSalary    Decimal?  @db.Decimal(10, 2)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  
-  sessionsAsTherapist  Session[]
-  registrationLinks    RegistrationLink[]
-  babyNotes           BabyNote[]
-  staffPayments       StaffPayment[]
-  
-  @@map("users")
-}
-
-// ============================================================
-// PADRES / TUTORES
-// ============================================================
-
-model Parent {
-  id            String    @id @default(cuid())
-  
-  // Identificadores únicos (cualquiera sirve para buscar)
-  documentId    String    @unique  // CI (Bolivia) o CPF (Brasil)
-  documentType  String    @default("CI")
-  phone         String    @unique  // También único para búsqueda
-  
-  name          String
-  email         String?
-  birthDate     DateTime?
-  
-  // Acceso al portal
-  accessCode    String    @unique  // BSB-XXXXX
-  
-  // Sistema de penalización
-  noShowCount       Int       @default(0)
-  requiresPrepayment Boolean  @default(false)
-  lastNoShowDate    DateTime?
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  babies        BabyParent[]
-  waitlistItems Waitlist[]
-  
-  @@map("parents")
-}
-
-// ============================================================
-// BEBÉS
-// ============================================================
-
-model Baby {
-  id            String    @id @default(cuid())
-  
-  name          String
-  birthDate     DateTime
-  gender        Gender
-  
-  // Datos de nacimiento
-  birthWeeks    Int?
-  birthWeight   Decimal?  @db.Decimal(4, 2)
-  birthType     BirthType?
-  
-  // Datos médicos
-  birthDifficulty       Boolean   @default(false)
-  birthDifficultyDesc   String?
-  pregnancyIssues       Boolean   @default(false)
-  pregnancyIssuesDesc   String?
-  priorStimulation      Boolean   @default(false)
-  priorStimulationType  String?
-  developmentDiagnosis  Boolean   @default(false)
-  developmentDiagnosisDesc String?
-  diagnosedIllness      Boolean   @default(false)
-  diagnosedIllnessDesc  String?
-  recentMedication      Boolean   @default(false)
-  recentMedicationDesc  String?
-  allergies             String?
-  specialObservations   String?
-  
-  // Autorizaciones
-  socialMediaConsent    Boolean   @default(false)
-  instagramHandle       String?
-  
-  // Marketing
-  referralSource        String?
-  
-  isActive      Boolean   @default(true)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  parents            BabyParent[]
-  packagePurchases   PackagePurchase[]
-  appointments       Appointment[]
-  sessions           Session[]
-  notifications      NotificationLog[]
-  notes              BabyNote[]
-  
-  @@map("babies")
-}
-
-// ============================================================
-// RELACIÓN BEBÉ - PADRE (N:M)
-// ============================================================
-
-model BabyParent {
-  id           String   @id @default(cuid())
-  babyId       String
-  baby         Baby     @relation(fields: [babyId], references: [id], onDelete: Cascade)
-  parentId     String
-  parent       Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  relationship String   @default("MOTHER")
-  isPrimary    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  
-  @@unique([babyId, parentId])
-  @@map("baby_parents")
-}
-
-// ============================================================
-// NOTAS INTERNAS DEL BEBÉ
-// ============================================================
-
-model BabyNote {
-  id        String   @id @default(cuid())
-  babyId    String
-  baby      Baby     @relation(fields: [babyId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  note      String
-  createdAt DateTime @default(now())
-  
-  @@map("baby_notes")
-}
-
-// ============================================================
-// LINK REGISTRO TEMPORAL
-// ============================================================
-
-model RegistrationLink {
-  id          String    @id @default(cuid())
-  token       String    @unique
-  expiresAt   DateTime
-  isUsed      Boolean   @default(false)
-  usedAt      DateTime?
-  createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id])
-  babyId      String?
-  parentId    String?
-  createdAt   DateTime  @default(now())
-  
-  @@map("registration_links")
-}
-
-// ============================================================
-// CATÁLOGO DE PAQUETES
-// ============================================================
-
 model Package {
-  id              String    @id @default(cuid())
-  name            String
-  namePortuguese  String?
-  description     String?
-  sessionCount    Int
-  basePrice       Decimal   @db.Decimal(10, 2)
-  isActive        Boolean   @default(true)
-  sortOrder       Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  name                    String
+  description             String?   // Descripción detallada
+  category                String?   // HIDROTERAPIA, CUMPLE_MES, VACUNAS, etc.
+  sessionCount            Int       // Número de sesiones
+  basePrice               Decimal   // Precio base
+  duration                Int       @default(60) // Duración en minutos
   
-  purchases       PackagePurchase[]
+  // Pago anticipado
+  requiresAdvancePayment  Boolean   @default(false)
+  advancePaymentAmount    Decimal?  // Monto del anticipo requerido
   
-  @@map("packages")
+  isActive                Boolean   @default(true)
+  sortOrder               Int       @default(0)
+  
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 }
+```
 
-// ============================================================
-// COMPRA DE PAQUETE
-// ============================================================
-
+### PackagePurchase (Compra de Paquete)
+```prisma
 model PackagePurchase {
   id                String    @id @default(cuid())
   babyId            String
-  baby              Baby      @relation(fields: [babyId], references: [id])
   packageId         String
-  package           Package   @relation(fields: [packageId], references: [id])
   
-  basePrice         Decimal   @db.Decimal(10, 2)
-  discountAmount    Decimal   @default(0) @db.Decimal(10, 2)
+  // Precios
+  basePrice         Decimal
+  discountAmount    Decimal   @default(0)
   discountReason    String?
-  finalPrice        Decimal   @db.Decimal(10, 2)
+  finalPrice        Decimal
   
+  // Financiamiento
+  installments      Int       @default(1)  // Número de cuotas
+  installmentAmount Decimal?  // Monto por cuota
+  paidAmount        Decimal   @default(0)  // Total pagado
+  pendingAmount     Decimal   // Saldo pendiente (calculado)
+  
+  // Sesiones
   totalSessions     Int
   usedSessions      Int       @default(0)
   remainingSessions Int
   
-  // Patrón de visitas
-  visitPattern      String?   // FIXED_DAY, FREQUENCY, IRREGULAR
-  fixedDay          Int?      // 0-6 si FIXED_DAY
-  frequencyDays     Int?      // Cada X días si FREQUENCY
-  
   isActive          Boolean   @default(true)
+  purchaseDate      DateTime  @default(now())
   
-  paymentId         String?   @unique
-  payment           Payment?  @relation(fields: [paymentId], references: [id])
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
+  // Relaciones
+  baby              Baby      @relation(fields: [babyId], references: [id])
+  package           Package   @relation(fields: [packageId], references: [id])
+  payments          PackagePayment[]
   sessions          Session[]
-  
-  @@map("package_purchases")
+  appointments      Appointment[]
 }
+```
 
-// ============================================================
-// CITAS (Agendamiento)
-// ============================================================
-
+### Appointment (Cita)
+```prisma
 model Appointment {
-  id              String            @id @default(cuid())
-  babyId          String
-  baby            Baby              @relation(fields: [babyId], references: [id])
+  id                  String            @id @default(cuid())
+  babyId              String
+  date                DateTime          @db.Date
+  startTime           String            // "09:00"
+  endTime             String            // "10:00"
   
-  date            DateTime          @db.Date
-  startTime       DateTime          @db.Time
-  endTime         DateTime          @db.Time
+  // Paquete provisional (puede cambiar hasta el checkout)
+  selectedPackageId   String?           // Paquete seleccionado (provisional)
+  packagePurchaseId   String?           // Si usa paquete existente
   
-  status          AppointmentStatus @default(SCHEDULED)
+  // Estado
+  status              AppointmentStatus @default(SCHEDULED)
+  isPendingPayment    Boolean           @default(false) // Esperando pago anticipado
   
-  reminder24hSent   Boolean   @default(false)
-  reminder24hSentAt DateTime?
+  // Asignación
+  therapistId         String?
   
-  notes           String?
-  cancelReason    String?
+  notes               String?
+  cancellationReason  String?
   
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  createdById         String?
   
-  session         Session?
-  history         AppointmentHistory[]
-  
-  @@map("appointments")
+  // Relaciones
+  baby                Baby              @relation(fields: [babyId], references: [id])
+  therapist           User?             @relation(fields: [therapistId], references: [id])
+  selectedPackage     Package?          @relation(fields: [selectedPackageId], references: [id])
+  packagePurchase     PackagePurchase?  @relation(fields: [packagePurchaseId], references: [id])
+  session             Session?
+  payments            AppointmentPayment[]
 }
 
-// ============================================================
-// HISTORIAL DE CAMBIOS DE CITA
-// ============================================================
-
-model AppointmentHistory {
-  id            String      @id @default(cuid())
-  appointmentId String
-  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  
-  action        String      // CREATED, RESCHEDULED, CANCELLED, COMPLETED, NO_SHOW
-  performedBy   String      // user_id o parent_id
-  performerType String      // USER o PARENT
-  performerName String
-  
-  oldValue      Json?
-  newValue      Json?
-  reason        String?
-  
-  createdAt     DateTime    @default(now())
-  
-  @@map("appointment_history")
+enum AppointmentStatus {
+  SCHEDULED      // Agendada, esperando
+  PENDING_PAYMENT // Esperando pago anticipado (no bloquea slot)
+  IN_PROGRESS    // En curso
+  COMPLETED      // Completada
+  CANCELLED      // Cancelada
+  NO_SHOW        // No asistió
 }
+```
 
-// ============================================================
-// LISTA DE ESPERA
-// ============================================================
-
-model Waitlist {
-  id           String   @id @default(cuid())
-  babyId       String
-  parentId     String
-  parent       Parent   @relation(fields: [parentId], references: [id])
-  
-  desiredDate  DateTime @db.Date
-  desiredTime  DateTime @db.Time
-  
-  notified     Boolean  @default(false)
-  notifiedAt   DateTime?
-  expiresAt    DateTime
-  
-  createdAt    DateTime @default(now())
-  
-  @@map("waitlist")
-}
-
-// ============================================================
-// SESIONES (Ejecución)
-// ============================================================
-
+### Session (Sesión)
+```prisma
 model Session {
-  id                String         @id @default(cuid())
-  appointmentId     String         @unique
-  appointment       Appointment    @relation(fields: [appointmentId], references: [id])
+  id                String        @id @default(cuid())
+  appointmentId     String        @unique
   babyId            String
-  baby              Baby           @relation(fields: [babyId], references: [id])
   therapistId       String
-  therapist         User           @relation(fields: [therapistId], references: [id])
-  packagePurchaseId String?
+  packagePurchaseId String?       // Paquete final confirmado
+  
+  status            SessionStatus @default(PENDING)
+  isEvaluated       Boolean       @default(false)
+  
+  startTime         DateTime?
+  endTime           DateTime?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // Relaciones
+  appointment       Appointment   @relation(fields: [appointmentId], references: [id])
+  baby              Baby          @relation(fields: [babyId], references: [id])
+  therapist         User          @relation(fields: [therapistId], references: [id])
   packagePurchase   PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
-  
-  sessionNumber     Int
-  status            SessionStatus  @default(PENDING)
-  
-  startedAt         DateTime?
-  evaluatedAt       DateTime?
-  completedAt       DateTime?
-  
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  
   evaluation        Evaluation?
   products          SessionProduct[]
   payment           Payment?
-  
-  @@map("sessions")
 }
 
-// ============================================================
-// EVALUACIÓN DE SESIÓN
-// ============================================================
+enum SessionStatus {
+  PENDING    // Iniciada, esperando evaluación
+  EVALUATED  // Terapeuta completó evaluación
+  COMPLETED  // Recepción cobró y cerró
+}
+```
 
-model Evaluation {
-  id              String    @id @default(cuid())
-  sessionId       String    @unique
-  session         Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+### Event (Eventos Grupales)
+```prisma
+model Event {
+  id                      String    @id @default(cuid())
+  name                    String
+  description             String?
+  date                    DateTime  @db.Date
+  startTime               String
+  endTime                 String
+  location                String?
   
-  babyAgeMonths   Int
-  babyWeight      Decimal?  @db.Decimal(4, 2)
+  maxParticipants         Int
+  pricePerBaby            Decimal
   
-  // Evaluación sensorial
-  visualTracking    Boolean?
-  eyeContact        Boolean?
-  auditoryResponse  Boolean?
+  requiresAdvancePayment  Boolean   @default(false)
+  advancePaymentAmount    Decimal?
   
-  // Desarrollo muscular
-  muscleTone        MuscleTone?
-  cervicalControl   Boolean?
-  headUp            Boolean?
+  status                  EventStatus @default(DRAFT)
   
-  // Hitos
-  sits              Boolean?
-  crawls            Boolean?
-  walks             Boolean?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  createdById             String
   
-  // Estado
-  mood              Mood?
-  
-  // Comentarios
-  internalNotes     String?  // Solo visible para staff
-  externalNotes     String?  // Visible para padres
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@map("evaluations")
+  // Relaciones
+  participants            EventParticipant[]
 }
 
-// ============================================================
-// PRODUCTOS (Inventario)
-// ============================================================
-
-model Product {
-  id              String    @id @default(cuid())
-  name            String
-  namePortuguese  String?
-  description     String?
-  category        String?
-  costPrice       Decimal   @db.Decimal(10, 2)
-  salePrice       Decimal   @db.Decimal(10, 2)
-  currentStock    Int       @default(0)
-  minStock        Int       @default(5)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  movements       InventoryMovement[]
-  sessionUsages   SessionProduct[]
-  
-  @@map("products")
+enum EventStatus {
+  DRAFT       // Borrador
+  OPEN        // Abierto para inscripciones
+  CLOSED      // Cerrado (completo o fecha pasada)
+  COMPLETED   // Finalizado
+  CANCELLED   // Cancelado
 }
 
-// ============================================================
-// MOVIMIENTOS DE INVENTARIO
-// ============================================================
-
-model InventoryMovement {
-  id          String       @id @default(cuid())
-  productId   String
-  product     Product      @relation(fields: [productId], references: [id])
-  type        MovementType
-  quantity    Int
-  unitPrice   Decimal      @db.Decimal(10, 2)
-  totalAmount Decimal      @db.Decimal(10, 2)
-  notes       String?
-  stockAfter  Int
-  createdAt   DateTime     @default(now())
+model EventParticipant {
+  id                String    @id @default(cuid())
+  eventId           String
+  babyId            String
   
-  @@map("inventory_movements")
-}
-
-// ============================================================
-// PRODUCTOS USADOS EN SESIÓN
-// ============================================================
-
-model SessionProduct {
-  id           String   @id @default(cuid())
-  sessionId    String
-  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  productId    String
-  product      Product  @relation(fields: [productId], references: [id])
-  quantity     Int      @default(1)
-  unitPrice    Decimal  @db.Decimal(10, 2)
-  isChargeable Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  registeredAt      DateTime  @default(now())
+  paidAmount        Decimal   @default(0)
+  isPaid            Boolean   @default(false)
+  paymentMethod     String?
+  paymentReference  String?
   
-  @@map("session_products")
-}
-
-// ============================================================
-// PAGOS
-// ============================================================
-
-model Payment {
-  id              String           @id @default(cuid())
-  sessionId       String?          @unique
-  session         Session?         @relation(fields: [sessionId], references: [id])
-  packagePurchase PackagePurchase?
-  amount          Decimal          @db.Decimal(10, 2)
-  method          PaymentMethod
-  notes           String?
-  createdAt       DateTime         @default(now())
+  attended          Boolean   @default(false)
+  notes             String?
   
-  @@map("payments")
-}
-
-// ============================================================
-// PAGOS AL PERSONAL
-// ============================================================
-
-model StaffPayment {
-  id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  type      PaymentType
-  amount    Decimal     @db.Decimal(10, 2)
-  period    String?     // "2026-01" para sueldos/adelantos
-  notes     String?
-  date      DateTime    @db.Date
-  createdAt DateTime    @default(now())
-  
-  @@map("staff_payments")
-}
-
-// ============================================================
-// GASTOS OPERATIVOS
-// ============================================================
-
-model Expense {
-  id          String   @id @default(cuid())
-  description String
-  category    String?
-  amount      Decimal  @db.Decimal(10, 2)
-  date        DateTime @db.Date
-  notes       String?
-  createdAt   DateTime @default(now())
-  
-  @@map("expenses")
-}
-
-// ============================================================
-// LOG DE NOTIFICACIONES
-// ============================================================
-
-model NotificationLog {
-  id                  String           @id @default(cuid())
-  babyId              String
-  baby                Baby             @relation(fields: [babyId], references: [id])
-  type                NotificationType
-  emailSent           Boolean          @default(false)
-  emailSentAt         DateTime?
-  whatsappContacted   Boolean          @default(false)
-  whatsappContactedAt DateTime?
-  metadata            Json?
-  createdAt           DateTime         @default(now())
-  
-  @@map("notification_logs")
-}
-
-// ============================================================
-// CONFIGURACIÓN DEL SISTEMA
-// ============================================================
-
-model SystemConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  description String?
-  updatedAt   DateTime @updatedAt
-  
-  @@map("system_config")
-}
-
-// ============================================================
-// HORARIOS DE ATENCIÓN
-// ============================================================
-
-model BusinessHours {
-  id              String    @id @default(cuid())
-  dayOfWeek       Int       // 0=Dom, 1=Lun, ..., 6=Sab
-  morningOpen     DateTime? @db.Time
-  morningClose    DateTime? @db.Time
-  afternoonOpen   DateTime? @db.Time
-  afternoonClose  DateTime? @db.Time
-  isOpen          Boolean   @default(true)
-  
-  @@unique([dayOfWeek])
-  @@map("business_hours")
-}
-
-// ============================================================
-// DÍAS CERRADOS
-// ============================================================
-
-model ClosedDate {
-  id     String   @id @default(cuid())
-  date   DateTime @db.Date
-  reason String?
-  
-  @@unique([date])
-  @@map("closed_dates")
+  // Relaciones
+  event             Event     @relation(fields: [eventId], references: [id])
+  baby              Baby      @relation(fields: [babyId], references: [id])
 }
 ```
 
 ---
 
-# 5. MÓDULOS Y FUNCIONALIDADES
+# 5. FLUJOS DE NEGOCIO
 
-## 5.1 Módulo: Gestión de Bebés y Padres
+## 5.1 Flujo de Citas (IMPORTANTE)
 
-### API Routes:
-- `POST /api/babies` - Crear bebé
-- `GET /api/babies` - Listar bebés (búsqueda por nombre, CI, teléfono)
-- `GET /api/babies/[id]` - Detalle bebé
-- `PUT /api/babies/[id]` - Actualizar bebé
-- `POST /api/parents` - Crear padre
-- `GET /api/parents/search?phone=X` - Buscar padre por teléfono
-- `POST /api/babies/[id]/notes` - Agregar nota interna
-- `GET /api/babies/[id]/notes` - Listar notas
+### Estados de Cita
+```
+SCHEDULED ──────────► IN_PROGRESS ──────────► COMPLETED
+    │                      │
+    │                      └──► (terapeuta evalúa, opcional)
+    │
+    ├──► PENDING_PAYMENT (si requiere pago anticipado)
+    │         │
+    │         └──► SCHEDULED (cuando se confirma pago)
+    │
+    ├──► CANCELLED (cancelación)
+    │
+    └──► NO_SHOW (no asistió)
+```
 
-### Páginas:
-- `/admin/clients` - Lista bebés
-- `/admin/clients/new` - Registrar bebé+padres
-- `/admin/clients/[id]` - Ficha completa
-- `/admin/clients/[id]/edit` - Editar
+### 5.1.1 Agendamiento
 
-### Lógica especial:
-- Búsqueda padre por teléfono con popup confirmación "¿Eres [Nombre]?"
-- Generación automática código acceso (BSB-XXXXX)
-- Cálculo automático edad bebé
-- Soporte múltiples bebés por padre (mellizos)
+**REGLA CLAVE: Siempre se selecciona un paquete**
+- NO existe "sesión a definir"
+- Si el padre/staff no está seguro → selecciona "Individual" (1 sesión)
+- El paquete es **provisional** hasta el checkout
 
-## 5.2 Módulo: Link Registro Temporal
+**Desde Portal de Padres:**
+1. Padre selecciona bebé
+2. Sistema muestra:
+   - Paquetes existentes con sesiones disponibles
+   - Opción "Seleccionar otro paquete" → muestra catálogo completo
+3. Padre selecciona paquete (provisional)
+4. Padre puede guardar preferencia de horario (opcional, para auto-agenda futura)
+5. Padre selecciona fecha y hora
+6. Si paquete requiere pago anticipado:
+   - Se muestra QR de pago + botón WhatsApp
+   - Cita queda en estado PENDING_PAYMENT
+   - NO bloquea el slot
+7. Si no requiere pago → se crea cita SCHEDULED
 
-### API Routes:
-- `POST /api/registration-links` - Generar link (expira 48h)
-- `GET /api/registration-links/[token]` - Validar token
-- `POST /api/registration-links/[token]/complete` - Completar registro
+**Desde Staff:**
+1. Staff busca bebé
+2. Selecciona paquete (existente o nuevo del catálogo)
+3. Si requiere pago anticipado → staff ya recibió el pago, marca como pagado
+4. Se crea cita SCHEDULED
 
-### Páginas:
-- `/admin/registration-links` - Lista links generados
-- `/registro/[token]` - Formulario público para padres
-- `/registro/[token]/success` - Confirmación + mostrar código
+### 5.1.2 Paquete Provisional
 
-### Flujo:
-1. Recepción genera link
-2. Envía por WhatsApp al padre
-3. Padre llena formulario
-4. Si teléfono existe → popup "¿Eres [Nombre]?"
-5. Al completar → auto-login + mostrar código portal
+El paquete seleccionado puede cambiar en cualquier momento:
+- En el detalle de la cita (botón "Cambiar paquete")
+- En el modal de iniciar sesión
+- En el checkout (última oportunidad)
 
-## 5.3 Módulo: Paquetes y Ventas
+**Ejemplo:**
+```
+Padre agenda: Individual (1 sesión) 
+    ↓
+Staff inicia: Puede cambiar a Premium (20 sesiones) 
+    ↓
+Checkout: Confirma Premium → Se crea PackagePurchase → Se descuenta 1 sesión
+```
 
-### API Routes:
-- `GET /api/packages/catalog` - Catálogo
-- `POST /api/packages/sell` - Vender paquete
-- `GET /api/babies/[id]/packages` - Paquetes de un bebé
+### 5.1.3 Inicio de Sesión (Staff)
 
-### Páginas:
-- `/admin/packages` - Gestión catálogo
-- `/admin/packages/sell` - Vender paquete
+1. Staff abre cita SCHEDULED
+2. Asigna terapeuta
+3. Puede cambiar paquete si es necesario
+4. Marca como IN_PROGRESS
+5. Se crea registro Session
+6. La cita aparece en la lista del terapeuta
 
-### Lógica:
-- Descuentos: porcentaje, monto fijo, o código
-- Definir patrón visitas (día fijo/frecuencia/irregular)
-- Registro de pago al vender
+### 5.1.4 Evaluación (Terapeuta)
 
-## 5.4 Módulo: Calendario y Agendamiento
+1. Terapeuta ve sus citas del día (SCHEDULED asignadas, IN_PROGRESS, COMPLETED)
+2. NO ve: NO_SHOW, CANCELLED
+3. Puede evaluar citas IN_PROGRESS o COMPLETED (si no evaluadas)
+4. Completa formulario de evaluación
+5. Una vez evaluada → No puede modificar
+6. Badge: 🟡 "Pendiente" / 🟢 "Evaluada"
 
-### API Routes:
-- `GET /api/appointments` - Listar citas (filtros)
-- `GET /api/appointments/available?date=X` - Slots disponibles
-- `POST /api/appointments` - Crear cita
-- `PUT /api/appointments/[id]` - Reagendar
-- `DELETE /api/appointments/[id]` - Cancelar
-- `PUT /api/appointments/[id]/status` - Cambiar estado
+**Campos de Evaluación:**
+- Actividades: hidroterapia, masaje, estimulación motora/sensorial, relajación
+- Desarrollo sensorial: seguimiento visual, contacto visual, respuesta auditiva
+- Tono muscular: bajo/normal/tenso
+- Hitos: se sienta, gatea, camina
+- Estado de ánimo: tranquilo/irritable
+- Notas internas (solo staff)
+- Notas externas (visibles para padres)
 
-### Páginas:
-- `/admin/calendar` - Calendario visual (día/semana/mes)
-- `/admin/appointments/new` - Agendar cita
+### 5.1.5 Checkout (Staff/Recepción)
 
-### Validaciones:
-- Máximo 2 citas por hora
-- Verificar horarios según día
-- Verificar días cerrados
-- Verificar penalización padre (prepago obligatorio si noShowCount >= 3)
-- Descontar sesión del paquete al agendar
-- Devolver sesión al cancelar
+1. Staff abre sesión IN_PROGRESS
+2. Ve evaluación (si existe) - solo informativo
+3. Puede cambiar paquete (última oportunidad)
+4. Agrega productos usados
+5. Sistema calcula:
+   - Si paquete nuevo → precio del paquete
+   - Si paquete existente → $0 por sesión
+   - + Productos cobrables
+   - - Pagos anticipados ya realizados
+6. Registra pago
+7. Se descuenta sesión del paquete
+8. Se descuenta inventario
+9. Cambia a COMPLETED
+10. Resetea noShowCount del padre = 0
 
-### Historial de cambios:
-- Guardar automáticamente cada cambio en appointment_history
-- Mostrar quién hizo qué y cuándo
+### 5.1.6 No-Show
 
-## 5.5 Módulo: Sesiones y Evaluaciones
+1. Staff marca cita como NO_SHOW
+2. parent.noShowCount += 1
+3. Si noShowCount >= 3 → parent.requiresPrepayment = true
+4. Si había paquete existente → devuelve sesión al paquete
+5. Si había pago anticipado → NO se reembolsa (se pierde)
 
-### API Routes:
-- `GET /api/sessions/today` - Sesiones del día
-- `POST /api/sessions/[id]/start` - Iniciar
-- `POST /api/sessions/[id]/evaluate` - Guardar evaluación
-- `POST /api/sessions/[id]/products` - Agregar productos
-- `POST /api/sessions/[id]/complete` - Completar + pago
+## 5.2 Flujo de Pagos
 
-### Páginas Terapeuta:
-- `/therapist/today` - Lista sesiones del día
-- `/therapist/session/[id]/evaluate` - Formulario evaluación
+### 5.2.1 Pagos Anticipados (Por Cita)
 
-### Páginas Recepción:
-- `/admin/sessions/[id]/complete` - Completar y cobrar
+Algunos paquetes requieren pago anticipado:
+```
+Package {
+  requiresAdvancePayment: true
+  advancePaymentAmount: 100  // Bs o R$
+}
+```
 
-### Campos Evaluación:
-- Seguimiento visual (sí/no)
-- Contacto visual (sí/no)
-- Respuesta auditiva (sí/no)
-- Tono muscular (bajo/normal/tenso)
-- Control cervical (sí/no)
-- Mantiene cabeza (sí/no)
-- Se sienta (sí/no)
-- Gatea (sí/no)
-- Camina (sí/no)
-- Estado ánimo (tranquilo/irritable)
-- Comentarios internos (solo staff)
-- Comentarios externos (visible padres)
+**Flujo:**
+1. Padre selecciona paquete que requiere pago
+2. Sistema muestra QR + botón WhatsApp
+3. Padre paga (mínimo o más) y envía comprobante
+4. Staff recibe comprobante, verifica
+5. Staff registra pago anticipado en sistema
+6. Cita cambia de PENDING_PAYMENT → SCHEDULED
+7. En checkout: el anticipo se descuenta del total
 
-### Productos en sesión:
-- Terapeuta puede agregar productos (pañales, aceites, etc.)
-- Marcar si es cobrable o no
-- Descuenta del inventario siempre
-- Suma al total si es cobrable
+**Opciones de pago anticipado:**
+- Monto mínimo requerido
+- Monto mayor al mínimo (abono extra)
+- Pago completo
 
-### Penalización:
-- Si padre no asiste (NO_SHOW) → noShowCount += 1
-- Si asiste → noShowCount = 0 (reset)
-- Si noShowCount >= 3 → requiresPrepayment = true
+### 5.2.2 Paquetes en Cuotas (Financiamiento)
 
-## 5.6 Módulo: Portal Padres
+**Configuración al vender:**
+```
+Paquete Premium (20 sesiones) = 2000 Bs
+├── 1 cuota: 2000 Bs (pago único)
+├── 2 cuotas: 1000 Bs c/u
+├── 4 cuotas: 500 Bs c/u
+└── Personalizado
+```
 
-### Páginas:
-- `/portal/login` - Login con código (BSB-XXXXX)
-- `/portal/dashboard` - Resumen
-- `/portal/appointments` - Ver/agendar citas
-- `/portal/appointments/new` - Agendar nueva
-- `/portal/history` - Historial sesiones
+**Lógica de tramos:**
+```
+Paquete 20 sesiones en 4 cuotas:
+├── Cuota 1 (500 Bs) → Habilita sesiones 1-5
+├── Cuota 2 (500 Bs) → Habilita sesiones 6-10
+├── Cuota 3 (500 Bs) → Habilita sesiones 11-15
+└── Cuota 4 (500 Bs) → Habilita sesiones 16-20
+```
 
-### Funcionalidades:
-- Sesión persistente (cookies)
-- Ver solo sus bebés
-- Ver sesiones restantes del paquete
-- Ver evaluaciones (solo comentarios externos)
-- Mensaje recordatorio si tiene no-shows previos
-- Bloquear agendamiento si requiere prepago
+**Alertas:**
+- Si intenta usar sesión #6 sin pagar cuota 2 → Alerta: "Debe pagar cuota 2"
+- Staff puede permitir pago 1x1 como excepción
+- Reporte de deudas pendientes
 
-## 5.7 Módulo: Lista de Espera
+### 5.2.3 QR de Pago
 
-### API Routes:
-- `POST /api/waitlist` - Agregar a lista
-- `GET /api/waitlist` - Ver lista
-- `DELETE /api/waitlist/[id]` - Quitar
+**Configuración (Settings):**
+```
+PaymentSettings {
+  qrImageUrl: string        // Imagen del QR
+  whatsappNumber: string    // "+591..."
+  whatsappMessage: string   // Mensaje predeterminado
+}
+```
 
-### Flujo:
-1. Padre ve slot lleno → click "Avisarme"
-2. Sistema guarda en waitlist
-3. Alguien cancela → Sistema notifica al primero en lista
-4. Tiene X horas para agendar
-5. Si no agenda → pasa al siguiente
+- QR estático (se actualiza manualmente en configuración)
+- Un QR por base de datos (Bolivia ≠ Brasil)
+- Al pagar, padre envía comprobante por WhatsApp
+- Staff registra número de referencia (no imagen)
 
-## 5.8 Módulo: Notificaciones
+## 5.3 Auto-Agendado Masivo
 
-### Cron Jobs:
-- **7:00 AM diario**: Mesversarios (bebés que cumplen mes en 5 días)
-- **Cada hora**: Recordatorio 24h antes de citas
-- **8:00 AM diario**: Cumpleaños
-- **3:00 AM diario**: Limpieza + marcar bebés >3 años como inactivos
+**Cuándo se usa:**
+- Paquetes de múltiples sesiones (4, 8, 10, 20)
+- Cliente quiere horario fijo
+- Cliente paga anticipadamente y quiere dejar todo agendado
 
-### API Routes:
-- `GET /api/notifications/pending` - Pendientes de contactar
-- `POST /api/notifications/mark-contacted` - Marcar enviado
-- `GET /api/notifications/birthdays` - Cumpleaños hoy
+### 5.3.1 Puntos de Acceso al Auto-Agendado
 
-### WhatsApp:
-- Generar link `wa.me/[phone]?text=[mensaje]`
-- Mensaje pre-llenado según tipo
-- Admin envía manualmente
+El staff puede generar múltiples citas desde **3 lugares diferentes**:
 
-## 5.9 Módulo: Inventario
+| # | Ubicación | Escenario |
+|---|-----------|-----------|
+| 1 | **Checkout de Sesión** | Cliente compra paquete al completar su primera cita |
+| 2 | **Venta de Paquete (Perfil Bebé)** | Cliente paga anticipadamente (sin cita inmediata) |
+| 3 | **Paquete Existente (Perfil Bebé)** | Cliente con paquete activo decide cambiar a horario fijo |
 
-### API Routes:
-- CRUD `/api/products`
-- `POST /api/inventory/purchase` - Entrada
-- `POST /api/inventory/sale` - Salida venta
-- `GET /api/inventory/low-stock` - Alertas
+### 5.3.2 Flujo desde Checkout
 
-### Páginas:
-- `/admin/inventory` - Lista productos
-- `/admin/inventory/movements` - Historial
+1. Staff confirma venta de paquete con N sesiones
+2. Sistema pregunta: "¿Horario fijo o agenda después?"
+3. Si horario fijo → abre configurador de auto-agenda
+4. Se crean N citas de una vez
 
-## 5.10 Módulo: Finanzas
+### 5.3.3 Flujo desde Venta de Paquete (Perfil Bebé)
 
-### Staff Payments:
-- `POST /api/staff-payments` - Registrar pago
-- `GET /api/staff-payments?userId=X` - Historial empleado
-- `GET /api/staff-payments/summary?period=2026-01` - Resumen mes
+**Escenario:** Padre llama, paga por transferencia un paquete de 20 sesiones, y quiere dejar agendados todos los jueves.
 
-### Gastos:
-- CRUD `/api/expenses`
+1. Staff va al perfil del bebé
+2. Click en "Vender Paquete"
+3. Selecciona paquete, cuotas, registra pago
+4. Opción: "¿Agendar sesiones ahora?"
+   - No → Solo crea el paquete
+   - Sí → Abre configurador de auto-agenda
+5. Se crean las N citas con el paquete vinculado
 
-### Reportes:
-- Ingresos por período
-- Gastos por categoría
-- Balance
-- Tasa ocupación
-- No-shows
+### 5.3.4 Flujo desde Paquete Existente (Perfil Bebé)
 
-## 5.11 Módulo: Configuración
+**Escenario:** Cliente con paquete de 20 sesiones (8 usadas, 12 restantes) que venía esporádicamente, ahora quiere venir todos los martes.
 
-### Páginas:
-- `/admin/settings` - General
-- `/admin/settings/hours` - Horarios
-- `/admin/settings/holidays` - Días cerrados
-- `/admin/users` - Gestión usuarios
+1. Staff va al perfil del bebé → Tab Paquetes
+2. En la card del paquete activo, click en "Agendar Sesiones"
+3. Sistema muestra: "12 sesiones disponibles para agendar"
+4. Opciones:
+   - "Una sola cita" → Ir al calendario normal
+   - "Horario fijo (múltiples citas)" → Configurador
+5. Configurador permite agendar las 12 sesiones restantes
+
+### 5.3.5 Configurador de Auto-Agenda
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 📅 Agendar Sesiones - Paquete Premium (12 disponibles)     │
+│                                                             │
+│ Día(s): [✓] Lunes [ ] Martes [✓] Jueves [ ] Viernes       │
+│ Hora: [10:00 ▼]                                            │
+│ Cantidad: [12 ▼]                                           │
+│                                                             │
+│ Vista previa:                                               │
+│ ├── Lun 27/01 10:00                                        │
+│ ├── Jue 30/01 10:00                                        │
+│ ├── Lun 03/02 10:00                                        │
+│ └── ... (12 citas hasta Mar 20/03)                         │
+│                                                             │
+│ ⚠️ 2 slots tienen conflictos (se agendarán igual)          │
+│                                                             │
+│                              [Cancelar] [Agendar 12 Citas]  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5.3.6 Reglas del Auto-Agendado
+
+- Puede seleccionar múltiples días (ej: Lunes y Jueves)
+- Si un slot está lleno → agenda igual (staff revisa después)
+- Respeta horarios de trabajo (no agenda domingos ni fuera de horario)
+- Todas las citas quedan con el paquete vinculado
+- Las citas son provisionales (pueden reagendarse individualmente)
+
+### 5.3.7 Preferencia del Padre (Portal)
+
+- En portal, padre puede guardar preferencia: "Viernes 10:00"
+- Esto NO crea citas, solo guarda la preferencia
+- Cuando staff vende/agenda, ve la preferencia como sugerencia
+
+## 5.4 Eventos Grupales
+
+**Concepto:**
+- Eventos masivos (Babyton, talleres, etc.)
+- 15-30 bebés participantes
+- Duración de varias horas
+- Cada bebé paga individualmente
+- NO tienen evaluaciones (solo asistencia + pago)
+
+**Flujo:**
+1. Admin crea evento (nombre, fecha, horario, precio, max participantes)
+2. Evento aparece en pantalla de Eventos y en calendario como bloque
+3. El día del evento se bloquea para citas normales
+4. Staff registra bebés participantes:
+   - Busca bebé existente o crea nuevo
+   - Registra pago (anticipado o en el momento)
+5. Día del evento: marcar asistencia
+6. Al finalizar: completar evento
+
+**Vista en Calendario:**
+- Card especial que muestra el evento
+- Click → ir a pantalla de detalle del evento
+- El día completo queda bloqueado para citas normales
 
 ---
 
 # 6. REGLAS DE NEGOCIO
 
 ## 6.1 Bebés
-- Solo bebés ≤36 meses aparecen en notificaciones
+- Solo bebés ≤36 meses aparecen en notificaciones activas
 - Después de 3 años → isActive = false (no borrar)
 - Código acceso portal generado automático: BSB-XXXXX
+- Un bebé puede tener múltiples padres/tutores
 
 ## 6.2 Padres
-- Identificables por CI/CPF O por teléfono (ambos únicos)
-- Login portal SOLO con código (no teléfono)
+- Identificables por teléfono (único)
+- Login portal SOLO con código BSB-XXXXX
 - noShowCount se resetea cuando asiste a cita
 - requiresPrepayment = true si noShowCount >= 3
+- Padres con requiresPrepayment → solo staff puede agendar
 
 ## 6.3 Paquetes
-- NO vencen (válidos hasta bebé cumpla 3 años)
-- Sesiones NO transferibles entre bebés
-- Al agendar → descuenta sesión
-- Al cancelar → devuelve sesión
+- **NO vencen** (válidos hasta bebé cumpla 3 años)
+- Sesiones **NO transferibles** entre bebés
+- Siempre se selecciona paquete al agendar (no existe "sesión a definir")
+- El paquete es **provisional** hasta el checkout
+- Sesión se **descuenta al completar**, NO al agendar
+- Pueden pagarse en **cuotas** (financiamiento)
+- Algunos requieren **pago anticipado**
+- Tienen **duración configurable** (30, 60, 90, 120 min)
 
 ## 6.4 Agendamiento
-- Máximo 2 bebés por hora
-- 1 terapeuta por bebé
+- Máximo 5 citas por slot de 30 min (staff)
+- Máximo 2 citas por slot (portal padres)
+- Citas ocupan slots según duración del paquete
 - 1 bebé solo 1 cita por día
-- Padres con prepago requerido → solo recepción puede agendar
+- Citas PENDING_PAYMENT no bloquean slot
+- Padres con requiresPrepayment no pueden agendar desde portal
 
 ## 6.5 Sesiones
-- Solo terapeuta registra evaluación
-- Solo recepción completa sesión (cobra)
-- Productos descuentan inventario siempre
-- Productos cobrables suman al total
+- Solo **THERAPIST** puede registrar evaluaciones
+- Solo **RECEPTION/ADMIN** puede completar sesión (checkout)
+- Una cita puede completarse **sin evaluación** (el terapeuta puede evaluar después)
+- Evaluación solo se puede hacer **una vez** por cita
+- Productos siempre descuentan inventario
+- Productos con isChargeable suman al cobro
 
 ## 6.6 Evaluaciones
-- Comentarios internos: solo staff
-- Comentarios externos: visible en portal padres
+- Notas internas: solo staff ve
+- Notas externas: visibles en portal padres
+- Campo isEvaluated en Appointment indica si ya se evaluó
+
+## 6.7 Eventos
+- Bloquean el día completo para citas normales
+- No tienen evaluaciones (solo asistencia + pago)
+- Bebés deben estar registrados en sistema
+- Pagos son individuales por participante
 
 ---
 
-# 7. ESTRUCTURA DE CARPETAS
+# 7. MÓDULOS IMPLEMENTADOS
 
-```
-baby-spa/
-├── app/
-│   ├── [locale]/                    # es / pt-BR
-│   │   ├── (admin)/                 # Rutas admin
-│   │   │   ├── layout.tsx
-│   │   │   ├── dashboard/page.tsx
-│   │   │   ├── calendar/page.tsx
-│   │   │   ├── clients/
-│   │   │   │   ├── page.tsx
-│   │   │   │   ├── new/page.tsx
-│   │   │   │   └── [id]/page.tsx
-│   │   │   ├── packages/
-│   │   │   ├── sessions/
-│   │   │   ├── inventory/
-│   │   │   ├── notifications/
-│   │   │   ├── reports/
-│   │   │   ├── staff-payments/
-│   │   │   └── settings/
-│   │   ├── (therapist)/
-│   │   │   ├── layout.tsx
-│   │   │   ├── today/page.tsx
-│   │   │   └── session/[id]/evaluate/page.tsx
-│   │   ├── (portal)/
-│   │   │   ├── layout.tsx
-│   │   │   ├── login/page.tsx
-│   │   │   ├── dashboard/page.tsx
-│   │   │   ├── appointments/
-│   │   │   └── history/page.tsx
-│   │   ├── login/page.tsx
-│   │   └── page.tsx
-│   ├── registro/
-│   │   └── [token]/page.tsx
-│   ├── api/
-│   │   ├── auth/[...nextauth]/route.ts
-│   │   ├── babies/
-│   │   ├── parents/
-│   │   ├── appointments/
-│   │   ├── sessions/
-│   │   ├── packages/
-│   │   ├── notifications/
-│   │   ├── inventory/
-│   │   ├── staff-payments/
-│   │   ├── expenses/
-│   │   ├── reports/
-│   │   ├── registration-links/
-│   │   └── waitlist/
-│   ├── layout.tsx
-│   └── globals.css
-├── components/
-│   ├── ui/                          # shadcn/ui
-│   ├── layout/
-│   ├── calendar/
-│   ├── babies/
-│   ├── sessions/
-│   ├── notifications/
-│   └── charts/
-├── lib/
-│   ├── db.ts
-│   ├── auth.ts
-│   ├── utils.ts
-│   ├── validations.ts
-│   └── services/
-│       ├── appointmentService.ts
-│       ├── sessionService.ts
-│       ├── notificationService.ts
-│       ├── packageService.ts
-│       └── reportService.ts
-├── messages/
-│   ├── es.json
-│   └── pt-BR.json
-├── prisma/
-│   ├── schema.prisma
-│   └── seed.ts
-├── cron/
-│   └── jobs.ts
-├── types/
-│   └── index.ts
-├── middleware.ts
-├── .env.example
-├── next.config.js
-├── tailwind.config.js
-└── package.json
-```
+## ✅ Fase 1: Fundamentos (COMPLETADA)
+- [x] Setup Next.js + TypeScript + Tailwind
+- [x] Prisma + PostgreSQL (schema completo)
+- [x] NextAuth.js (login staff)
+- [x] next-intl (ES/PT-BR)
+- [x] Layouts base (Admin, Therapist, Portal)
+- [x] Design System (glassmorphism, burbujas)
+- [x] 15+ componentes shadcn/ui personalizados
+
+## ✅ Fase 2: Core (COMPLETADA)
+- [x] Módulo 1: Bebés y Padres (CRUD completo)
+- [x] Módulo 2: Link Registro Temporal (formulario público)
+- [x] Módulo 3: Paquetes y Ventas
+- [x] Módulo 4: Calendario y Agendamiento
+- [x] Módulo 5: Inventario
+- [x] Módulo 6: Sesiones y Evaluaciones (checkout)
+
+## ⏳ Fase 3: Pagos y Financiamiento (PENDIENTE)
+- [ ] Módulo 3.1: Refactorización de Paquetes
+- [ ] Módulo 3.2: Sistema de Pagos Anticipados
+- [ ] Módulo 3.3: Paquetes en Cuotas
+- [ ] Módulo 3.4: Alertas de Deuda
+- [ ] Módulo 3.5: Auto-Agendado Masivo
+
+## ⏳ Fase 4: Eventos y Portal (PENDIENTE)
+- [ ] Módulo 4.1: Sistema de Eventos Grupales
+- [ ] Módulo 4.2: Preferencias de Horario (Padres)
+- [ ] Módulo 4.3: Portal de Padres Completo
+
+## ⏳ Fase 5: Configuración y Reportes (PENDIENTE)
+- [ ] Módulo 5.1: Configuración del Sistema
+- [ ] Módulo 5.2: QR de Pago
+- [ ] Módulo 5.3: Reportes Financieros
+
+## ⏳ Fase 6: Secundarios (PENDIENTE)
+- [ ] Notificaciones + Cron Jobs
+- [ ] Staff Payments
 
 ---
 
 # 8. PLAN DE IMPLEMENTACIÓN
 
-## Fase 1: Fundamentos (2-3 días)
-1. Setup Next.js + TypeScript + Tailwind
-2. Configurar Prisma + PostgreSQL
-3. Implementar NextAuth (login staff + portal)
-4. Configurar next-intl (ES/PT-BR)
-5. Crear layouts base
+## Fase 1: Fundamentos ✅ COMPLETADA
+## Fase 2: Core ✅ COMPLETADA
 
-## Fase 2: Core (5-7 días)
-1. Módulo Bebés y Padres
-2. Link Registro Temporal
-3. Paquetes y Ventas
-4. Calendario y Agendamiento
-3. Inventario
-5. Sesiones y Evaluaciones
-6. Portal Padres (básico)
+## Fase 3: Pagos y Financiamiento (7-10 días)
 
-## Fase 3: Secundarios (3-4 días)
-1. Notificaciones + Cron Jobs
-2. Lista de Espera
-4. Notas Internas + Historial Citas
-5. Staff Payments
-6. Gastos
+### Módulo 3.1: Refactorización de Paquetes
+```
+□ Eliminar concepto "sesión a definir" de todo el sistema
+□ Agregar campo description a Package
+□ Agregar campo duration a Package (minutos)
+□ Actualizar calendario para respetar duración
+□ Agregar campos de pago anticipado:
+  - requiresAdvancePayment: boolean
+  - advancePaymentAmount: Decimal
+□ UI: Selector de paquetes mejorado (con descripción)
+□ UI: Badge "Requiere pago anticipado" en paquetes
+□ Mensaje para padres: "Este paquete es provisional"
+□ Default al agendar: Paquete Individual
+```
 
-## Fase 4: Final (3-4 días)
-1. Reportes
-2. Portal Padres (avanzado)
-3. Configuración
-4. Testing
-5. Deployment
+### Módulo 3.2: Sistema de Pagos Anticipados
+```
+□ Nuevo estado de cita: PENDING_PAYMENT
+□ Modelo AppointmentPayment (pagos por cita)
+□ UI: Modal de pago anticipado (staff)
+□ UI: Pantalla QR + WhatsApp (portal padres)
+□ Configuración: QR image upload
+□ Lógica: Cita no bloquea slot si PENDING_PAYMENT
+□ UI: Visualización en calendario (estilo diferente)
+□ Flujo: confirmar pago → cambiar a SCHEDULED
+```
+
+### Módulo 3.3: Paquetes en Cuotas
+```
+□ Campos en PackagePurchase:
+  - installments, installmentAmount
+  - paidAmount, pendingAmount
+□ Modelo PackagePayment (pagos por paquete)
+□ Lógica de tramos (cuota X habilita sesiones Y-Z)
+□ UI: Venta con cuotas (seleccionar cantidad)
+□ UI: Historial de pagos del paquete
+□ UI: En checkout, ver si hay pago pendiente
+```
+
+### Módulo 3.4: Alertas de Deuda
+```
+□ Alerta inteligente (según tramo de sesiones)
+□ Badge en perfil del bebé
+□ Badge en detalle de cita
+□ Opción pago 1x1 (excepciones)
+□ Reporte: Bebés con saldo pendiente
+□ Reporte: Paquetes con cuotas atrasadas
+```
+
+### Módulo 3.5: Auto-Agendado Masivo
+```
+□ Componente BulkSchedulingDialog
+□ Función generateBulkSchedule
+□ API POST /api/appointments/bulk
+□ API GET /api/appointments/check-conflicts
+□ Integrar en SellPackageDialog (perfil bebé)
+□ Integrar en CompleteSessionDialog (checkout)
+□ Botón "Agendar Sesiones" en card de paquete existente
+□ Verificar conflictos en tiempo real
+□ Saltar domingos y días cerrados
+□ Soportar múltiples días (ej: Lunes y Jueves)
+```
+
+## Fase 4: Eventos y Portal (5-7 días)
+
+### Módulo 4.1: Sistema de Eventos Grupales
+```
+□ Modelo Event
+□ Modelo EventParticipant
+□ UI: Pantalla de eventos (lista/timeline)
+□ UI: Crear/editar evento
+□ UI: Detalle de evento con participantes
+□ UI: Agregar bebé al evento
+□ UI: Registrar pago por participante
+□ UI: Marcar asistencia
+□ Lógica: Bloquear día en calendario normal
+□ UI: Card de evento en calendario del staff
+```
+
+### Módulo 4.2: Preferencias de Horario (Padres)
+```
+□ Campo preferredSchedule en Baby o Parent
+□ UI: En portal, guardar preferencia de día/hora
+□ UI: En staff, ver preferencia como sugerencia
+□ Lógica: Usar preferencia para auto-agenda
+```
+
+## Fase 5: Portal Padres + Configuración (4-5 días)
+
+### Módulo 5.1: Portal de Padres Completo
+```
+□ Login con código BSB-XXXXX
+□ Dashboard con bebés y paquetes
+□ Ver saldo pendiente de paquetes
+□ Agendar cita:
+  - Mostrar paquetes existentes
+  - Opción "Seleccionar otro paquete"
+  - Guardar preferencia de horario (opcional)
+  - Mostrar QR si requiere pago anticipado
+□ Ver citas (con estado de pago)
+□ Historial de sesiones (notas externas)
+□ Mensaje si requiresPrepayment = true
+```
+
+### Módulo 5.2: Configuración del Sistema
+```
+□ Horarios de trabajo
+□ Días cerrados
+□ Gestión de usuarios
+□ Categorías de paquetes
+```
+
+### Módulo 5.3: QR de Pago
+```
+□ UI: Subir imagen de QR
+□ UI: Configurar número WhatsApp
+□ UI: Configurar mensaje predeterminado
+□ Lógica: Servir QR en portal de padres
+```
+
+## Fase 6: Secundarios (4-5 días)
+
+### Módulo 6.1: Notificaciones
+```
+□ Mesversarios automáticos
+□ Recordatorio de cita 24h antes
+□ Cron jobs
+```
+
+### Módulo 6.2: Reportes
+```
+□ Ingresos por período
+□ Deudas pendientes
+□ Ocupación
+□ No-shows
+□ Sesiones por terapeuta
+```
+
+### Módulo 6.3: Staff Payments
+```
+□ Registro de pagos a empleados
+□ Historial por empleado
+```
 
 ---
 
 # 9. INSTRUCCIONES PARA CLAUDE CODE
 
-## 9.1 Contexto Inicial
+## 9.1 Contexto del Proyecto
 
-Al iniciar cada sesión, asegúrate de que Claude Code entienda:
-- Este es un sistema de gestión para spa de bebés
-- Usa Next.js 14 App Router + TypeScript
+Al iniciar cada sesión, Claude Code debe entender:
+- Sistema de gestión para spa de bebés
+- Next.js 14 App Router + TypeScript
 - 2 bases de datos separadas (Bolivia/Brasil)
-- Multiidioma (ES/PT-BR)
+- Multiidioma (ES/PT-BR) - cada BD tiene su idioma
 - 4 roles: Admin, Reception, Therapist, Parent
 
-## 9.2 Convenciones de Código
+## 9.2 Reglas Críticas
+
+```
+⚠️ IMPORTANTE - LEER SIEMPRE:
+
+1. PAQUETES:
+   - Siempre se selecciona un paquete (no existe "sesión a definir")
+   - Default: Paquete Individual (1 sesión)
+   - Es provisional hasta el checkout
+   - Sesión se descuenta al COMPLETAR, no al agendar
+
+2. PAGOS:
+   - Algunos paquetes requieren pago anticipado
+   - Citas PENDING_PAYMENT no bloquean slot
+   - Paquetes pueden pagarse en cuotas
+   - Alertas según tramo de sesiones
+
+3. EVALUACIONES:
+   - Solo terapeuta evalúa
+   - Cita puede completarse sin evaluación
+   - Una vez evaluada, no se puede modificar
+   - Notas internas ≠ notas externas
+
+4. EVENTOS:
+   - Bloquean día completo
+   - No tienen evaluaciones
+   - Pagos individuales por participante
+```
+
+## 9.3 Convenciones de Código
 
 ```typescript
-// Nombres de archivos: kebab-case
+// Archivos: kebab-case
 appointment-service.ts
 baby-form.tsx
 
@@ -1228,22 +997,22 @@ CalendarView.tsx
 const getBabyById = async (id: string) => {}
 
 // Constantes: UPPER_SNAKE_CASE
-const MAX_SLOTS_PER_HOUR = 2;
+const MAX_SLOTS_PER_HOUR = 5;
 
-// Tipos: PascalCase con suffix
+// Tipos: PascalCase
 interface BabyCreateInput {}
 type AppointmentStatus = 'SCHEDULED' | 'COMPLETED';
 ```
 
-## 9.3 Patrones a Seguir
+## 9.4 Patrones de Código
 
-### API Routes:
+### API Routes
 ```typescript
-// app/api/babies/route.ts
+// app/api/[resource]/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -1251,76 +1020,60 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
-  // ... lógica
+  // Lógica...
   
   return NextResponse.json(data);
 }
 ```
 
-### Componentes:
+### Componentes
 ```typescript
-// components/babies/baby-form.tsx
+// components/[feature]/[component].tsx
 'use client';
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-interface BabyFormProps {
-  initialData?: Baby;
-  onSubmit: (data: BabyInput) => Promise<void>;
+interface Props {
+  // ...
 }
 
-export function BabyForm({ initialData, onSubmit }: BabyFormProps) {
-  const t = useTranslations('babies');
+export function ComponentName({ ...props }: Props) {
+  const t = useTranslations('namespace');
   // ...
 }
 ```
 
-### Services:
+### Services
 ```typescript
-// lib/services/appointment-service.ts
+// lib/services/[service]-service.ts
 import { prisma } from '@/lib/db';
 
-export const appointmentService = {
-  async checkAvailability(date: Date, time: string) {
-    const count = await prisma.appointment.count({
-      where: { date, startTime: time, status: 'SCHEDULED' }
-    });
-    return count < 2; // MAX_SLOTS_PER_HOUR
+export const serviceNameService = {
+  async method(params) {
+    // Lógica de negocio
   },
-  
-  async create(data: AppointmentInput) {
-    // ... lógica
-  }
 };
 ```
 
-## 9.4 Variables de Entorno
+## 9.5 Checklist de Verificación
 
-```bash
-# .env.example
-DATABASE_URL_BOLIVIA="postgresql://postgres:Passw0rd@localhost:5432/babyspa_bolivia"
-DATABASE_URL_BRAZIL="postgresql://postgres:Passw0rd@localhost:5432/babyspa_brazil"
-
-NEXTAUTH_SECRET="your-secret-here"
-NEXTAUTH_URL="http://localhost:3000"
-
-SENDGRID_API_KEY="SG.xxxxx"
-EMAIL_FROM="hola@babyspa.online"
+Antes de cada commit:
+```
+□ npx tsc --noEmit → 0 errores
+□ npx eslint . --ext .ts,.tsx → 0 errores
+□ npm run build → éxito
+□ Traducciones en es.json Y pt-BR.json
+□ Probar en /es/ y /pt-BR/
+□ Mobile responsive
+□ Permisos por rol verificados
 ```
 
-## 9.5 Comandos Útiles
+## 9.6 Archivos de Referencia
 
-```bash
-# Desarrollo
-npm run dev
-
-# Base de datos
-npx prisma migrate dev
-npx prisma db seed
-npx prisma studio
-
-# Build
-npm run build
-npm start
-```
+Cuando implementes nuevas funcionalidades, revisa estos patrones:
+- API: `app/api/babies/route.ts`
+- Página: `app/[locale]/(admin)/clients/page.tsx`
+- Formulario: `components/babies/baby-form.tsx`
+- Service: `lib/services/baby-service.ts`
+- Validación: `lib/validations/baby.ts`

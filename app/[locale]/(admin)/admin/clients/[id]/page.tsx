@@ -424,6 +424,12 @@ export default function BabyProfilePage() {
     (p) => p.isActive && p.remainingSessions > 0
   );
 
+  // Calculate total remaining sessions from ALL packages
+  const totalRemainingSessions = baby.packagePurchases.reduce(
+    (sum, pkg) => sum + (pkg.remainingSessions > 0 ? pkg.remainingSessions : 0),
+    0
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -475,10 +481,10 @@ export default function BabyProfilePage() {
                   ? t("babyForm.babyData.male")
                   : t("babyForm.babyData.female")}
               </Badge>
-              {activePackage ? (
+              {totalRemainingSessions > 0 ? (
                 <Badge className="rounded-full bg-emerald-100 text-emerald-700">
                   <Package className="mr-1 h-3 w-3" />
-                  {activePackage.remainingSessions} {t("babyProfile.packages.sessionsRemaining")}
+                  {totalRemainingSessions} {t("babyProfile.packages.sessionsRemaining")}
                 </Badge>
               ) : (
                 <Badge className="rounded-full bg-amber-100 text-amber-700">
