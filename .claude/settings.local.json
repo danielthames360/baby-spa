@@ -60,7 +60,10 @@
       "Bash(npx ts-node:*)",
       "Bash(git reset:*)",
       "Bash(del nul)",
-      "Bash(npx prisma validate:*)"
+      "Bash(npx prisma validate:*)",
+      "Bash(npx prisma db execute --stdin:*)",
+      "Bash(node -e:*)",
+      "Bash(git status:*)"
     ]
   }
 }
