@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
 import {
   Loader2,
   AlertCircle,
@@ -28,7 +27,6 @@ import {
   DollarSign,
   Trash2,
   Plus,
-  Sparkles,
   Check,
   CreditCard,
   Banknote,
@@ -38,7 +36,11 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PACKAGE_CATEGORIES } from "@/lib/constants";
+import {
+  PackageSelector,
+  type PackageData,
+  type PackagePurchaseData,
+} from "@/components/packages/package-selector";
 
 interface CompleteSessionDialogProps {
   open: boolean;
@@ -67,11 +69,20 @@ interface SessionData {
     id: string;
     remainingSessions: number;
     package: {
+      id: string;
       name: string;
+      categoryId: string | null;
     };
   } | null;
   appointment: {
     isEvaluated: boolean;
+    selectedPackageId: string | null; // Catalog package selected (provisional)
+    selectedPackage: {
+      id: string;
+      name: string;
+      categoryId: string | null;
+      basePrice: string;
+    } | null;
     baby: {
       id: string;
       name: string;
@@ -86,15 +97,6 @@ interface Product {
   category: string | null;
   salePrice: string;
   currentStock: number;
-}
-
-interface PackageOption {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string | null;
-  sessionCount: number;
-  basePrice: number | string;
 }
 
 const paymentMethods = [
@@ -115,8 +117,10 @@ export function CompleteSessionDialog({
 
   const [session, setSession] = useState<SessionData | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [packages, setPackages] = useState<PackageData[]>([]);
+  const [babyPackages, setBabyPackages] = useState<PackagePurchaseData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingBabyPackages, setIsLoadingBabyPackages] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,12 +135,8 @@ export function CompleteSessionDialog({
 
   // Package selection state
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  const [selectedPackageCategory, setSelectedPackageCategory] = useState<string>("HIDROTERAPIA");
-
-  // Filter packages by category
-  const filteredPackages = packages.filter((pkg) => {
-    return pkg.category === selectedPackageCategory;
-  });
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const [selectedPurchaseName, setSelectedPurchaseName] = useState<string>("");
 
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
@@ -161,7 +161,7 @@ export function CompleteSessionDialog({
 
   const fetchPackages = useCallback(async () => {
     try {
-      const response = await fetch("/api/packages");
+      const response = await fetch("/api/packages?active=true");
       const data = await response.json();
       if (response.ok) {
         setPackages(data.packages || []);
@@ -169,6 +169,43 @@ export function CompleteSessionDialog({
     } catch (error) {
       console.error("Error fetching packages:", error);
     }
+  }, []);
+
+  const fetchBabyPackages = useCallback(async (babyId: string) => {
+    setIsLoadingBabyPackages(true);
+    try {
+      const response = await fetch(`/api/babies/${babyId}/packages`);
+      const data = await response.json();
+      if (response.ok) {
+        const availablePackages = (data.packages || [])
+          .filter((pkg: { remainingSessions: number }) => pkg.remainingSessions > 0)
+          .map((pkg: {
+            id: string;
+            remainingSessions: number;
+            totalSessions: number;
+            usedSessions: number;
+            package: { id: string; name: string; categoryId: string | null; duration: number };
+          }) => ({
+            id: pkg.id,
+            remainingSessions: pkg.remainingSessions,
+            totalSessions: pkg.totalSessions,
+            usedSessions: pkg.usedSessions,
+            package: {
+              id: pkg.package.id,
+              name: pkg.package.name,
+              categoryId: pkg.package.categoryId,
+              duration: pkg.package.duration,
+            },
+          }));
+        setBabyPackages(availablePackages);
+        return availablePackages;
+      }
+    } catch (error) {
+      console.error("Error fetching baby packages:", error);
+    } finally {
+      setIsLoadingBabyPackages(false);
+    }
+    return [];
   }, []);
 
   const fetchSession = useCallback(async () => {
@@ -190,18 +227,55 @@ export function CompleteSessionDialog({
     if (open && sessionId) {
       // Reset state
       setSelectedPackageId(null);
+      setSelectedPurchaseId(null);
+      setSelectedPurchaseName("");
       setPaymentMethod("CASH");
       setPaymentNotes("");
       setShowDiscount(false);
       setDiscountAmount(0);
       setDiscountReason("");
       setError(null);
+      setBabyPackages([]);
 
       fetchSession();
       fetchProducts();
       fetchPackages();
     }
   }, [open, sessionId, fetchSession, fetchProducts, fetchPackages]);
+
+  // Fetch baby packages and pre-select when session data is loaded
+  useEffect(() => {
+    const initializePackageSelection = async () => {
+      if (!session) return;
+
+      const babyId = session.appointment.baby.id;
+      const fetchedBabyPackages = await fetchBabyPackages(babyId);
+
+      // Pre-select logic:
+      // 1. If session has a linked package purchase, select it
+      // 2. If appointment has a catalog package selected (provisional), select that
+      // 3. Otherwise, let user choose
+      if (session.packagePurchaseId && session.packagePurchase) {
+        // Session linked to an existing purchase
+        setSelectedPurchaseId(session.packagePurchaseId);
+        setSelectedPackageId(session.packagePurchase.package.id);
+        setSelectedPurchaseName(session.packagePurchase.package.name);
+      } else if (session.appointment.selectedPackageId) {
+        // Catalog package was selected (provisional) - no purchase yet
+        setSelectedPackageId(session.appointment.selectedPackageId);
+        setSelectedPurchaseId(null);
+        setSelectedPurchaseName(session.appointment.selectedPackage?.name || "");
+      } else if (fetchedBabyPackages.length === 1) {
+        // Auto-select if only one package
+        const singlePackage = fetchedBabyPackages[0];
+        setSelectedPurchaseId(singlePackage.id);
+        setSelectedPackageId(singlePackage.package.id);
+        setSelectedPurchaseName(singlePackage.package.name);
+      }
+    };
+
+    initializePackageSelection();
+  }, [session, packages, fetchBabyPackages]);
 
   const handleAddProduct = async () => {
     if (!selectedProduct || productQuantity < 1) return;
@@ -260,7 +334,10 @@ export function CompleteSessionDialog({
       .reduce((sum, p) => sum + parseFloat(p.unitPrice) * p.quantity, 0);
   };
 
-  const selectedPackage = packages.find((p) => p.id === selectedPackageId);
+  // Calculate package price - only for new packages (catalog selection), not for existing purchases
+  const selectedPackage = selectedPurchaseId
+    ? null // When using existing purchase, no package price
+    : packages.find((p) => p.id === selectedPackageId);
   const packagePrice = selectedPackage ? Number(selectedPackage.basePrice) : 0;
   const productsTotal = calculateProductsTotal();
   const subtotal = productsTotal + packagePrice;
@@ -289,47 +366,9 @@ export function CompleteSessionDialog({
     return matchesSearch && matchesCategory;
   });
 
-  // Colors for package cards
-  const getPackageColors = (sessionCount: number) => {
-    if (sessionCount === 1) {
-      return {
-        gradient: "from-gray-400 to-gray-500",
-        bg: "bg-gray-50 border-gray-200",
-        selected: "bg-gray-100 border-gray-400 ring-2 ring-gray-400",
-      };
-    } else if (sessionCount <= 4) {
-      return {
-        gradient: "from-teal-400 to-cyan-500",
-        bg: "bg-teal-50 border-teal-200",
-        selected: "bg-teal-100 border-teal-500 ring-2 ring-teal-500",
-      };
-    } else if (sessionCount <= 8) {
-      return {
-        gradient: "from-cyan-500 to-blue-500",
-        bg: "bg-cyan-50 border-cyan-200",
-        selected: "bg-cyan-100 border-cyan-500 ring-2 ring-cyan-500",
-      };
-    } else if (sessionCount <= 10) {
-      return {
-        gradient: "from-violet-500 to-purple-500",
-        bg: "bg-violet-50 border-violet-200",
-        selected: "bg-violet-100 border-violet-500 ring-2 ring-violet-500",
-      };
-    } else {
-      return {
-        gradient: "from-amber-400 to-orange-500",
-        bg: "bg-amber-50 border-amber-200",
-        selected: "bg-amber-100 border-amber-500 ring-2 ring-amber-500",
-      };
-    }
-  };
-
   const handleComplete = async () => {
-    // Session can be linked to a package (started with package) or be a trial session
-    const sessionIsTrialSession = !session?.packagePurchaseId;
-
-    // For trial sessions, require selecting a package to sell
-    if (sessionIsTrialSession && !selectedPackageId) {
+    // Always require a package selection (either from catalog or existing purchase)
+    if (!selectedPackageId && !selectedPurchaseId) {
       setError(t("session.errors.PACKAGE_REQUIRED"));
       return;
     }
@@ -348,7 +387,9 @@ export function CompleteSessionDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          packageId: selectedPackageId || undefined,
+          // Send packageId for new catalog packages, or packagePurchaseId for existing purchases
+          packageId: !selectedPurchaseId ? selectedPackageId || undefined : undefined,
+          packagePurchaseId: selectedPurchaseId || undefined,
           paymentMethod: grandTotal > 0 ? paymentMethod : undefined,
           paymentNotes: paymentNotes || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
@@ -374,9 +415,9 @@ export function CompleteSessionDialog({
     }
   };
 
-  // Check if session was started with a package (not a trial session)
+  // Check if session was started with a package
   const hasLinkedPackage = session?.packagePurchase && session.packagePurchase.remainingSessions > 0;
-  const isTrialSession = session && !session.packagePurchaseId;
+  const needsPackageSelection = session && !session.packagePurchaseId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -421,9 +462,9 @@ export function CompleteSessionDialog({
                   </p>
                 </div>
               )}
-              {isTrialSession && (
-                <div className="rounded-lg bg-amber-50 px-3 py-1.5 text-right shadow-sm border border-amber-200">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-amber-600">{t("session.trialSession")}</p>
+              {needsPackageSelection && (
+                <div className="rounded-lg bg-blue-50 px-3 py-1.5 text-right shadow-sm border border-blue-200">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-blue-600">{t("session.pendingPackage")}</p>
                 </div>
               )}
             </div>
@@ -435,105 +476,35 @@ export function CompleteSessionDialog({
               <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
                 <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
                   <Package className="h-5 w-5 text-teal-600" />
-                  {hasLinkedPackage ? t("session.packageUsed") : t("session.selectPackageToSell")}
+                  {t("session.selectPackage")}
                 </h3>
 
-                {/* Package Selection - Only show for trial sessions (no linked package) */}
-                {isTrialSession && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-700 border border-blue-200">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                      {t("session.noActivePackageInfo")}
-                    </div>
-
-                    {/* Category Filter */}
-                    <div className="flex flex-wrap gap-2">
-                      {PACKAGE_CATEGORIES.map((category) => (
-                        <button
-                          key={category}
-                          type="button"
-                          onClick={() => setSelectedPackageCategory(category)}
-                          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                            selectedPackageCategory === category
-                              ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-sm"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          }`}
-                        >
-                          {t(`packages.categories.${category}`)}
-                        </button>
-                      ))}
-                    </div>
-
-                    {filteredPackages.length > 0 ? (
-                      <div className="grid gap-3 lg:grid-cols-2">
-                        {filteredPackages.map((pkg) => {
-                          const colors = getPackageColors(pkg.sessionCount);
-                          const isSelected = selectedPackageId === pkg.id;
-
-                          return (
-                            <Card
-                              key={pkg.id}
-                              onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
-                              className={`cursor-pointer rounded-xl border-2 p-4 transition-all hover:shadow-md ${
-                                isSelected ? colors.selected : colors.bg
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  {isSelected && (
-                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-500">
-                                      <Check className="h-4 w-4 text-white" />
-                                    </span>
-                                  )}
-                                  <div>
-                                    <h4 className="font-semibold text-gray-800">
-                                      {pkg.name}
-                                    </h4>
-                                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                                      <span
-                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gradient-to-r ${colors.gradient} text-white`}
-                                      >
-                                        <Sparkles className="mr-1 h-3 w-3" />
-                                        {t("packages.sessionCount", {
-                                          count: pkg.sessionCount,
-                                        })}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <span className="text-xl font-bold text-gray-800">
-                                  {formatPrice(Number(pkg.basePrice))}
-                                </span>
-                              </div>
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="rounded-xl bg-gray-50 p-6 text-center text-gray-500">
-                        {t("packages.noPackagesAvailable")}
-                      </div>
-                    )}
-                  </div>
+                {/* Package Selection - Always show PackageSelector */}
+                {!isLoadingBabyPackages && (
+                  <PackageSelector
+                    babyId={session.appointment.baby.id}
+                    packages={packages}
+                    babyPackages={babyPackages}
+                    selectedPackageId={selectedPackageId}
+                    selectedPurchaseId={selectedPurchaseId}
+                    onSelectPackage={(pkgId, purchaseId, purchaseName) => {
+                      setSelectedPackageId(pkgId);
+                      setSelectedPurchaseId(purchaseId);
+                      setSelectedPurchaseName(purchaseName || "");
+                    }}
+                    showCategories={true}
+                    showPrices={true}
+                    showExistingFirst={true}
+                    allowNewPackage={true}
+                    compact={true}
+                    showProvisionalMessage={false}
+                    forceShowCatalog={!!session.appointment.selectedPackageId && !session.packagePurchaseId}
+                    maxHeight="300px"
+                  />
                 )}
-
-                {/* Info when session has linked package */}
-                {hasLinkedPackage && session.packagePurchase && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 rounded-xl bg-emerald-100 p-4 border border-emerald-200">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
-                        <CheckCircle className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-emerald-800">{session.packagePurchase.package.name}</p>
-                        <p className="text-sm text-emerald-700">
-                          {t("session.willDeductFromPackage", {
-                            package: session.packagePurchase.package.name,
-                            remaining: session.packagePurchase.remainingSessions
-                          })}
-                        </p>
-                      </div>
-                    </div>
+                {isLoadingBabyPackages && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
                   </div>
                 )}
               </div>
@@ -853,9 +824,20 @@ export function CompleteSessionDialog({
             )}
 
             {/* Total Summary */}
-            {(grandTotal > 0 || selectedPackageId || discountAmount > 0) && (
+            {(grandTotal > 0 || selectedPackageId || selectedPurchaseId || discountAmount > 0) && (
               <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 p-4">
                 <div className="space-y-2">
+                  {/* Show selected existing package (no charge) */}
+                  {selectedPurchaseId && selectedPurchaseName && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">
+                        {t("session.usingExistingPackage")}
+                      </span>
+                      <span className="text-emerald-600 font-medium">
+                        {selectedPurchaseName}
+                      </span>
+                    </div>
+                  )}
                   {productsTotal > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">
@@ -917,10 +899,10 @@ export function CompleteSessionDialog({
               </Button>
               <Button
                 onClick={handleComplete}
-                disabled={isSubmitting || (!!isTrialSession && !selectedPackageId)}
+                disabled={isSubmitting || (!selectedPackageId && !selectedPurchaseId)}
                 className={cn(
                   "rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-white shadow-lg shadow-emerald-300/50 transition-all hover:from-emerald-600 hover:to-teal-600",
-                  (!!isTrialSession && !selectedPackageId) && "opacity-50"
+                  (!selectedPackageId && !selectedPurchaseId) && "opacity-50"
                 )}
               >
                 {isSubmitting ? (

@@ -82,10 +82,16 @@ export interface BabyListItem {
     };
   }[];
   packagePurchases: {
+    id: string;
     remainingSessions: number;
+    totalSessions: number;
+    usedSessions: number;
     isActive: boolean;
     package: {
+      id: string;
       name: string;
+      categoryId: string | null;
+      duration: number;
     };
   }[];
   _count: {
@@ -217,10 +223,18 @@ export const babyService = {
           },
           packagePurchases: {
             where: { isActive: true },
-            include: {
+            select: {
+              id: true,
+              remainingSessions: true,
+              totalSessions: true,
+              usedSessions: true,
+              isActive: true,
               package: {
                 select: {
+                  id: true,
                   name: true,
+                  categoryId: true,
+                  duration: true,
                 },
               },
             },

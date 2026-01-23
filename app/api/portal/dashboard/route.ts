@@ -110,10 +110,15 @@ export async function GET() {
         remainingSessions: babyRemainingSessions,
         packages: baby.packagePurchases.map((pkg) => ({
           id: pkg.id,
-          name: pkg.package.name,
           totalSessions: pkg.totalSessions,
           usedSessions: pkg.usedSessions,
           remainingSessions: pkg.remainingSessions,
+          package: {
+            id: pkg.package.id,
+            name: pkg.package.name,
+            categoryId: pkg.package.categoryId,
+            duration: pkg.package.duration,
+          },
         })),
         nextAppointment: nextAppointment
           ? {

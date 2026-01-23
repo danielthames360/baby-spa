@@ -15,7 +15,8 @@ export default function LocaleHomePage() {
 
     // Redirect based on session
     if (!session) {
-      router.replace('/login');
+      // Por defecto, redirigir a portal de padres (para usuarios externos)
+      router.replace('/portal/login');
       return;
     }
 
@@ -32,7 +33,7 @@ export default function LocaleHomePage() {
         router.replace('/portal/dashboard');
         break;
       default:
-        router.replace('/login');
+        router.replace('/portal/login');
     }
   }, [session, status, router]);
 

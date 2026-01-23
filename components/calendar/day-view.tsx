@@ -38,6 +38,10 @@ interface Appointment {
       name: string;
     };
   } | null;
+  selectedPackage?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface DayViewProps {
@@ -301,7 +305,7 @@ export function DayView({
                               )}
                             >
                               <Package className="h-3 w-3" />
-                              {apt.packagePurchase?.package.name || t("calendar.sessionToDefine")}
+                              {apt.packagePurchase?.package.name || apt.selectedPackage?.name || t("calendar.sessionToDefine")}
                             </span>
 
                             {/* Status badge */}

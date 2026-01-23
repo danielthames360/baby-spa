@@ -1,11 +1,59 @@
+"use client";
+
+import { useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { TherapistNav } from "@/components/layout/therapist-nav";
 import { FloatingBubbles } from "@/components/ui/floating-bubbles";
+import { Loader2 } from "lucide-react";
 
 interface TherapistLayoutProps {
   children: React.ReactNode;
 }
 
 export default function TherapistLayout({ children }: TherapistLayoutProps) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "loading") return;
+
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    // Solo THERAPIST puede acceder a esta sección
+    if (session.user.role !== "THERAPIST") {
+      // Redirigir según el rol
+      if (session.user.role === "ADMIN" || session.user.role === "RECEPTION") {
+        router.replace("/admin/dashboard");
+      } else if (session.user.role === "PARENT") {
+        router.replace("/portal/dashboard");
+      } else {
+        router.replace("/login");
+      }
+    }
+  }, [session, status, router]);
+
+  // Mostrar loading mientras verifica sesión
+  if (status === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+      </div>
+    );
+  }
+
+  // No renderizar si no está autorizado
+  if (!session || session.user.role !== "THERAPIST") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
       {/* Decorative Background Blurs */}

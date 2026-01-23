@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   Dialog,
@@ -20,9 +20,14 @@ import {
   Loader2,
   AlertCircle,
   User,
-  CheckCircle,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  PackageSelector,
+  type PackageData,
+  type PackagePurchaseData,
+} from "@/components/packages/package-selector";
 
 interface BabySearchResult {
   id: string;
@@ -40,9 +45,14 @@ interface BabySearchResult {
   packagePurchases: {
     id: string;
     remainingSessions: number;
+    totalSessions: number;
+    usedSessions: number;
     isActive: boolean;
     package: {
+      id: string;
       name: string;
+      categoryId: string | null;
+      duration: number;
     };
   }[];
 }
@@ -69,10 +79,38 @@ export function AppointmentDialog({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BabySearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedBaby, setSelectedBaby] = useState<BabySearchResult | null>(null);
+  const [selectedBaby, setSelectedBaby] = useState<BabySearchResult | null>(
+    null,
+  );
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
+    null,
+  );
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(
+    null,
+  );
+  const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  // Ref for scrollable content
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom when catalog expands
+  const handleCatalogToggle = useCallback((expanded: boolean) => {
+    if (expanded && scrollContainerRef.current) {
+      // Small delay to allow the DOM to update
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
+    }
+  }, []);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -82,8 +120,61 @@ export function AppointmentDialog({
       setSelectedBaby(null);
       setNotes("");
       setError(null);
+      setSelectedPackageId(null);
+      setSelectedPurchaseId(null);
     }
   }, [open]);
+
+  // Fetch package catalog
+  const fetchCatalog = useCallback(async () => {
+    setLoadingCatalog(true);
+    try {
+      const response = await fetch("/api/packages?active=true");
+      const data = await response.json();
+      if (response.ok) {
+        setCatalogPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error("Error fetching package catalog:", error);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  }, []);
+
+  // Fetch catalog when dialog opens
+  useEffect(() => {
+    if (open && catalogPackages.length === 0) {
+      fetchCatalog();
+    }
+  }, [open, fetchCatalog, catalogPackages.length]);
+
+  // Handle package selection
+  const handlePackageSelect = (
+    packageId: string | null,
+    purchaseId: string | null,
+  ) => {
+    setSelectedPackageId(packageId);
+    setSelectedPurchaseId(purchaseId);
+  };
+
+  // Transform baby packages to PackageSelector format
+  const getBabyPackagesForSelector = (): PackagePurchaseData[] => {
+    if (!selectedBaby) return [];
+    return selectedBaby.packagePurchases
+      .filter((p) => p.isActive && p.remainingSessions > 0)
+      .map((pkg) => ({
+        id: pkg.id,
+        remainingSessions: pkg.remainingSessions,
+        totalSessions: pkg.totalSessions,
+        usedSessions: pkg.usedSessions,
+        package: {
+          id: pkg.package.id,
+          name: pkg.package.name,
+          categoryId: pkg.package.categoryId,
+          duration: pkg.package.duration,
+        },
+      }));
+  };
 
   // Search babies
   const searchBabies = useCallback(async (query: string) => {
@@ -94,7 +185,9 @@ export function AppointmentDialog({
 
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/babies?search=${encodeURIComponent(query)}&limit=5`);
+      const response = await fetch(
+        `/api/babies?search=${encodeURIComponent(query)}&limit=5`,
+      );
       const data = await response.json();
       setSearchResults(data.babies || []);
     } catch (err) {
@@ -115,14 +208,26 @@ export function AppointmentDialog({
     return () => clearTimeout(timer);
   }, [searchQuery, searchBabies]);
 
-  // Get active package for selected baby
-  const activePackage = selectedBaby?.packagePurchases.find(
-    (p) => p.isActive && p.remainingSessions > 0
-  );
+  // Auto-select package when baby is selected
+  useEffect(() => {
+    if (selectedBaby) {
+      const activePackages = selectedBaby.packagePurchases.filter(
+        (p) => p.isActive && p.remainingSessions > 0,
+      );
+      if (activePackages.length === 1) {
+        setSelectedPurchaseId(activePackages[0].id);
+        setSelectedPackageId(activePackages[0].package.id);
+      } else {
+        setSelectedPurchaseId(null);
+        setSelectedPackageId(null);
+      }
+    }
+  }, [selectedBaby]);
 
   // Handle form submission
   const handleSubmit = async () => {
     if (!selectedBaby) return;
+    if (!selectedPackageId && !selectedPurchaseId) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -133,6 +238,8 @@ export function AppointmentDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           babyId: selectedBaby.id,
+          packagePurchaseId: selectedPurchaseId,
+          packageId: selectedPackageId,
           // Use local date format to avoid timezone issues
           date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
           startTime: time,
@@ -169,14 +276,14 @@ export function AppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-white/50 bg-white/95 p-0 backdrop-blur-md">
+        <DialogHeader className="shrink-0 border-b border-gray-100 px-6 py-4">
           <DialogTitle className="text-xl font-bold text-gray-800">
             {t("calendar.newAppointment")}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div ref={scrollContainerRef} className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
           {/* Date & Time display */}
           <div className="flex gap-4 rounded-xl bg-teal-50 p-4">
             <div className="flex items-center gap-2">
@@ -194,7 +301,9 @@ export function AppointmentDialog({
           {/* Baby search */}
           {!selectedBaby ? (
             <div className="space-y-3">
-              <Label className="text-gray-700">{t("calendar.searchBaby")}</Label>
+              <Label className="text-gray-700">
+                {t("calendar.searchBaby")}
+              </Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
@@ -212,9 +321,10 @@ export function AppointmentDialog({
               {searchResults.length > 0 && (
                 <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-gray-100 p-2">
                   {searchResults.map((baby) => {
-                    const babyActivePackage = baby.packagePurchases.find(
-                      (p) => p.isActive && p.remainingSessions > 0
-                    );
+                    // Sum all remaining sessions from active packages
+                    const totalRemainingSessions = baby.packagePurchases
+                      .filter((p) => p.isActive && p.remainingSessions > 0)
+                      .reduce((sum, p) => sum + p.remainingSessions, 0);
                     const primaryParent = baby.parents.find((p) => p.isPrimary);
 
                     return (
@@ -228,7 +338,9 @@ export function AppointmentDialog({
                             <Baby className="h-5 w-5 text-teal-600" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-800">{baby.name}</p>
+                            <p className="font-medium text-gray-800">
+                              {baby.name}
+                            </p>
                             {primaryParent && (
                               <p className="text-sm text-gray-500">
                                 {primaryParent.parent.name}
@@ -236,9 +348,10 @@ export function AppointmentDialog({
                             )}
                           </div>
                         </div>
-                        {babyActivePackage ? (
+                        {totalRemainingSessions > 0 ? (
                           <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
-                            {babyActivePackage.remainingSessions} {t("common.sessionsUnit")}
+                            {totalRemainingSessions}{" "}
+                            {t("common.sessionsUnit")}
                           </span>
                         ) : (
                           <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
@@ -251,11 +364,13 @@ export function AppointmentDialog({
                 </div>
               )}
 
-              {searchQuery.length >= 2 && searchResults.length === 0 && !isSearching && (
-                <p className="text-center text-sm text-gray-500">
-                  {t("common.noResults")}
-                </p>
-              )}
+              {searchQuery.length >= 2 &&
+                searchResults.length === 0 &&
+                !isSearching && (
+                  <p className="text-center text-sm text-gray-500">
+                    {t("common.noResults")}
+                  </p>
+                )}
             </div>
           ) : (
             /* Selected baby */
@@ -266,11 +381,16 @@ export function AppointmentDialog({
                     <Baby className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800">{selectedBaby.name}</p>
+                    <p className="font-semibold text-gray-800">
+                      {selectedBaby.name}
+                    </p>
                     {selectedBaby.parents.find((p) => p.isPrimary) && (
                       <p className="flex items-center gap-1 text-sm text-gray-500">
                         <User className="h-3 w-3" />
-                        {selectedBaby.parents.find((p) => p.isPrimary)?.parent.name}
+                        {
+                          selectedBaby.parents.find((p) => p.isPrimary)?.parent
+                            .name
+                        }
                       </p>
                     )}
                   </div>
@@ -285,32 +405,34 @@ export function AppointmentDialog({
                 </Button>
               </div>
 
-              {/* Package info */}
-              {activePackage ? (
-                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-4">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
-                  <div>
-                    <p className="font-medium text-emerald-800">
-                      {activePackage.package.name}
-                    </p>
-                    <p className="text-sm text-emerald-600">
-                      {activePackage.remainingSessions} {t("calendar.sessionsAvailable")}
-                    </p>
+              {/* Package selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Package className="h-4 w-4" />
+                  {t("packages.selectPackage")}
+                </Label>
+                {loadingCatalog ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
-                  <AlertCircle className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-blue-800">
-                      {t("calendar.trialSession")}
-                    </p>
-                    <p className="text-sm text-blue-600">
-                      {t("calendar.trialSessionDesc")}
-                    </p>
-                  </div>
-                </div>
-              )}
+                ) : (
+                  <PackageSelector
+                    babyId={selectedBaby.id}
+                    packages={catalogPackages}
+                    babyPackages={getBabyPackagesForSelector()}
+                    selectedPackageId={selectedPackageId}
+                    selectedPurchaseId={selectedPurchaseId}
+                    onSelectPackage={handlePackageSelect}
+                    onCatalogToggle={handleCatalogToggle}
+                    showCategories={true}
+                    showPrices={true}
+                    showExistingFirst={true}
+                    allowNewPackage={true}
+                    compact={true}
+                    showProvisionalMessage={true}
+                  />
+                )}
+              </div>
 
               {/* Notes */}
               <div className="space-y-2">
@@ -333,7 +455,10 @@ export function AppointmentDialog({
             </div>
           )}
 
-          {/* Actions */}
+        </div>
+
+        {/* Actions - Fixed footer */}
+        <div className="shrink-0 border-t border-gray-100 px-6 py-4">
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
@@ -344,10 +469,16 @@ export function AppointmentDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!selectedBaby || isSubmitting}
+              disabled={
+                !selectedBaby ||
+                isSubmitting ||
+                (!selectedPackageId && !selectedPurchaseId)
+              }
               className={cn(
                 "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
-                !selectedBaby && "opacity-50"
+                (!selectedBaby ||
+                  (!selectedPackageId && !selectedPurchaseId)) &&
+                  "opacity-50",
               )}
             >
               {isSubmitting ? (

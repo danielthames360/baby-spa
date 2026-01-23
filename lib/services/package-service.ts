@@ -6,9 +6,17 @@ export interface PackageWithPurchases {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
+  categoryRef?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
   sessionCount: number;
   basePrice: Prisma.Decimal;
+  duration: number;
+  requiresAdvancePayment: boolean;
+  advancePaymentAmount: Prisma.Decimal | null;
   isActive: boolean;
   sortOrder: number;
   createdAt: Date;
@@ -21,9 +29,12 @@ export interface PackageWithPurchases {
 export interface PackageCreateInput {
   name: string;
   description?: string;
-  category?: string | null;
+  categoryId?: string | null;
   sessionCount: number;
   basePrice: number;
+  duration?: number;
+  requiresAdvancePayment?: boolean;
+  advancePaymentAmount?: number | null;
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -45,7 +56,12 @@ export interface PackagePurchaseWithDetails {
   package: {
     id: string;
     name: string;
-    category?: string | null;
+    categoryId?: string | null;
+    categoryRef?: {
+      id: string;
+      name: string;
+      color: string | null;
+    } | null;
   };
   payment: {
     id: string;
@@ -71,8 +87,18 @@ export const packageService = {
   async list(includeInactive = false): Promise<PackageWithPurchases[]> {
     const packages = await prisma.package.findMany({
       where: includeInactive ? {} : { isActive: true },
-      orderBy: { sortOrder: "asc" },
+      orderBy: [
+        { sortOrder: "asc" },
+        { name: "asc" },
+      ],
       include: {
+        categoryRef: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
         _count: {
           select: { purchases: true },
         },
@@ -87,6 +113,13 @@ export const packageService = {
     const pkg = await prisma.package.findUnique({
       where: { id },
       include: {
+        categoryRef: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
         _count: {
           select: { purchases: true },
         },
@@ -102,13 +135,23 @@ export const packageService = {
       data: {
         name: data.name,
         description: data.description,
-        category: data.category,
+        categoryId: data.categoryId,
         sessionCount: data.sessionCount,
         basePrice: data.basePrice,
+        duration: data.duration ?? 60,
+        requiresAdvancePayment: data.requiresAdvancePayment ?? false,
+        advancePaymentAmount: data.advancePaymentAmount,
         isActive: data.isActive ?? true,
         sortOrder: data.sortOrder ?? 0,
       },
       include: {
+        categoryRef: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
         _count: {
           select: { purchases: true },
         },
@@ -128,13 +171,23 @@ export const packageService = {
       data: {
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
-        ...(data.category !== undefined && { category: data.category }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
         ...(data.sessionCount && { sessionCount: data.sessionCount }),
         ...(data.basePrice && { basePrice: data.basePrice }),
+        ...(data.duration !== undefined && { duration: data.duration }),
+        ...(data.requiresAdvancePayment !== undefined && { requiresAdvancePayment: data.requiresAdvancePayment }),
+        ...(data.advancePaymentAmount !== undefined && { advancePaymentAmount: data.advancePaymentAmount }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
       },
       include: {
+        categoryRef: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
         _count: {
           select: { purchases: true },
         },
@@ -246,7 +299,14 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            category: true,
+            categoryId: true,
+            categoryRef: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
           },
         },
         payment: true,
@@ -272,7 +332,14 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            category: true,
+            categoryId: true,
+            categoryRef: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
           },
         },
         payment: true,
@@ -396,7 +463,14 @@ export const packageService = {
           select: {
             id: true,
             name: true,
-            category: true,
+            categoryId: true,
+            categoryRef: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
           },
         },
         payment: true,

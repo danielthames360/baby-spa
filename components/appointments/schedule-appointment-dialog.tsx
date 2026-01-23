@@ -227,16 +227,16 @@ export function ScheduleAppointmentDialog({
             </div>
           </div>
 
-          {/* Info when no package - trial session */}
+          {/* Info when no package - uses default package */}
           {!activePackage && (
             <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
               <AlertCircle className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="font-medium text-blue-800">
-                  {t("calendar.trialSession")}
+                  {t("calendar.defaultPackage")}
                 </p>
                 <p className="text-sm text-blue-600">
-                  {t("calendar.trialSessionDesc")}
+                  {t("calendar.defaultPackageDesc")}
                 </p>
               </div>
             </div>

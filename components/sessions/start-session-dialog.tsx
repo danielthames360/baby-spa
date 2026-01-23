@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Loader2,
   AlertCircle,
@@ -25,9 +24,12 @@ import {
   Baby,
   User,
   Package,
-  Sparkles,
-  Info,
 } from "lucide-react";
+import {
+  PackageSelector,
+  type PackageData,
+  type PackagePurchaseData,
+} from "@/components/packages/package-selector";
 
 interface StartSessionDialogProps {
   open: boolean;
@@ -36,7 +38,8 @@ interface StartSessionDialogProps {
   babyId: string;
   babyName: string;
   startTime: string;
-  preselectedPackageId?: string; // Package pre-selected in appointment
+  preselectedPurchaseId?: string; // Existing package purchase pre-selected
+  preselectedCatalogPackageId?: string; // Catalog package pre-selected (new purchase)
   onSuccess?: () => void;
 }
 
@@ -53,7 +56,8 @@ interface PackagePurchase {
   package: {
     id: string;
     name: string;
-    category: string | null;
+    categoryId: string | null;
+    duration: number;
   };
 }
 
@@ -64,19 +68,26 @@ export function StartSessionDialog({
   babyId,
   babyName,
   startTime,
-  preselectedPackageId,
+  preselectedPurchaseId,
+  preselectedCatalogPackageId,
   onSuccess,
 }: StartSessionDialogProps) {
   const t = useTranslations();
 
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [packages, setPackages] = useState<PackagePurchase[]>([]);
+  const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
   const [selectedTherapist, setSelectedTherapist] = useState<string>("");
-  const [selectedPackage, setSelectedPackage] = useState<string>(""); // "" = auto, "trial" = trial session
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
   const [isLoadingTherapists, setIsLoadingTherapists] = useState(true);
   const [isLoadingPackages, setIsLoadingPackages] = useState(true);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Ref for scrollable content
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchTherapists = useCallback(async () => {
     setIsLoadingTherapists(true);
@@ -104,23 +115,34 @@ export function StartSessionDialog({
         setPackages(availablePackages);
 
         // Auto-select logic:
-        // 1. If preselectedPackageId is provided and exists in available packages, use it
-        // 2. If no packages, auto-select trial
-        // 3. Otherwise, user must choose (including trial option)
-        if (preselectedPackageId) {
+        // 1. If preselectedPurchaseId is provided and exists in available packages, use it
+        // 2. If preselectedCatalogPackageId is provided (new package from catalog), use it
+        // 3. If only one package, auto-select it
+        // 4. Otherwise, user must choose
+        if (preselectedPurchaseId) {
           const preselected = availablePackages.find(
-            (pkg: PackagePurchase) => pkg.id === preselectedPackageId
+            (pkg: PackagePurchase) => pkg.id === preselectedPurchaseId
           );
           if (preselected) {
-            setSelectedPackage(preselectedPackageId);
+            setSelectedPurchaseId(preselectedPurchaseId);
+            setSelectedPackageId(preselected.package.id);
+          } else if (availablePackages.length === 1) {
+            setSelectedPurchaseId(availablePackages[0].id);
+            setSelectedPackageId(availablePackages[0].package.id);
           } else {
-            // Preselected package not found (might have been used up), fallback to trial
-            setSelectedPackage("trial");
+            setSelectedPurchaseId(null);
+            setSelectedPackageId(null);
           }
-        } else if (availablePackages.length === 0) {
-          setSelectedPackage("trial");
+        } else if (preselectedCatalogPackageId) {
+          // A catalog package was preselected - set only packageId (no purchaseId)
+          setSelectedPackageId(preselectedCatalogPackageId);
+          setSelectedPurchaseId(null);
+        } else if (availablePackages.length === 1) {
+          setSelectedPurchaseId(availablePackages[0].id);
+          setSelectedPackageId(availablePackages[0].package.id);
         } else {
-          setSelectedPackage(""); // User must choose between packages and trial
+          setSelectedPurchaseId(null);
+          setSelectedPackageId(null);
         }
       }
     } catch (error) {
@@ -128,17 +150,78 @@ export function StartSessionDialog({
     } finally {
       setIsLoadingPackages(false);
     }
-  }, [babyId, preselectedPackageId]);
+  }, [babyId, preselectedPurchaseId, preselectedCatalogPackageId]);
+
+  const fetchCatalog = useCallback(async () => {
+    setIsLoadingCatalog(true);
+    try {
+      const response = await fetch("/api/packages?active=true");
+      const data = await response.json();
+      if (response.ok) {
+        setCatalogPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error("Error fetching package catalog:", error);
+    } finally {
+      setIsLoadingCatalog(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (open) {
       setSelectedTherapist("");
-      setSelectedPackage("");
+      setSelectedPackageId(null);
+      setSelectedPurchaseId(null);
       setError(null);
       fetchTherapists();
       fetchPackages();
+      fetchCatalog();
     }
-  }, [open, fetchTherapists, fetchPackages]);
+  }, [open, fetchTherapists, fetchPackages, fetchCatalog]);
+
+  // Scroll to bottom when catalog package is preselected and loading is done
+  useEffect(() => {
+    if (
+      preselectedCatalogPackageId &&
+      !isLoadingPackages &&
+      !isLoadingCatalog &&
+      scrollContainerRef.current
+    ) {
+      // Small delay to allow DOM to update
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 150);
+    }
+  }, [preselectedCatalogPackageId, isLoadingPackages, isLoadingCatalog]);
+
+  // Handle package selection from PackageSelector
+  const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
+    setSelectedPackageId(packageId);
+    setSelectedPurchaseId(purchaseId);
+  };
+
+  // Transform packages to PackageSelector format
+  const getBabyPackagesForSelector = (): PackagePurchaseData[] => {
+    return packages
+      .filter(p => p.remainingSessions > 0)
+      .map((pkg) => ({
+        id: pkg.id,
+        remainingSessions: pkg.remainingSessions,
+        totalSessions: pkg.totalSessions,
+        usedSessions: pkg.usedSessions,
+        package: {
+          id: pkg.package.id,
+          name: pkg.package.name,
+          categoryId: pkg.package.categoryId,
+          duration: pkg.package.duration,
+        },
+      }));
+  };
 
   const handleSubmit = async () => {
     if (!selectedTherapist) {
@@ -146,8 +229,8 @@ export function StartSessionDialog({
       return;
     }
 
-    // If packages available and no selection, show error
-    if (packages.length >= 1 && !selectedPackage) {
+    // Package is required for starting a session
+    if (!selectedPurchaseId && !selectedPackageId) {
       setError(t("session.errors.SELECT_PACKAGE"));
       return;
     }
@@ -157,12 +240,7 @@ export function StartSessionDialog({
 
     try {
       // Determine packagePurchaseId
-      // If user selected a package (not trial), use that package
-      // If trial or no packages, packagePurchaseId stays null
-      let packagePurchaseId: string | null = null;
-      if (selectedPackage && selectedPackage !== "trial") {
-        packagePurchaseId = selectedPackage;
-      }
+      const packagePurchaseId = selectedPurchaseId || null;
 
       const response = await fetch("/api/sessions/start", {
         method: "POST",
@@ -171,6 +249,7 @@ export function StartSessionDialog({
           appointmentId,
           therapistId: selectedTherapist,
           packagePurchaseId,
+          packageId: selectedPackageId,
         }),
       });
 
@@ -192,15 +271,12 @@ export function StartSessionDialog({
     }
   };
 
-  const isLoading = isLoadingTherapists || isLoadingPackages;
-  // Show package selection when there are packages available (user chooses between packages + trial)
-  // When no packages, just show trial info (no selection needed)
-  const showPackageSelection = packages.length >= 1 || packages.length === 0;
+  const isLoading = isLoadingTherapists || isLoadingPackages || isLoadingCatalog;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-white/50 bg-white/95 p-0 backdrop-blur-md">
+        <DialogHeader className="shrink-0 border-b border-gray-100 px-6 py-4">
           <DialogTitle className="flex items-center gap-3 text-xl font-bold text-gray-800">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
               <Play className="h-5 w-5 text-white" />
@@ -209,7 +285,7 @@ export function StartSessionDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <div ref={scrollContainerRef} className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
           {/* Appointment info */}
           <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500">
@@ -250,81 +326,29 @@ export function StartSessionDialog({
             )}
           </div>
 
-          {/* Package selection (only show if multiple packages or no packages) */}
-          {!isLoadingPackages && showPackageSelection && (
+          {/* Package selection */}
+          {!isLoadingPackages && !isLoadingCatalog && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-gray-700">
                 <Package className="h-4 w-4" />
                 {t("session.selectPackage")}
               </Label>
 
-              {packages.length === 0 ? (
-                /* No packages - show trial session info */
-                <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4">
-                  <Info className="h-5 w-5 flex-shrink-0 text-amber-600" />
-                  <div>
-                    <p className="font-medium text-amber-800">
-                      {t("session.trialSession")}
-                    </p>
-                    <p className="text-sm text-amber-700">
-                      {t("session.trialSessionDescription")}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                /* Multiple packages - show selection */
-                <RadioGroup
-                  value={selectedPackage}
-                  onValueChange={setSelectedPackage}
-                  className="space-y-2"
-                >
-                  {packages.map((pkg) => (
-                    <label
-                      key={pkg.id}
-                      className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-all ${
-                        selectedPackage === pkg.id
-                          ? "border-teal-500 bg-teal-50"
-                          : "border-gray-100 hover:border-teal-200 hover:bg-teal-50/50"
-                      }`}
-                    >
-                      <RadioGroupItem value={pkg.id} id={pkg.id} />
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">
-                          {pkg.package.name}
-                        </p>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Sparkles className="h-3 w-3 text-teal-500" />
-                          <span>
-                            {t("session.sessionsRemaining", {
-                              remaining: pkg.remainingSessions,
-                              total: pkg.totalSessions,
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-
-                  {/* Trial session option */}
-                  <label
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-all ${
-                      selectedPackage === "trial"
-                        ? "border-amber-500 bg-amber-50"
-                        : "border-gray-100 hover:border-amber-200 hover:bg-amber-50/50"
-                    }`}
-                  >
-                    <RadioGroupItem value="trial" id="trial" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">
-                        {t("session.trialSession")}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {t("session.trialSessionShort")}
-                      </p>
-                    </div>
-                  </label>
-                </RadioGroup>
-              )}
+              <PackageSelector
+                babyId={babyId}
+                packages={catalogPackages}
+                babyPackages={getBabyPackagesForSelector()}
+                selectedPackageId={selectedPackageId}
+                selectedPurchaseId={selectedPurchaseId}
+                onSelectPackage={handlePackageSelect}
+                showCategories={true}
+                showPrices={false}
+                showExistingFirst={true}
+                allowNewPackage={true}
+                compact={true}
+                showProvisionalMessage={false}
+                forceShowCatalog={!!preselectedCatalogPackageId}
+              />
             </div>
           )}
 
@@ -335,9 +359,11 @@ export function StartSessionDialog({
               {error}
             </div>
           )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
+        {/* Actions - Fixed footer */}
+        <div className="shrink-0 border-t border-gray-100 px-6 py-4">
+          <div className="flex justify-end gap-3">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
@@ -351,7 +377,7 @@ export function StartSessionDialog({
                 isSubmitting ||
                 isLoading ||
                 !selectedTherapist ||
-                (packages.length >= 1 && !selectedPackage)
+                (!selectedPackageId && !selectedPurchaseId)
               }
               className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-6 text-white shadow-lg shadow-blue-300/50 transition-all hover:from-blue-600 hover:to-cyan-600"
             >

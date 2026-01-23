@@ -9,6 +9,11 @@ export default function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const host = request.headers.get("host") || "";
 
+  // Redirigir ruta raíz a /portal/login (para usuarios externos)
+  if (pathname === "/" || pathname === "/es" || pathname === "/pt-BR") {
+    return NextResponse.redirect(new URL("/portal/login", request.url));
+  }
+
   // Excluir rutas públicas de registro del middleware i18n
   if (pathname.startsWith("/registro")) {
     // Solo agregar headers de país/base de datos

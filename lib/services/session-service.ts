@@ -7,7 +7,8 @@ import { packageService } from "./package-service";
 interface StartSessionInput {
   appointmentId: string;
   therapistId: string;
-  packagePurchaseId?: string | null; // If null/undefined: trial session, if provided: use that package
+  packagePurchaseId?: string | null; // PackagePurchase ID to link the session to (can be null if using default package at checkout)
+  packageId?: string | null; // Catalog package ID (provisional selection, will be purchased at checkout)
   userId: string;
   userName: string;
 }
@@ -22,6 +23,7 @@ interface AddProductInput {
 interface CompleteSessionInput {
   sessionId: string;
   packageId?: string; // Package to sell (if baby has no active package)
+  packagePurchaseId?: string; // Existing package purchase to use for this session
   paymentMethod?: "CASH" | "TRANSFER" | "CARD" | "OTHER";
   paymentNotes?: string;
   discountAmount?: number;
@@ -74,10 +76,10 @@ export const sessionService = {
    * - Create session record
    * - If packagePurchaseId is provided, link to that package
    * - If packagePurchaseId is null/undefined but appointment has one pre-selected, use that
-   * - If both are null/undefined, it's a trial session ("sesión a definir")
+   * - If both are null/undefined, package will be selected at checkout
    */
   async startSession(input: StartSessionInput) {
-    const { appointmentId, therapistId, packagePurchaseId, userId, userName } = input;
+    const { appointmentId, therapistId, packagePurchaseId, packageId, userId, userName } = input;
 
     // Get appointment with baby info
     const appointment = await prisma.appointment.findUnique({
@@ -111,9 +113,12 @@ export const sessionService = {
 
     // Determine which packagePurchaseId to use:
     // 1. If explicitly provided in input, use that
-    // 2. Otherwise, use the one pre-selected in the appointment (from Portal booking)
-    // 3. If both are null, it's a trial session ("sesión a definir")
-    const effectivePackagePurchaseId = packagePurchaseId ?? appointment.packagePurchaseId;
+    // 2. If a catalog package (packageId) was selected, don't use any existing package
+    // 3. Otherwise, use the one pre-selected in the appointment (from booking)
+    // 4. If both are null, package will be selected at checkout
+    const effectivePackagePurchaseId = packagePurchaseId
+      ? packagePurchaseId
+      : (packageId ? null : appointment.packagePurchaseId);
 
     // Get the selected package purchase (if any)
     let selectedPackage = null;
@@ -142,16 +147,25 @@ export const sessionService = {
     // Create session and update appointment in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Update appointment
+      // If a catalog packageId is provided (not an existing purchase), save it as selectedPackageId
+      // If an existing package purchase is selected, update packagePurchaseId and clear selectedPackageId
       const updatedAppointment = await tx.appointment.update({
         where: { id: appointmentId },
         data: {
           status: "IN_PROGRESS",
           therapistId,
+          // Update selectedPackageId if a catalog package was chosen
+          ...(packageId && !packagePurchaseId ? { selectedPackageId: packageId } : {}),
+          // If using an existing purchase, update packagePurchaseId and clear selectedPackageId
+          ...(packagePurchaseId ? {
+            packagePurchaseId: packagePurchaseId,
+            selectedPackageId: null
+          } : {}),
         },
       });
 
       // Create session
-      // Note: packagePurchaseId can be null for trial sessions
+      // Note: packagePurchaseId can be null initially, package is selected at checkout
       const session = await tx.session.create({
         data: {
           appointmentId,
@@ -181,7 +195,8 @@ export const sessionService = {
             status: "IN_PROGRESS",
             therapistId,
             packagePurchaseId: selectedPackage?.id || null,
-            isTrialSession: !selectedPackage,
+            selectedPackageId: packageId || null,
+            hasPreselectedPackage: !!selectedPackage,
           },
         },
       });
@@ -289,7 +304,7 @@ export const sessionService = {
    * - Mark as COMPLETED
    */
   async completeSession(input: CompleteSessionInput) {
-    const { sessionId, packageId, paymentMethod, paymentNotes, discountAmount = 0, discountReason, userId, userName } = input;
+    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount = 0, discountReason, userId, userName } = input;
 
     // Get session with all relations
     const session = await prisma.session.findUnique({
@@ -329,9 +344,24 @@ export const sessionService = {
     const babyId = session.appointment.babyId;
 
     // Determine which package to use for deduction:
-    // 1. First, use the package linked to the session (pre-selected at booking/start)
-    // 2. Otherwise, fall back to any active package with remaining sessions
-    const sessionPackage = session.packagePurchase;
+    // Priority order:
+    // 1. packagePurchaseId provided at checkout (user selected existing package)
+    // 2. Package linked to the session (pre-selected at booking/start)
+    // 3. Any active package with remaining sessions
+    // 4. Or sell a new package if packageId is provided
+
+    // If packagePurchaseId is provided, fetch that specific package purchase
+    let selectedPackagePurchase = null;
+    if (packagePurchaseId) {
+      selectedPackagePurchase = await prisma.packagePurchase.findUnique({
+        where: { id: packagePurchaseId },
+      });
+      if (selectedPackagePurchase && selectedPackagePurchase.remainingSessions <= 0) {
+        throw new Error("PACKAGE_NO_REMAINING_SESSIONS");
+      }
+    }
+
+    const sessionPackage = selectedPackagePurchase || session.packagePurchase;
     const activePackage = !sessionPackage ? await packageService.getActivePackageForBaby(babyId) : null;
     const hasActivePackageWithSessions =
       (sessionPackage && sessionPackage.remainingSessions > 0) ||
@@ -348,9 +378,11 @@ export const sessionService = {
     }
 
     // Get package price if selling a new package
+    // Sell if: packageId is provided AND no specific existing package was selected (packagePurchaseId)
+    // This handles the case when user selects a catalog package at checkout
     let packageAmount = new Prisma.Decimal(0);
     let packageToSell = null;
-    if (packageId && !hasActivePackageWithSessions) {
+    if (packageId && !packagePurchaseId) {
       packageToSell = await prisma.package.findUnique({
         where: { id: packageId },
       });
@@ -726,6 +758,12 @@ export const sessionService = {
             },
           },
         },
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         startTime: "asc",
@@ -771,6 +809,12 @@ export const sessionService = {
                 name: true,
               },
             },
+          },
+        },
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -843,6 +887,7 @@ export const sessionService = {
               },
             },
             therapist: true,
+            selectedPackage: true,
           },
         },
         baby: true,

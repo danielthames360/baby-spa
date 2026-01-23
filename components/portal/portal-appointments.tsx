@@ -1,20 +1,55 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useTranslations } from "next-intl";
+
+// Hook for mobile fullscreen modal (iOS Safari compatible)
+function useMobileViewport() {
+  const [styles, setStyles] = useState<{ height?: number; isMobile: boolean }>({ isMobile: false });
+
+  useLayoutEffect(() => {
+    function update() {
+      const isMobile = window.innerWidth < 640;
+      // Use visualViewport for most accurate height (handles iOS Safari toolbar)
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      setStyles({ height, isMobile });
+    }
+
+    update();
+
+    // visualViewport is the most reliable for iOS Safari
+    const viewport = window.visualViewport;
+    if (viewport) {
+      viewport.addEventListener('resize', update);
+      viewport.addEventListener('scroll', update);
+    }
+    window.addEventListener('orientationchange', update);
+
+    return () => {
+      if (viewport) {
+        viewport.removeEventListener('resize', update);
+        viewport.removeEventListener('scroll', update);
+      }
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  return styles;
+}
 import {
   Calendar,
   Clock,
   Baby,
   Plus,
   AlertTriangle,
+  AlertCircle,
   Phone,
   Loader2,
   ChevronLeft,
   ChevronRight,
   CheckCircle,
-  XCircle,
   Package,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,20 +57,27 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { cn } from "@/lib/utils";
+import {
+  PackageSelector,
+  type PackageData,
+  type PackagePurchaseData,
+} from "@/components/packages/package-selector";
 
 export interface BabyPackage {
   id: string;
-  name: string;
   remainingSessions: number;
+  totalSessions: number;
+  usedSessions: number;
+  package: {
+    id: string;
+    name: string;
+    categoryId: string | null;
+    duration: number;
+  };
 }
 
 export interface ScheduleBabyData {
@@ -68,6 +110,10 @@ interface Appointment {
     package: {
       name: string;
     };
+  } | null;
+  selectedPackage: {
+    id: string;
+    name: string;
   } | null;
 }
 
@@ -134,7 +180,7 @@ export function PortalAppointments() {
     );
   };
 
-  // All active babies can schedule (even without packages - "session to define")
+  // All active babies can schedule (package is selected during booking flow)
   const canScheduleBabies = babies;
 
   if (loading) {
@@ -295,10 +341,15 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast }: Ap
               <Package className="h-3 w-3" />
               {appointment.packagePurchase.package.name}
             </span>
-          ) : (
+          ) : appointment.selectedPackage ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
               <Package className="h-3 w-3" />
-              {t("portal.appointments.sessionToDefine")}
+              {appointment.selectedPackage.name}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
+              <Package className="h-3 w-3" />
+              {t("portal.appointments.provisional")}
             </span>
           )}
         </div>
@@ -317,6 +368,9 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast }: Ap
   );
 }
 
+// Wizard step type
+type WizardStep = 'baby' | 'package' | 'datetime' | 'success';
+
 export interface ScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -327,42 +381,86 @@ export interface ScheduleDialogProps {
 
 export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselectedBabyId }: ScheduleDialogProps) {
   const t = useTranslations();
-  const [step, setStep] = useState(1);
+
+  // Mobile viewport handling (iOS Safari compatible)
+  const { height: viewportHeight, isMobile } = useMobileViewport();
+
+  // Wizard state
+  const [step, setStep] = useState<WizardStep>('baby');
   const [selectedBaby, setSelectedBaby] = useState<BabyData | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<string>("");
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Auto-select baby when dialog opens (if only 1 baby OR preselected)
+  // Animation trigger for button
+  const [buttonAnimated, setButtonAnimated] = useState(false);
+
+  // Ref for scrollable container (auto-scroll on mobile)
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch package catalog for PackageSelector
+  const fetchCatalog = useCallback(async () => {
+    setLoadingCatalog(true);
+    try {
+      const response = await fetch("/api/packages?active=true");
+      const data = await response.json();
+      if (response.ok) {
+        setCatalogPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error("Error fetching package catalog:", error);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  }, []);
+
+  // Initialize wizard when dialog opens
   useEffect(() => {
-    if (open && babies.length > 0 && !selectedBaby) {
+    if (open && babies.length > 0) {
       // If preselectedBabyId is provided, use that
       if (preselectedBabyId) {
         const baby = babies.find(b => b.id === preselectedBabyId);
         if (baby) {
           setSelectedBaby(baby);
           if (baby.packages.length === 1) {
-            setSelectedPackage(baby.packages[0].id);
+            setSelectedPurchaseId(baby.packages[0].id);
+            setSelectedPackageId(baby.packages[0].package.id);
           }
-          setStep(2);
+          setStep('package');
+          fetchCatalog();
           return;
         }
       }
-      // If only 1 baby, auto-select and skip to step 2
+      // If only 1 baby, auto-select and skip baby step
       if (babies.length === 1) {
         const baby = babies[0];
         setSelectedBaby(baby);
         if (baby.packages.length === 1) {
-          setSelectedPackage(baby.packages[0].id);
+          setSelectedPurchaseId(baby.packages[0].id);
+          setSelectedPackageId(baby.packages[0].package.id);
         }
-        setStep(2);
+        setStep('package');
+        fetchCatalog();
+      } else {
+        // Multiple babies - start at baby selection
+        setStep('baby');
       }
     }
-  }, [open, babies, preselectedBabyId, selectedBaby]);
+  }, [open, babies, preselectedBabyId, fetchCatalog]);
+
+  // Fetch catalog when package step is reached
+  useEffect(() => {
+    if (step === 'package' && catalogPackages.length === 0) {
+      fetchCatalog();
+    }
+  }, [step, fetchCatalog, catalogPackages.length]);
 
   // Generate next 14 days
   const getAvailableDates = () => {
@@ -381,6 +479,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
 
   const availableDates = getAvailableDates();
 
+  // Fetch slots when date changes
   useEffect(() => {
     if (selectedDate) {
       fetchSlots();
@@ -399,6 +498,13 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
       } else {
         setAvailableSlots([]);
       }
+      // Auto-scroll to show time slots on mobile
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
     } catch {
       setAvailableSlots([]);
     } finally {
@@ -407,44 +513,88 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
   };
 
   const handleSubmit = async () => {
-    // Package is optional - empty string means "session to define"
+    // Must have baby, date, time, and package selected
     if (!selectedBaby || !selectedDate || !selectedTime) return;
+    if (!selectedPurchaseId && !selectedPackageId) return;
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const response = await fetch("/api/portal/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           babyId: selectedBaby.id,
-          packagePurchaseId: selectedPackage || null, // null = session to define
+          packagePurchaseId: selectedPurchaseId, // null if new package from catalog
+          packageId: selectedPackageId, // For displaying package info (provisional)
           date: selectedDate.toISOString().split("T")[0],
           startTime: selectedTime,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) {
+        const data = await response.json();
+        // Map API errors to user-friendly messages
+        if (data.error === "Baby already has an appointment at this time") {
+          setSubmitError(t("portal.appointments.errors.babyHasAppointment"));
+        } else if (data.error === "Time slot is full") {
+          setSubmitError(t("portal.appointments.errors.slotFull"));
+        } else {
+          setSubmitError(t("portal.appointments.errors.generic"));
+        }
+        return;
+      }
 
-      setSuccess(true);
-      setTimeout(() => {
-        resetAndClose();
-        onSuccess();
-      }, 1500);
+      setStep('success');
+      // Don't call onSuccess here - will be called when user closes success screen
     } catch {
-      // Handle error
+      setSubmitError(t("portal.appointments.errors.generic"));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const resetAndClose = () => {
-    setStep(1);
+  const resetAndClose = (fromSuccess = false) => {
+    // If closing from success screen, trigger data refresh
+    if (fromSuccess || step === 'success') {
+      onSuccess();
+    }
+    setStep('baby');
     setSelectedBaby(null);
-    setSelectedPackage("");
+    setSelectedPackageId(null);
+    setSelectedPurchaseId(null);
     setSelectedDate(null);
     setSelectedTime("");
-    setSuccess(false);
+    setButtonAnimated(false);
     onOpenChange(false);
+  };
+
+  // Handle package selection from PackageSelector
+  const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
+    setSelectedPackageId(packageId);
+    setSelectedPurchaseId(purchaseId);
+    // Trigger button animation
+    if (packageId || purchaseId) {
+      setButtonAnimated(true);
+      setTimeout(() => setButtonAnimated(false), 2000);
+    }
+  };
+
+  // Transform baby packages to PackageSelector format
+  const getBabyPackagesForSelector = (): PackagePurchaseData[] => {
+    if (!selectedBaby) return [];
+    return selectedBaby.packages.map((pkg) => ({
+      id: pkg.id,
+      remainingSessions: pkg.remainingSessions,
+      totalSessions: pkg.totalSessions,
+      usedSessions: pkg.usedSessions,
+      package: {
+        id: pkg.package.id,
+        name: pkg.package.name,
+        categoryId: pkg.package.categoryId,
+        duration: pkg.package.duration,
+      },
+    }));
   };
 
   const formatDateShort = (date: Date) => {
@@ -455,142 +605,211 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     });
   };
 
+  // Navigation handlers
+  const handleBack = () => {
+    if (step === 'package' && babies.length > 1 && !preselectedBabyId) {
+      setStep('baby');
+    } else if (step === 'datetime') {
+      setStep('package');
+    }
+  };
+
+  const handleNext = () => {
+    if (step === 'package' && (selectedPackageId || selectedPurchaseId)) {
+      setStep('datetime');
+    }
+  };
+
+  // Calculate step numbers for display
+  const getStepNumber = () => {
+    if (step === 'package') return 1;
+    if (step === 'datetime') return 2;
+    return 1;
+  };
+
+  const getTotalSteps = () => 2;
+
+  const canProceed = () => {
+    if (step === 'package') return !!(selectedPackageId || selectedPurchaseId);
+    if (step === 'datetime') return !!(selectedDate && selectedTime);
+    return false;
+  };
+
+  // Get selected package name for summary
+  const getSelectedPackageName = () => {
+    if (selectedPurchaseId && selectedBaby) {
+      const pkg = selectedBaby.packages.find(p => p.id === selectedPurchaseId);
+      return pkg?.package.name || '';
+    }
+    if (selectedPackageId) {
+      const pkg = catalogPackages.find(p => p.id === selectedPackageId);
+      return pkg?.name || '';
+    }
+    return '';
+  };
+
   return (
     <Dialog open={open} onOpenChange={resetAndClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-teal-500" />
-            {t("portal.appointments.scheduleNew")}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className="flex w-full max-w-full flex-col gap-0 rounded-none border-0 p-0 sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl sm:border"
+        style={viewportHeight && isMobile ? { height: viewportHeight, maxHeight: viewportHeight } : undefined}
+      >
+        {/* Accessibility: Hidden title and description for screen readers */}
+        <VisuallyHidden>
+          <DialogTitle>{t("portal.appointments.wizard.title")}</DialogTitle>
+          <DialogDescription>{t("portal.appointments.wizard.description")}</DialogDescription>
+        </VisuallyHidden>
 
-        {success ? (
-          <div className="py-8 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-              <CheckCircle className="h-8 w-8 text-emerald-500" />
+        {/* Header - Fixed */}
+        {step !== 'success' && (
+          <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-3 sm:rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Back button */}
+                {((step === 'package' && babies.length > 1 && !preselectedBabyId) || step === 'datetime') && (
+                  <button
+                    onClick={handleBack}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {step === 'baby' && t("portal.appointments.selectBaby")}
+                    {step === 'package' && t("packages.selectPackage")}
+                    {step === 'datetime' && t("portal.appointments.wizard.selectDateTime")}
+                  </h2>
+                  {step !== 'baby' && (
+                    <p className="text-xs text-gray-500">
+                      {t("portal.appointments.wizard.step")} {getStepNumber()} {t("portal.appointments.wizard.of")} {getTotalSteps()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {/* Baby indicator */}
+              {selectedBaby && step !== 'baby' && (
+                <div className="flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1">
+                  <Baby className="h-4 w-4 text-teal-600" />
+                  <span className="text-sm font-medium text-teal-700">{selectedBaby.name}</span>
+                </div>
+              )}
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-gray-800">
-              {t("portal.appointments.appointmentConfirmed")}
-            </h3>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Step 1: Select Baby */}
-            {step === 1 && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">{t("portal.appointments.selectBaby")}</p>
-                <div className="grid gap-3">
-                  {babies.map((baby) => (
+        )}
+
+        {/* Content - Scrollable */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+          {/* Baby Selection Step */}
+          {step === 'baby' && (
+            <div className="p-4">
+              <p className="mb-4 text-sm text-gray-600">
+                {t("portal.appointments.wizard.selectBabyDescription")}
+              </p>
+              <div className="space-y-3">
+                {babies.map((baby) => {
+                  const genderColor = baby.gender === "MALE"
+                    ? "from-sky-400 to-blue-500"
+                    : baby.gender === "FEMALE"
+                    ? "from-rose-400 to-pink-500"
+                    : "from-teal-400 to-cyan-500";
+
+                  return (
                     <button
                       key={baby.id}
                       onClick={() => {
                         setSelectedBaby(baby);
                         if (baby.packages.length === 1) {
-                          setSelectedPackage(baby.packages[0].id);
+                          setSelectedPurchaseId(baby.packages[0].id);
+                          setSelectedPackageId(baby.packages[0].package.id);
+                        } else {
+                          setSelectedPurchaseId(null);
+                          setSelectedPackageId(null);
                         }
-                        setStep(2);
+                        setStep('package');
+                        fetchCatalog();
                       }}
-                      className="flex items-center gap-3 rounded-xl border-2 border-teal-100 p-4 text-left transition-all hover:border-teal-300 hover:bg-teal-50"
+                      className="flex w-full items-center gap-4 rounded-2xl border-2 border-teal-100 bg-white p-4 text-left transition-all hover:border-teal-300 hover:bg-teal-50/50 hover:shadow-md"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 text-lg font-bold text-white">
+                      <div className={cn(
+                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-xl font-bold text-white shadow-md",
+                        genderColor
+                      )}>
                         {baby.name.charAt(0)}
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{baby.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-lg font-semibold text-gray-800">{baby.name}</p>
                         <p className="text-sm text-gray-500">
-                          {baby.totalRemainingSessions} {t("portal.dashboard.sessionsAvailable")}
+                          {baby.totalRemainingSessions > 0 ? (
+                            <span className="text-emerald-600 font-medium">
+                              {baby.totalRemainingSessions} {t("portal.dashboard.sessionsAvailable")}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600">
+                              {t("portal.appointments.wizard.noSessions")}
+                            </span>
+                          )}
                         </p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                      <ChevronRight className="h-6 w-6 shrink-0 text-teal-400" />
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Step 2: Select Package (if multiple) and Date */}
-            {step === 2 && selectedBaby && (
-              <div className="space-y-4">
-                {/* Only show back button if multiple babies and no preselected baby */}
-                {babies.length > 1 && !preselectedBabyId && (
-                  <button
-                    onClick={() => setStep(1)}
-                    className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    {t("common.back")}
-                  </button>
-                )}
-
-                <div className="flex items-center gap-3 rounded-xl bg-teal-50 p-3">
-                  <Baby className="h-5 w-5 text-teal-600" />
-                  <span className="font-medium text-teal-700">{selectedBaby.name}</span>
+          {/* Package Selection Step */}
+          {step === 'package' && selectedBaby && (
+            <div className="p-4">
+              {loadingCatalog ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
                 </div>
+              ) : (
+                <PackageSelector
+                  babyId={selectedBaby.id}
+                  packages={catalogPackages}
+                  babyPackages={getBabyPackagesForSelector()}
+                  selectedPackageId={selectedPackageId}
+                  selectedPurchaseId={selectedPurchaseId}
+                  onSelectPackage={handlePackageSelect}
+                  showCategories={true}
+                  showPrices={false}
+                  showExistingFirst={true}
+                  allowNewPackage={true}
+                  compact={true}
+                  showProvisionalMessage={false}
+                  maxHeight="none"
+                />
+              )}
+            </div>
+          )}
 
-                {/* Package selection or "session to define" */}
-                {selectedBaby.packages.length === 0 ? (
-                  // No packages - show "session to define" message
-                  <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
-                    <div className="flex items-start gap-3">
-                      <Package className="h-5 w-5 shrink-0 text-amber-600" />
-                      <div className="flex-1">
-                        <p className="font-medium text-amber-800">
-                          {t("portal.appointments.sessionToDefine")}
-                        </p>
-                        <p className="mt-1 text-sm text-amber-700">
-                          {t("portal.appointments.sessionToDefineDescription")}
-                        </p>
-                        <a
-                          href="https://wa.me/59170000000"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700"
-                        >
-                          <Phone className="h-4 w-4" />
-                          {t("portal.appointments.contactForPackage")}
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                ) : selectedBaby.packages.length === 1 ? (
-                  // Single package - show which one is selected
-                  <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-3">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-emerald-600" />
-                      <span className="text-sm font-medium text-emerald-700">
-                        {selectedBaby.packages[0].name} ({selectedBaby.packages[0].remainingSessions} {t("portal.baby.sessionsLeft")})
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  // Multiple packages - show selector
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
-                      {t("portal.baby.packages")}
-                    </label>
-                    <Select value={selectedPackage} onValueChange={setSelectedPackage}>
-                      <SelectTrigger className="rounded-xl border-2 border-teal-100">
-                        <SelectValue placeholder={t("common.select")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {selectedBaby.packages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            {pkg.name} ({pkg.remainingSessions} {t("portal.baby.sessionsLeft")})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+          {/* Date & Time Selection Step */}
+          {step === 'datetime' && selectedBaby && (
+            <div className="p-4 space-y-6">
+              {/* Selected package summary */}
+              <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
+                <Package className="h-5 w-5 text-teal-600" />
+                <span className="text-sm font-medium text-teal-700">
+                  {getSelectedPackageName()}
+                </span>
+                <span className="ml-auto text-xs text-teal-500">
+                  {t("portal.appointments.provisional")}
+                </span>
+              </div>
 
-                {/* Date selection */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    {t("portal.appointments.selectDate")}
-                  </label>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {availableDates.map((date) => (
+              {/* Date selection */}
+              <div>
+                <label className="mb-3 block text-sm font-medium text-gray-700">
+                  {t("portal.appointments.selectDate")}
+                </label>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {availableDates.map((date) => {
+                    const isSelected = selectedDate?.toDateString() === date.toDateString();
+                    return (
                       <button
                         key={date.toISOString()}
                         onClick={() => {
@@ -598,70 +817,182 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                           setSelectedTime("");
                         }}
                         className={cn(
-                          "rounded-lg border-2 p-2 text-center text-sm transition-all",
-                          selectedDate?.toDateString() === date.toDateString()
-                            ? "border-teal-500 bg-teal-50 text-teal-700"
-                            : "border-gray-200 hover:border-teal-200 hover:bg-teal-50/50"
+                          "flex flex-col items-center rounded-xl border-2 p-3 transition-all",
+                          isSelected
+                            ? "border-teal-500 bg-gradient-to-br from-teal-50 to-cyan-50 shadow-sm"
+                            : "border-gray-100 bg-white hover:border-teal-200 hover:bg-teal-50/30"
                         )}
                       >
-                        {formatDateShort(date)}
+                        <span className={cn(
+                          "text-[10px] font-medium uppercase",
+                          isSelected ? "text-teal-600" : "text-gray-400"
+                        )}>
+                          {date.toLocaleDateString("es-ES", { weekday: "short" })}
+                        </span>
+                        <span className={cn(
+                          "text-lg font-bold",
+                          isSelected ? "text-teal-700" : "text-gray-800"
+                        )}>
+                          {date.getDate()}
+                        </span>
+                        <span className={cn(
+                          "text-[10px]",
+                          isSelected ? "text-teal-500" : "text-gray-400"
+                        )}>
+                          {date.toLocaleDateString("es-ES", { month: "short" })}
+                        </span>
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* Time selection */}
-                {selectedDate && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
-                      {t("portal.appointments.selectTime")}
-                    </label>
-                    {loadingSlots ? (
-                      <div className="flex justify-center py-4">
-                        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-                      </div>
-                    ) : availableSlots.length === 0 ? (
-                      <p className="text-sm text-gray-500">{t("babyProfile.appointments.noSlots")}</p>
-                    ) : (
-                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                        {availableSlots.map((slot) => (
+              {/* Time selection */}
+              {selectedDate && (
+                <div className="animate-fadeIn">
+                  <label className="mb-3 block text-sm font-medium text-gray-700">
+                    {t("portal.appointments.selectTime")}
+                  </label>
+                  {loadingSlots ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+                    </div>
+                  ) : availableSlots.length === 0 ? (
+                    <div className="rounded-xl bg-gray-50 p-6 text-center">
+                      <Clock className="mx-auto h-10 w-10 text-gray-300" />
+                      <p className="mt-2 text-sm text-gray-500">{t("babyProfile.appointments.noSlots")}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                      {availableSlots.map((slot) => {
+                        const isSelected = selectedTime === slot.time;
+                        return (
                           <button
                             key={slot.time}
-                            onClick={() => slot.available && setSelectedTime(slot.time)}
+                            onClick={() => {
+                              if (slot.available) {
+                                setSelectedTime(slot.time);
+                                setSubmitError(null);
+                              }
+                            }}
                             disabled={!slot.available}
                             className={cn(
-                              "rounded-lg border-2 p-2 text-sm transition-all",
-                              !slot.available && "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300",
-                              slot.available && selectedTime === slot.time
-                                ? "border-teal-500 bg-teal-50 text-teal-700"
-                                : slot.available && "border-gray-200 hover:border-teal-200"
+                              "rounded-xl border-2 py-3 text-sm font-medium transition-all",
+                              !slot.available && "cursor-not-allowed border-gray-50 bg-gray-50 text-gray-300",
+                              slot.available && isSelected
+                                ? "border-teal-500 bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-700 shadow-sm"
+                                : slot.available && "border-gray-100 bg-white text-gray-700 hover:border-teal-200 hover:bg-teal-50/30"
                             )}
                           >
                             {slot.time}
                           </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-                {/* Confirm button */}
-                {selectedTime && (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className="w-full gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white"
-                  >
-                    {submitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    {t("portal.appointments.confirmAppointment")}
-                  </Button>
-                )}
+          {/* Success Step */}
+          {step === 'success' && (
+            <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">
+              {/* Close button */}
+              <button
+                onClick={() => resetAndClose(true)}
+                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 shadow-lg shadow-emerald-100">
+                <CheckCircle className="h-10 w-10 text-emerald-500" />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-gray-800">
+                {t("portal.appointments.appointmentConfirmed")}
+              </h3>
+              <p className="mt-2 text-sm text-gray-500">
+                {t("portal.appointments.wizard.successMessage")}
+              </p>
+
+              {/* Summary */}
+              <div className="mt-6 w-full max-w-xs space-y-2 rounded-xl bg-gray-50 p-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">{t("common.baby")}:</span>
+                  <span className="font-medium text-gray-800">{selectedBaby?.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">{t("common.package")}:</span>
+                  <span className="font-medium text-gray-800">{getSelectedPackageName()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">{t("common.date")}:</span>
+                  <span className="font-medium text-gray-800">
+                    {selectedDate?.toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">{t("common.time")}:</span>
+                  <span className="font-medium text-gray-800">{selectedTime}</span>
+                </div>
+              </div>
+
+              {/* Close button at bottom */}
+              <Button
+                onClick={() => resetAndClose(true)}
+                className="mt-6 h-12 w-full max-w-xs gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-base font-semibold text-white shadow-lg shadow-teal-200"
+              >
+                {t("common.close")}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer - Fixed */}
+        {step !== 'success' && step !== 'baby' && (
+          <div className="shrink-0 border-t border-gray-100 bg-white p-4 sm:rounded-b-2xl">
+            {/* Error message */}
+            {submitError && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <p>{submitError}</p>
               </div>
             )}
+
+            {/* Provisional message */}
+            {step === 'package' && (selectedPackageId || selectedPurchaseId) && !submitError && (
+              <p className="mb-3 text-center text-xs text-gray-500">
+                {t("packages.provisional")}
+              </p>
+            )}
+
+            <Button
+              onClick={step === 'datetime' ? handleSubmit : handleNext}
+              disabled={!canProceed() || submitting}
+              className={cn(
+                "h-12 w-full gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-base font-semibold text-white shadow-lg shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600 disabled:opacity-50 disabled:shadow-none",
+                canProceed() && buttonAnimated && "animate-pulse-subtle"
+              )}
+            >
+              {submitting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : step === 'datetime' ? (
+                <>
+                  <CheckCircle className="h-5 w-5" />
+                  {t("portal.appointments.confirmAppointment")}
+                </>
+              ) : (
+                <>
+                  {t("common.continue")}
+                  <ChevronRight className="h-5 w-5" />
+                </>
+              )}
+            </Button>
           </div>
         )}
       </DialogContent>

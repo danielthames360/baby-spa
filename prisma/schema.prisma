@@ -268,6 +268,34 @@ model RegistrationLink {
 }
 
 // ============================================================
+// CATEGORÍAS (para paquetes y productos)
+// ============================================================
+
+enum CategoryType {
+  PACKAGE
+  PRODUCT
+}
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  type        CategoryType // PACKAGE o PRODUCT
+  color       String?      // Color para UI (ej: "teal", "amber")
+  sortOrder   Int          @default(0)
+  isActive    Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  packages Package[]
+  products Product[]
+
+  @@unique([name, type])
+  @@map("categories")
+}
+
+// ============================================================
 // CATÁLOGO DE PAQUETES
 // ============================================================
 
@@ -275,16 +303,27 @@ model Package {
   id          String  @id @default(cuid())
   name        String
   description String?
-  category    String? // HIDROTERAPIA, CUMPLE_MES, GRUPAL
+
+  // Relación con categoría
+  categoryId  String?
+  categoryRef Category? @relation(fields: [categoryId], references: [id])
   sessionCount   Int
   basePrice      Decimal @db.Decimal(10, 2)
+
+  // Duración y pago anticipado
+  duration                Int       @default(60)           // Duración en minutos
+  requiresAdvancePayment  Boolean   @default(false)        // Requiere pago anticipado
+  advancePaymentAmount    Decimal?  @db.Decimal(10, 2)     // Monto del anticipo
+
   isActive       Boolean @default(true)
   sortOrder      Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  purchases PackagePurchase[]
+  purchases       PackagePurchase[]
+  appointments    Appointment[]       // Citas que tienen este paquete pre-seleccionado
+  systemSettings  SystemSettings[]    @relation("DefaultPackage")
 
   @@map("packages")
 }
@@ -337,9 +376,13 @@ model Appointment {
   babyId String
   baby   Baby   @relation(fields: [babyId], references: [id])
 
-  // Paquete pre-seleccionado al agendar (null = sesión a definir)
-  packagePurchaseId String?
-  packagePurchase   PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
+  // Paquete seleccionado (provisional hasta checkout)
+  // Si el bebé tiene paquete comprado -> usa packagePurchaseId
+  // Si selecciona del catálogo -> usa selectedPackageId
+  selectedPackageId   String?          // Paquete del catálogo (provisional)
+  selectedPackage     Package?         @relation(fields: [selectedPackageId], references: [id])
+  packagePurchaseId   String?          // Paquete comprado existente
+  packagePurchase     PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
 
   // Fecha sin componente de hora (evita problemas de timezone)
   date      DateTime @db.Date
@@ -504,7 +547,11 @@ model Product {
   id          String  @id @default(cuid())
   name        String
   description String?
-  category       String?
+
+  // Relación con categoría
+  categoryId  String?
+  categoryRef Category? @relation(fields: [categoryId], references: [id])
+
   costPrice      Decimal @db.Decimal(10, 2)
   salePrice      Decimal @db.Decimal(10, 2)
   currentStock   Int     @default(0)
@@ -679,4 +726,25 @@ model ClosedDate {
 
   @@unique([date])
   @@map("closed_dates")
+}
+
+// ============================================================
+// CONFIGURACIÓN GLOBAL DEL SISTEMA
+// ============================================================
+
+model SystemSettings {
+  id                    String   @id @default("default")
+
+  // Paquete por defecto para citas sin paquete
+  defaultPackageId      String?
+  defaultPackage        Package? @relation("DefaultPackage", fields: [defaultPackageId], references: [id])
+
+  // Configuración de pagos (para Fase 3.2)
+  paymentQrImageUrl     String?  // URL de la imagen del QR de pago
+  whatsappNumber        String?  // Número de WhatsApp para comprobantes
+  whatsappMessage       String?  // Mensaje predeterminado con variables {fecha}, {monto}, {bebe}
+
+  updatedAt             DateTime @updatedAt
+
+  @@map("system_settings")
 }

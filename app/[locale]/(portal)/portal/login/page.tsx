@@ -160,9 +160,18 @@ export default function ParentLoginPage() {
                               className="h-14 border-2 border-teal-100 pl-12 text-center font-mono text-xl uppercase tracking-[0.3em] transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
                               maxLength={9}
                               {...field}
-                              onChange={(e) =>
-                                field.onChange(e.target.value.toUpperCase())
-                              }
+                              onChange={(e) => {
+                                // Remove dashes and convert to uppercase
+                                let value = e.target.value
+                                  .toUpperCase()
+                                  .replace(/-/g, "");
+                                // Auto-insert dash immediately after 3rd character
+                                if (value.length >= 3) {
+                                  value =
+                                    value.slice(0, 3) + "-" + value.slice(3);
+                                }
+                                field.onChange(value);
+                              }}
                             />
                           </div>
                         </FormControl>

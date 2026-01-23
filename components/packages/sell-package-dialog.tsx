@@ -38,13 +38,24 @@ import {
   sellPackageSchema,
   type SellPackageFormData,
 } from "@/lib/validations/package";
-import { PACKAGE_CATEGORIES } from "@/lib/constants";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+  isActive: boolean;
+}
 
 interface PackageOption {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
+  categoryRef?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
   sessionCount: number;
   basePrice: number | string;
 }
@@ -76,17 +87,19 @@ export function SellPackageDialog({
   const locale = params.locale as string;
 
   const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
     null
   );
   const [showDiscount, setShowDiscount] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("HIDROTERAPIA");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   // Filter packages by category
   const filteredPackages = packages.filter((pkg) => {
-    return pkg.category === selectedCategory;
+    if (!selectedCategoryId) return true;
+    return pkg.categoryId === selectedCategoryId;
   });
 
   const form = useForm<SellPackageFormData>({
@@ -113,10 +126,26 @@ export function SellPackageDialog({
       });
       setSelectedPackageId(null);
       setShowDiscount(false);
-      setSelectedCategory("HIDROTERAPIA");
+      setSelectedCategoryId("");
       fetchPackages();
+      fetchCategories();
     }
   }, [open, babyId, form]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/categories?type=PACKAGE");
+      const data = await response.json();
+      const fetchedCategories = data.categories || [];
+      setCategories(fetchedCategories);
+      // Set default category to first one
+      if (fetchedCategories.length > 0) {
+        setSelectedCategoryId(fetchedCategories[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
 
   const fetchPackages = async () => {
     setIsLoading(true);
@@ -247,18 +276,18 @@ export function SellPackageDialog({
 
               {/* Category Filter */}
               <div className="flex flex-wrap gap-2 mb-4">
-                {PACKAGE_CATEGORIES.map((category) => (
+                {categories.map((category) => (
                   <button
-                    key={category}
+                    key={category.id}
                     type="button"
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => setSelectedCategoryId(category.id)}
                     className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                      selectedCategory === category
+                      selectedCategoryId === category.id
                         ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-sm"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    {t(`packages.categories.${category}`)}
+                    {category.name}
                   </button>
                 ))}
               </div>

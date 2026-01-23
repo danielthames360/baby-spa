@@ -8,6 +8,8 @@ export const createAppointmentSchema = z.object({
     .string()
     .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "INVALID_TIME_FORMAT"), // HH:mm
   notes: z.string().max(500, "NOTES_TOO_LONG").optional().or(z.literal("")),
+  packageId: z.string().optional().nullable(), // Provisional package from catalog
+  packagePurchaseId: z.string().optional().nullable(), // Existing package purchase
 });
 
 export type CreateAppointmentData = z.infer<typeof createAppointmentSchema>;
@@ -28,6 +30,8 @@ export const updateAppointmentSchema = z.object({
     .max(200, "REASON_TOO_LONG")
     .optional()
     .or(z.literal("")),
+  packageId: z.string().optional().nullable(), // Change provisional package from catalog
+  packagePurchaseId: z.string().optional().nullable(), // Change to existing package purchase
 });
 
 export type UpdateAppointmentData = z.infer<typeof updateAppointmentSchema>;

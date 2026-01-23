@@ -65,7 +65,7 @@ export async function PUT(
       );
     }
 
-    const { date, startTime, status, notes, cancelReason } = validationResult.data;
+    const { date, startTime, status, notes, cancelReason, packageId, packagePurchaseId } = validationResult.data;
 
     // Parse date as local date (YYYY-MM-DD format) to avoid timezone issues
     let dateObj: Date | undefined;
@@ -82,6 +82,8 @@ export async function PUT(
         status: status as AppointmentStatus | undefined,
         notes,
         cancelReason,
+        selectedPackageId: packageId || undefined,
+        packagePurchaseId: packagePurchaseId || undefined,
       },
       session.user.id,
       session.user.name || "Unknown"

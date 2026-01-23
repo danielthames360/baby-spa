@@ -37,7 +37,17 @@ export async function GET() {
                 remainingSessions: { gt: 0 },
               },
               include: {
-                package: true,
+                package: {
+                  include: {
+                    categoryRef: {
+                      select: {
+                        id: true,
+                        name: true,
+                        color: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -78,6 +88,12 @@ export async function GET() {
             },
           },
         },
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: [
         { date: "desc" },
@@ -114,8 +130,15 @@ export async function GET() {
       ),
       packages: bp.baby.packagePurchases.map((pkg) => ({
         id: pkg.id,
-        name: pkg.package.name,
         remainingSessions: pkg.remainingSessions,
+        totalSessions: pkg.totalSessions,
+        usedSessions: pkg.usedSessions,
+        package: {
+          id: pkg.package.id,
+          name: pkg.package.name,
+          categoryId: pkg.package.categoryId,
+          duration: pkg.package.duration,
+        },
       })),
     }));
 
@@ -162,7 +185,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { babyId, packagePurchaseId, date, startTime } = body;
+    const { babyId, packagePurchaseId, packageId, date, startTime } = body;
 
     // Verify baby belongs to parent
     const babyParent = await prisma.babyParent.findFirst({
@@ -174,16 +197,21 @@ export async function POST(request: Request) {
     }
 
     // Verify package belongs to baby and has sessions (only if package provided)
-    // If no package provided, it's a "session to define"
     let validPackagePurchaseId: string | null = null;
+    let validSelectedPackageId: string | null = null;
+    let sessionDuration = 60; // Default duration
 
     if (packagePurchaseId) {
+      // User selected an existing package purchase
       const packagePurchase = await prisma.packagePurchase.findFirst({
         where: {
           id: packagePurchaseId,
           babyId,
           remainingSessions: { gt: 0 },
         },
+        include: {
+          package: { select: { duration: true } }
+        }
       });
 
       if (!packagePurchase) {
@@ -194,40 +222,47 @@ export async function POST(request: Request) {
       }
 
       validPackagePurchaseId = packagePurchase.id;
+      sessionDuration = packagePurchase.package.duration;
+    } else if (packageId) {
+      // User selected a package from the catalog (provisional)
+      const selectedPackage = await prisma.package.findFirst({
+        where: {
+          id: packageId,
+          isActive: true,
+        },
+        select: { id: true, duration: true }
+      });
+
+      if (selectedPackage) {
+        validSelectedPackageId = selectedPackage.id;
+        sessionDuration = selectedPackage.duration;
+      }
+    } else {
+      // Use system default package duration if no package specified
+      const systemSettings = await prisma.systemSettings.findUnique({
+        where: { id: "default" },
+        include: { defaultPackage: { select: { id: true, duration: true } } }
+      });
+      if (systemSettings?.defaultPackage) {
+        sessionDuration = systemSettings.defaultPackage.duration;
+      }
     }
-    // If no packagePurchaseId, appointment will be created as "session to define"
 
     // Parse date as local (flat date - no UTC conversion)
     const [year, month, day] = date.split("-").map(Number);
     const appointmentDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
-    // Check if baby already has appointment on this date
-    const existingAppointment = await prisma.appointment.findFirst({
+    // Calculate end time based on package duration
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const totalMinutes = hours * 60 + minutes + sessionDuration;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMins = totalMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`;
+
+    // Check if baby already has an overlapping appointment on this date
+    const babyAppointments = await prisma.appointment.findMany({
       where: {
         babyId,
-        date: appointmentDate,
-        status: "SCHEDULED",
-      },
-    });
-
-    if (existingAppointment) {
-      return NextResponse.json(
-        { error: "Baby already has appointment on this date" },
-        { status: 400 }
-      );
-    }
-
-    // Calculate end time (1 hour sessions)
-    const [hours, minutes] = startTime.split(":").map(Number);
-    const endTime = `${String(hours + 1).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-
-    // Check slot availability with OVERLAP detection (max 2 per slot)
-    // A 60-min session occupies two 30-min slots, so we need to check both
-    const MAX_SLOTS_PER_HOUR = 2;
-    const SLOT_DURATION_MINUTES = 30;
-
-    const existingAppointments = await prisma.appointment.findMany({
-      where: {
         date: appointmentDate,
         status: "SCHEDULED",
       },
@@ -242,6 +277,34 @@ export async function POST(request: Request) {
 
     const requestedStartMins = toMinutes(startTime);
     const requestedEndMins = toMinutes(endTime);
+
+    // Check for overlapping appointments for this baby
+    const hasOverlap = babyAppointments.some((apt) => {
+      const aptStart = toMinutes(apt.startTime);
+      const aptEnd = toMinutes(apt.endTime);
+      // Overlap: new appointment starts before existing ends AND ends after existing starts
+      return requestedStartMins < aptEnd && requestedEndMins > aptStart;
+    });
+
+    if (hasOverlap) {
+      return NextResponse.json(
+        { error: "Baby already has an appointment at this time" },
+        { status: 400 }
+      );
+    }
+
+    // Check slot availability with OVERLAP detection (max 2 per slot)
+    // Sessions occupy multiple 30-min slots based on their duration
+    const MAX_SLOTS_PER_HOUR = 2;
+    const SLOT_DURATION_MINUTES = 30;
+
+    const existingAppointments = await prisma.appointment.findMany({
+      where: {
+        date: appointmentDate,
+        status: "SCHEDULED",
+      },
+      select: { startTime: true, endTime: true },
+    });
 
     // Check each 30-minute slot within the requested time range
     for (let slotStart = requestedStartMins; slotStart < requestedEndMins; slotStart += SLOT_DURATION_MINUTES) {
@@ -265,11 +328,12 @@ export async function POST(request: Request) {
 
     // Create appointment (NO session deduction - that happens when session is completed)
     const result = await prisma.$transaction(async (tx) => {
-      // Create appointment with optional package pre-selected
+      // Create appointment with package pre-selected (provisional until checkout)
       const appointment = await tx.appointment.create({
         data: {
           babyId,
-          packagePurchaseId: validPackagePurchaseId, // null = "session to define"
+          packagePurchaseId: validPackagePurchaseId,
+          selectedPackageId: validSelectedPackageId,
           date: appointmentDate,
           startTime,
           endTime,

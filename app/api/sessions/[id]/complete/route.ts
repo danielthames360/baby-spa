@@ -10,6 +10,7 @@ interface RouteParams {
 
 const completeSessionSchema = z.object({
   packageId: z.string().optional(), // Package to sell (if baby has no active package)
+  packagePurchaseId: z.string().optional(), // Existing package purchase to use for this session
   paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]).optional(),
   paymentNotes: z.string().optional(),
   discountAmount: z.number().min(0).optional(),
@@ -42,11 +43,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { packageId, paymentMethod, paymentNotes, discountAmount, discountReason } = validationResult.data;
+    const { packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount, discountReason } = validationResult.data;
 
     const result = await sessionService.completeSession({
       sessionId,
       packageId,
+      packagePurchaseId,
       paymentMethod,
       paymentNotes,
       discountAmount,
@@ -68,6 +70,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         SESSION_NOT_IN_PROGRESS: {
           message: "SESSION_NOT_IN_PROGRESS",
+          status: 400,
+        },
+        PACKAGE_NO_REMAINING_SESSIONS: {
+          message: "PACKAGE_NO_REMAINING_SESSIONS",
           status: 400,
         },
       };

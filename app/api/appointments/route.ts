@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { babyId, date, startTime, notes } = validationResult.data;
+    const { babyId, date, startTime, notes, packageId, packagePurchaseId } = validationResult.data;
 
     // Parse date string as local date (YYYY-MM-DD format)
     // Using new Date(string) parses as UTC which causes timezone issues
@@ -94,6 +94,8 @@ export async function POST(request: NextRequest) {
       notes: notes || undefined,
       userId: session.user.id,
       userName: session.user.name || "Unknown",
+      selectedPackageId: packageId || undefined,
+      packagePurchaseId: packagePurchaseId || undefined,
     });
 
     return NextResponse.json({ appointment }, { status: 201 });

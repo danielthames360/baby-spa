@@ -52,6 +52,17 @@ interface Appointment {
       id: string;
     } | null;
   } | null;
+  packagePurchase?: {
+    id: string;
+    package: {
+      id: string;
+      name: string;
+    };
+  } | null;
+  selectedPackage?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export function TherapistTodayList() {

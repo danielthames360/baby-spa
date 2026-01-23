@@ -31,13 +31,25 @@ import {
   PurchaseDialog,
   AdjustStockDialog,
 } from "@/components/inventory";
-import { PRODUCT_CATEGORIES } from "@/lib/constants";
+import { CategoryManagerDialog } from "@/components/categories/category-manager-dialog";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+  isActive: boolean;
+}
 
 interface Product {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
+  categoryRef?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
   costPrice: number | string;
   salePrice: number | string;
   currentStock: number;
@@ -56,6 +68,7 @@ export default function InventoryPage() {
   const locale = useLocale();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -65,10 +78,21 @@ export default function InventoryPage() {
   const [showProductDialog, setShowProductDialog] = useState(false);
   const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
   const [showAdjustDialog, setShowAdjustDialog] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Loading states
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories?type=PRODUCT");
+      const data = await response.json();
+      setCategories(data.categories || []);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -80,7 +104,7 @@ export default function InventoryPage() {
         params.set("search", searchTerm);
       }
       if (categoryFilter !== "all") {
-        params.set("category", categoryFilter);
+        params.set("categoryId", categoryFilter);
       }
       if (stockFilter === "low") {
         params.set("lowStock", "true");
@@ -97,6 +121,10 @@ export default function InventoryPage() {
       setIsLoading(false);
     }
   }, [searchTerm, categoryFilter, stockFilter]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -177,45 +205,56 @@ export default function InventoryPage() {
     return { label: t("inventory.inStock"), variant: "success" as const };
   };
 
-  const getCategoryColors = (category: string | null) => {
-    switch (category) {
-      case "DIAPERS":
-        return {
-          gradient: "from-blue-400 to-indigo-500",
-          bg: "from-blue-50 to-indigo-50",
-          text: "text-blue-600",
-        };
-      case "OILS":
-        return {
-          gradient: "from-amber-400 to-yellow-500",
-          bg: "from-amber-50 to-yellow-50",
-          text: "text-amber-600",
-        };
-      case "CREAMS":
-        return {
-          gradient: "from-pink-400 to-rose-500",
-          bg: "from-pink-50 to-rose-50",
-          text: "text-pink-600",
-        };
-      case "TOWELS":
-        return {
-          gradient: "from-cyan-400 to-teal-500",
-          bg: "from-cyan-50 to-teal-50",
-          text: "text-cyan-600",
-        };
-      case "ACCESSORIES":
-        return {
-          gradient: "from-violet-400 to-purple-500",
-          bg: "from-violet-50 to-purple-50",
-          text: "text-violet-600",
-        };
-      default:
-        return {
-          gradient: "from-gray-400 to-gray-500",
-          bg: "from-gray-50 to-gray-100",
-          text: "text-gray-600",
-        };
-    }
+  const getCategoryColors = (color: string | null | undefined) => {
+    // Use category color if available, otherwise default
+    const colorMap: Record<string, { gradient: string; bg: string; text: string }> = {
+      blue: {
+        gradient: "from-blue-400 to-indigo-500",
+        bg: "from-blue-50 to-indigo-50",
+        text: "text-blue-600",
+      },
+      amber: {
+        gradient: "from-amber-400 to-yellow-500",
+        bg: "from-amber-50 to-yellow-50",
+        text: "text-amber-600",
+      },
+      pink: {
+        gradient: "from-pink-400 to-rose-500",
+        bg: "from-pink-50 to-rose-50",
+        text: "text-pink-600",
+      },
+      cyan: {
+        gradient: "from-cyan-400 to-teal-500",
+        bg: "from-cyan-50 to-teal-50",
+        text: "text-cyan-600",
+      },
+      violet: {
+        gradient: "from-violet-400 to-purple-500",
+        bg: "from-violet-50 to-purple-50",
+        text: "text-violet-600",
+      },
+      emerald: {
+        gradient: "from-emerald-400 to-teal-500",
+        bg: "from-emerald-50 to-teal-50",
+        text: "text-emerald-600",
+      },
+      rose: {
+        gradient: "from-rose-400 to-pink-500",
+        bg: "from-rose-50 to-pink-50",
+        text: "text-rose-600",
+      },
+      orange: {
+        gradient: "from-orange-400 to-amber-500",
+        bg: "from-orange-50 to-amber-50",
+        text: "text-orange-600",
+      },
+    };
+
+    return colorMap[color || ""] || {
+      gradient: "from-gray-400 to-gray-500",
+      bg: "from-gray-50 to-gray-100",
+      text: "text-gray-600",
+    };
   };
 
   // Stats
@@ -317,20 +356,29 @@ export default function InventoryPage() {
           </div>
 
           {/* Category filter */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="h-11 w-full sm:w-[180px] rounded-xl border-2 border-teal-100">
-              <Filter className="mr-2 h-4 w-4 text-gray-400" />
-              <SelectValue placeholder={t("inventory.filterByCategory")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("inventory.allCategories")}</SelectItem>
-              {PRODUCT_CATEGORIES.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {t(`inventory.categories.${category}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-11 w-full sm:w-[180px] rounded-xl border-2 border-teal-100">
+                <Filter className="mr-2 h-4 w-4 text-gray-400" />
+                <SelectValue placeholder={t("inventory.filterByCategory")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("inventory.allCategories")}</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={() => setShowCategoryManager(true)}
+              className="h-11 rounded-xl border-2 border-teal-100 text-teal-600 hover:bg-teal-50"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </div>
 
           {/* Clear filters */}
           {hasActiveFilters && (
@@ -369,6 +417,13 @@ export default function InventoryPage() {
         onSuccess={handleDialogSuccess}
       />
 
+      <CategoryManagerDialog
+        open={showCategoryManager}
+        onOpenChange={setShowCategoryManager}
+        type="PRODUCT"
+        onCategoriesChange={fetchCategories}
+      />
+
       {/* Product Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -377,7 +432,7 @@ export default function InventoryPage() {
       ) : products.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => {
-            const colors = getCategoryColors(product.category);
+            const colors = getCategoryColors(product.categoryRef?.color);
             const stockStatus = getStockStatus(product);
             const isToggling = togglingId === product.id;
 
@@ -406,9 +461,9 @@ export default function InventoryPage() {
                         <h3 className="font-semibold text-gray-800 truncate">
                           {getProductName(product)}
                         </h3>
-                        {product.category && (
+                        {product.categoryRef && (
                           <p className="text-xs text-gray-500">
-                            {t(`inventory.categories.${product.category}`)}
+                            {product.categoryRef.name}
                           </p>
                         )}
                       </div>

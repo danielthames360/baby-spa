@@ -7,7 +7,8 @@ import { z } from "zod";
 const startSessionSchema = z.object({
   appointmentId: z.string().min(1),
   therapistId: z.string().min(1),
-  packagePurchaseId: z.string().optional().nullable(), // null or undefined = trial session
+  packagePurchaseId: z.string().optional().nullable(), // Existing package purchase to use
+  packageId: z.string().optional().nullable(), // Catalog package selected (provisional)
 });
 
 // POST /api/sessions/start - Start a session
@@ -34,12 +35,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { appointmentId, therapistId, packagePurchaseId } = validationResult.data;
+    const { appointmentId, therapistId, packagePurchaseId, packageId } = validationResult.data;
 
     const result = await sessionService.startSession({
       appointmentId,
       therapistId,
       packagePurchaseId: packagePurchaseId || null,
+      packageId: packageId || null,
       userId: session.user.id,
       userName: session.user.name || "Unknown",
     });

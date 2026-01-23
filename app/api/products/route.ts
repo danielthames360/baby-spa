@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || undefined;
-    const category = searchParams.get("category") || undefined;
+    const categoryId = searchParams.get("categoryId") || undefined;
     const status = searchParams.get("status") as
       | "all"
       | "active"
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     const result = await inventoryService.list({
       search,
-      category,
+      categoryId,
       status,
       page,
       limit,
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     const product = await inventoryService.create({
       ...validation.data,
-      category: validation.data.category || undefined,
+      categoryId: validation.data.categoryId || undefined,
     });
 
     return NextResponse.json({ product }, { status: 201 });

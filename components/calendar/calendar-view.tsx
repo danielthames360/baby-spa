@@ -44,6 +44,10 @@ interface Appointment {
       name: string;
     };
   } | null;
+  selectedPackage?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface ClosedDate {
@@ -152,7 +156,20 @@ export function CalendarView() {
         `/api/appointments?startDate=${formatLocalDate(currentWeekStart)}&endDate=${formatLocalDate(weekEnd)}`
       );
       const data = await response.json();
-      setAppointments(data.appointments || []);
+      const newAppointments = data.appointments || [];
+      setAppointments(newAppointments);
+
+      // Update selectedAppointment if it exists in the new data
+      // This ensures the details dialog shows fresh data after updates
+      setSelectedAppointment((current) => {
+        if (current) {
+          const updatedAppointment = newAppointments.find(
+            (a: Appointment) => a.id === current.id
+          );
+          return updatedAppointment || current;
+        }
+        return current;
+      });
     } catch (error) {
       console.error("Error fetching appointments:", error);
     } finally {

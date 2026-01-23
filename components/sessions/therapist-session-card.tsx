@@ -55,6 +55,10 @@ interface TherapistSessionCardProps {
         name: string;
       };
     } | null;
+    selectedPackage?: {
+      id: string;
+      name: string;
+    } | null;
   };
   currentTherapistId?: string;
   onEvaluate: (sessionId: string) => void;
@@ -195,7 +199,7 @@ export function TherapistSessionCard({
               )}
             >
               <Package className="h-3 w-3" />
-              {appointment.packagePurchase?.package.name || t("calendar.sessionToDefine")}
+              {appointment.packagePurchase?.package.name || appointment.selectedPackage?.name || t("calendar.sessionToDefine")}
             </span>
 
             {/* Status badge */}

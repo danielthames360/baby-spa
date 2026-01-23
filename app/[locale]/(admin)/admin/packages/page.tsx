@@ -11,17 +11,30 @@ import {
   ToggleRight,
   Edit,
   Sparkles,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PackageFormDialog } from "@/components/packages/package-form-dialog";
-import { PACKAGE_CATEGORIES } from "@/lib/constants";
+import { CategoryManagerDialog } from "@/components/categories/category-manager-dialog";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+  isActive: boolean;
+}
 
 interface PackageItem {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
+  categoryRef?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
   sessionCount: number;
   basePrice: number | string;
   isActive: boolean;
@@ -37,8 +50,10 @@ export default function PackagesPage() {
   const locale = params.locale as string;
 
   const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageItem | null>(
     null
   );
@@ -48,9 +63,19 @@ export default function PackagesPage() {
   // Filter packages by category
   const filteredPackages = packages.filter((pkg) => {
     if (selectedCategory === "all") return true;
-    if (selectedCategory === "uncategorized") return !pkg.category;
-    return pkg.category === selectedCategory;
+    if (selectedCategory === "uncategorized") return !pkg.categoryId;
+    return pkg.categoryId === selectedCategory;
   });
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories?type=PACKAGE");
+      const data = await response.json();
+      setCategories(data.categories || []);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, []);
 
   const fetchPackages = useCallback(async () => {
     setIsLoading(true);
@@ -66,8 +91,9 @@ export default function PackagesPage() {
   }, []);
 
   useEffect(() => {
+    fetchCategories();
     fetchPackages();
-  }, [fetchPackages]);
+  }, [fetchCategories, fetchPackages]);
 
   const handleToggleActive = async (pkg: PackageItem) => {
     setTogglingId(pkg.id);
@@ -171,7 +197,7 @@ export default function PackagesPage() {
       </div>
 
       {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setSelectedCategory("all")}
           className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
@@ -182,17 +208,17 @@ export default function PackagesPage() {
         >
           {t("packages.categories.all")}
         </button>
-        {PACKAGE_CATEGORIES.map((category) => (
+        {categories.map((category) => (
           <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
+            key={category.id}
+            onClick={() => setSelectedCategory(category.id)}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-              selectedCategory === category
+              selectedCategory === category.id
                 ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md"
                 : "bg-white/70 text-gray-600 hover:bg-teal-50 hover:text-teal-700"
             }`}
           >
-            {t(`packages.categories.${category}`)}
+            {category.name}
           </button>
         ))}
         <button
@@ -205,6 +231,17 @@ export default function PackagesPage() {
         >
           {t("packages.categories.uncategorized")}
         </button>
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCategoryManager(true)}
+            className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+          >
+            <Settings2 className="mr-1.5 h-4 w-4" />
+            {t("categoryManager.title")}
+          </Button>
+        </div>
       </div>
 
       {/* Package Form Dialog */}
@@ -213,6 +250,17 @@ export default function PackagesPage() {
         onOpenChange={setShowDialog}
         package={selectedPackage}
         onSuccess={handleDialogSuccess}
+      />
+
+      {/* Category Manager Dialog */}
+      <CategoryManagerDialog
+        open={showCategoryManager}
+        onOpenChange={setShowCategoryManager}
+        type="PACKAGE"
+        onCategoriesChange={() => {
+          fetchCategories();
+          fetchPackages();
+        }}
       />
 
       {/* Package Cards */}

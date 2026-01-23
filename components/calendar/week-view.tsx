@@ -30,6 +30,10 @@ interface Appointment {
       name: string;
     };
   } | null;
+  selectedPackage?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface ClosedDate {
@@ -175,7 +179,7 @@ export function WeekView({
               id: apt.id,
               babyName: apt.baby.name,
               parentName: apt.baby.parents.find((p) => p.isPrimary)?.parent.name,
-              packageName: apt.packagePurchase?.package.name,
+              packageName: apt.packagePurchase?.package.name || apt.selectedPackage?.name,
               startTime: formatTime(apt.startTime),
               endTime: formatTime(apt.endTime),
               status: apt.status,

@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const product = await inventoryService.update(id, {
       ...validation.data,
-      category: validation.data.category || undefined,
+      categoryId: validation.data.categoryId || undefined,
     });
 
     return NextResponse.json({ product });

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { PRODUCT_CATEGORIES } from "@/lib/constants";
 
 // Product validation schema
 export const productSchema = z.object({
@@ -12,10 +11,10 @@ export const productSchema = z.object({
     .max(500, "DESCRIPTION_TOO_LONG")
     .optional()
     .or(z.literal("")),
-  category: z
-    .enum(PRODUCT_CATEGORIES as unknown as [string, ...string[]])
+  categoryId: z
+    .string()
     .optional()
-    .or(z.literal("")),
+    .nullable(),
   costPrice: z
     .number()
     .min(0, "COST_PRICE_INVALID")

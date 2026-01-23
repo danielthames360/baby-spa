@@ -33,6 +33,11 @@ import { StartSessionDialog } from "@/components/sessions/start-session-dialog";
 import { CompleteSessionDialog } from "@/components/sessions/complete-session-dialog";
 import { ViewBabyDialog } from "@/components/sessions/view-baby-dialog";
 import {
+  PackageSelector,
+  type PackageData,
+  type PackagePurchaseData,
+} from "@/components/packages/package-selector";
+import {
   Baby,
   Calendar,
   Clock,
@@ -48,6 +53,7 @@ import {
   CalendarClock,
   Info,
   Package,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
@@ -85,6 +91,10 @@ interface AppointmentDetailsProps {
         id: string;
         name: string;
       };
+    } | null;
+    selectedPackage?: {
+      id: string;
+      name: string;
     } | null;
   } | null;
   onUpdate?: () => void;
@@ -167,6 +177,41 @@ export function AppointmentDetails({
     }>;
   } | null>(null);
   const [isLoadingBaby, setIsLoadingBaby] = useState(false);
+
+  // Edit package state
+  const [isEditingPackage, setIsEditingPackage] = useState(false);
+  const [isSavingPackage, setIsSavingPackage] = useState(false);
+  const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
+  const [babyPackages, setBabyPackages] = useState<PackagePurchaseData[]>([]);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const [packageError, setPackageError] = useState<string | null>(null);
+
+  // Reset package editing state when modal closes or appointment changes
+  useEffect(() => {
+    if (!open) {
+      // Reset all package editing state when modal closes
+      setIsEditingPackage(false);
+      setIsSavingPackage(false);
+      setCatalogPackages([]);
+      setBabyPackages([]);
+      setSelectedPackageId(null);
+      setSelectedPurchaseId(null);
+      setPackageError(null);
+    }
+  }, [open]);
+
+  // Also reset when appointment changes
+  useEffect(() => {
+    setIsEditingPackage(false);
+    setIsSavingPackage(false);
+    setCatalogPackages([]);
+    setBabyPackages([]);
+    setSelectedPackageId(null);
+    setSelectedPurchaseId(null);
+    setPackageError(null);
+  }, [appointment?.id]);
 
   // Generate dates for next 30 days (excluding closed days)
   const availableDates = useMemo(() => {
@@ -348,14 +393,100 @@ export function AppointmentDetails({
     }
   };
 
+  // Handle edit package
+  const handleEditPackage = async () => {
+    setIsLoadingPackages(true);
+    setPackageError(null);
+
+    // Set initial selection based on current appointment
+    if (appointment.packagePurchase) {
+      setSelectedPurchaseId(appointment.packagePurchase.id);
+      setSelectedPackageId(appointment.packagePurchase.package.id);
+    } else if (appointment.selectedPackage) {
+      setSelectedPackageId(appointment.selectedPackage.id);
+      setSelectedPurchaseId(null);
+    }
+
+    try {
+      // Fetch baby's packages and catalog in parallel
+      const [babyPkgRes, catalogRes] = await Promise.all([
+        fetch(`/api/babies/${appointment.baby.id}/packages`),
+        fetch("/api/packages?active=true"),
+      ]);
+
+      if (babyPkgRes.ok) {
+        const data = await babyPkgRes.json();
+        const packages = (data.packages || []).filter(
+          (p: PackagePurchaseData) => p.remainingSessions > 0
+        );
+        setBabyPackages(packages);
+      }
+
+      if (catalogRes.ok) {
+        const data = await catalogRes.json();
+        setCatalogPackages(data.packages || []);
+      }
+
+      setIsEditingPackage(true);
+    } catch (error) {
+      console.error("Error fetching packages:", error);
+    } finally {
+      setIsLoadingPackages(false);
+    }
+  };
+
+  // Handle package selection
+  const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
+    setSelectedPackageId(packageId);
+    setSelectedPurchaseId(purchaseId);
+  };
+
+  // Save package change
+  const handleSavePackage = async () => {
+    if (!selectedPackageId && !selectedPurchaseId) return;
+
+    setIsSavingPackage(true);
+    setPackageError(null);
+
+    try {
+      const response = await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: selectedPurchaseId ? null : selectedPackageId,
+          packagePurchaseId: selectedPurchaseId,
+        }),
+      });
+
+      if (response.ok) {
+        setIsEditingPackage(false);
+        onUpdate?.();
+      } else {
+        const data = await response.json();
+        setPackageError(data.error || "UNKNOWN_ERROR");
+      }
+    } catch (error) {
+      console.error("Error updating package:", error);
+      setPackageError("UNKNOWN_ERROR");
+    } finally {
+      setIsSavingPackage(false);
+    }
+  };
+
+  // Cancel package edit
+  const handleCancelPackageEdit = () => {
+    setIsEditingPackage(false);
+    setPackageError(null);
+  };
+
   // Check if baby has medical alerts (based on current appointment data)
   const hasMedicalAlerts = false; // Will be updated when baby details are fetched
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-white/50 bg-white/95 p-0 backdrop-blur-md">
+          <DialogHeader className="shrink-0 border-b border-gray-100 px-6 py-4">
             <DialogTitle className="flex items-center justify-between">
               <span className="text-xl font-bold text-gray-800">
                 {t("calendar.appointmentDetails")}
@@ -366,7 +497,7 @@ export function AppointmentDetails({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
             {/* Info cards grid */}
             <div className="grid grid-cols-2 gap-3">
               {/* Date card */}
@@ -399,42 +530,113 @@ export function AppointmentDetails({
             {/* Package card - full width */}
             <div className={cn(
               "rounded-xl p-3",
-              appointment.packagePurchase
+              appointment.packagePurchase || appointment.selectedPackage
                 ? "bg-teal-50 border border-teal-200"
                 : "bg-amber-50 border border-amber-200"
             )}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg",
-                    appointment.packagePurchase
-                      ? "bg-teal-100"
-                      : "bg-amber-100"
-                  )}>
-                    <Package className={cn(
-                      "h-4 w-4",
-                      appointment.packagePurchase
-                        ? "text-teal-600"
-                        : "text-amber-600"
-                    )} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      {t("calendar.package")}
-                    </p>
-                    <p className={cn(
-                      "text-sm font-semibold",
-                      appointment.packagePurchase
-                        ? "text-teal-700"
-                        : "text-amber-700"
+              {!isEditingPackage ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg",
+                      appointment.packagePurchase || appointment.selectedPackage
+                        ? "bg-teal-100"
+                        : "bg-amber-100"
                     )}>
-                      {appointment.packagePurchase
-                        ? appointment.packagePurchase.package.name
-                        : t("calendar.sessionToDefine")}
+                      <Package className={cn(
+                        "h-4 w-4",
+                        appointment.packagePurchase || appointment.selectedPackage
+                          ? "text-teal-600"
+                          : "text-amber-600"
+                      )} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t("calendar.package")}
+                      </p>
+                      <p className={cn(
+                        "text-sm font-semibold",
+                        appointment.packagePurchase || appointment.selectedPackage
+                          ? "text-teal-700"
+                          : "text-amber-700"
+                      )}>
+                        {appointment.packagePurchase
+                          ? appointment.packagePurchase.package.name
+                          : appointment.selectedPackage
+                            ? appointment.selectedPackage.name
+                            : t("calendar.sessionToDefine")}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Edit button - only for scheduled appointments */}
+                  {appointment.status === "SCHEDULED" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleEditPackage}
+                      disabled={isLoadingPackages}
+                      className="h-8 px-2 text-teal-600 hover:bg-teal-100 hover:text-teal-700"
+                    >
+                      {isLoadingPackages ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Pencil className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      {t("calendar.changePackage")}
                     </p>
+                  </div>
+                  <PackageSelector
+                    babyId={appointment.baby.id}
+                    packages={catalogPackages}
+                    babyPackages={babyPackages}
+                    selectedPackageId={selectedPackageId}
+                    selectedPurchaseId={selectedPurchaseId}
+                    onSelectPackage={handlePackageSelect}
+                    showCategories={true}
+                    showPrices={false}
+                    showExistingFirst={true}
+                    allowNewPackage={true}
+                    compact={true}
+                    showProvisionalMessage={false}
+                    maxHeight="200px"
+                    forceShowCatalog={!!appointment.selectedPackage && !appointment.packagePurchase}
+                  />
+                  {packageError && (
+                    <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-2 text-xs text-rose-700">
+                      <AlertCircle className="h-3 w-3" />
+                      {t(`calendar.errors.${packageError}`)}
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelPackageEdit}
+                      className="h-8"
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSavePackage}
+                      disabled={isSavingPackage || (!selectedPackageId && !selectedPurchaseId)}
+                      className="h-8 bg-teal-600 text-white hover:bg-teal-700"
+                    >
+                      {isSavingPackage ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : null}
+                      {t("common.save")}
+                    </Button>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Baby info */}
@@ -772,7 +974,13 @@ export function AppointmentDetails({
           babyId={appointment.baby.id}
           babyName={appointment.baby.name}
           startTime={appointment.startTime}
-          preselectedPackageId={appointment.packagePurchaseId || undefined}
+          preselectedPurchaseId={appointment.packagePurchaseId || undefined}
+          preselectedCatalogPackageId={
+            // Only pass catalog package if there's NO purchased package
+            !appointment.packagePurchaseId && appointment.selectedPackage?.id
+              ? appointment.selectedPackage.id
+              : undefined
+          }
           onSuccess={() => {
             onUpdate?.();
             onOpenChange(false);

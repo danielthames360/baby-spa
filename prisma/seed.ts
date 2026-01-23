@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, Gender, BirthType, MovementType } from "@prisma/client";
+import { PrismaClient, UserRole, Gender, BirthType, MovementType, CategoryType } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "bcryptjs";
 import "dotenv/config";
@@ -117,6 +117,89 @@ async function main() {
   }
 
   // ============================================================
+  // CATEGORÍAS - Create categories first (for packages and products)
+  // ============================================================
+  const existingCategories = await prisma.category.count();
+
+  if (existingCategories === 0) {
+    console.log("🏷️  Creating categories...");
+
+    // Package categories
+    await prisma.category.createMany({
+      data: [
+        {
+          name: "Hidroterapia",
+          description: "Sesiones de hidroterapia y estimulación acuática",
+          type: CategoryType.PACKAGE,
+          color: "teal",
+          sortOrder: 0,
+        },
+        {
+          name: "Cumple Mes",
+          description: "Celebraciones especiales de cumple mes",
+          type: CategoryType.PACKAGE,
+          color: "pink",
+          sortOrder: 1,
+        },
+        {
+          name: "Vacunas",
+          description: "Servicios de vacunación para bebés",
+          type: CategoryType.PACKAGE,
+          color: "amber",
+          sortOrder: 2,
+        },
+        // Product categories
+        {
+          name: "Pañales",
+          description: "Pañales para piscina en diferentes tallas",
+          type: CategoryType.PRODUCT,
+          color: "blue",
+          sortOrder: 0,
+        },
+        {
+          name: "Aceites",
+          description: "Aceites para masajes y cuidado del bebé",
+          type: CategoryType.PRODUCT,
+          color: "amber",
+          sortOrder: 1,
+        },
+        {
+          name: "Cremas",
+          description: "Cremas hidratantes y de cuidado",
+          type: CategoryType.PRODUCT,
+          color: "pink",
+          sortOrder: 2,
+        },
+        {
+          name: "Toallas",
+          description: "Toallas y textiles para bebé",
+          type: CategoryType.PRODUCT,
+          color: "cyan",
+          sortOrder: 3,
+        },
+        {
+          name: "Accesorios",
+          description: "Accesorios de natación y flotadores",
+          type: CategoryType.PRODUCT,
+          color: "purple",
+          sortOrder: 4,
+        },
+        {
+          name: "Otros",
+          description: "Otros productos varios",
+          type: CategoryType.PRODUCT,
+          color: "gray",
+          sortOrder: 5,
+        },
+      ],
+    });
+
+    console.log("   ✅ 9 categories created (3 for packages, 6 for products)");
+  } else {
+    console.log(`🏷️  Categories table already has ${existingCategories} records - skipping`);
+  }
+
+  // ============================================================
   // PAQUETES - Check if table is empty
   // ============================================================
   const existingPackages = await prisma.package.count();
@@ -124,87 +207,114 @@ async function main() {
   if (existingPackages === 0) {
     console.log("📦 Creating packages...");
 
+    // Get category IDs
+    const hidroterapiaCat = await prisma.category.findFirst({
+      where: { name: "Hidroterapia", type: CategoryType.PACKAGE },
+    });
+    const cumpleMesCat = await prisma.category.findFirst({
+      where: { name: "Cumple Mes", type: CategoryType.PACKAGE },
+    });
+    const vacunasCat = await prisma.category.findFirst({
+      where: { name: "Vacunas", type: CategoryType.PACKAGE },
+    });
+
     await prisma.package.createMany({
       data: [
-        // HIDROTERAPIA packages
+        // HIDROTERAPIA packages (incluye sesión individual)
         {
-          name: "Individual",
-          description: "Sesión individual de hidroterapia",
-          category: "HIDROTERAPIA",
+          name: "Sesión Individual",
+          description: "Una sesión de hidroterapia para tu bebé. Ideal para probar nuestros servicios o visitas ocasionales.",
+          categoryId: hidroterapiaCat?.id,
           sessionCount: 1,
           basePrice: 150,
+          duration: 60,
+          requiresAdvancePayment: false,
+          advancePaymentAmount: null,
+          sortOrder: 0,
+        },
+        {
+          name: "Mini (4 sesiones)",
+          description: "Paquete de 4 sesiones de hidroterapia. Perfecto para comenzar con un compromiso menor.",
+          categoryId: hidroterapiaCat?.id,
+          sessionCount: 4,
+          basePrice: 550,
+          duration: 60,
+          requiresAdvancePayment: false,
+          advancePaymentAmount: null,
           sortOrder: 1,
         },
         {
-          name: "Mini",
-          description: "Paquete de 4 sesiones de hidroterapia",
-          category: "HIDROTERAPIA",
-          sessionCount: 4,
-          basePrice: 550,
+          name: "Estándar (8 sesiones)",
+          description: "Paquete de 8 sesiones de hidroterapia. Ideal para un mes de tratamiento.",
+          categoryId: hidroterapiaCat?.id,
+          sessionCount: 8,
+          basePrice: 1000,
+          duration: 60,
+          requiresAdvancePayment: false,
+          advancePaymentAmount: null,
           sortOrder: 2,
         },
         {
-          name: "Estándar",
-          description: "Paquete de 8 sesiones de hidroterapia",
-          category: "HIDROTERAPIA",
-          sessionCount: 8,
-          basePrice: 1000,
+          name: "Plus (10 sesiones)",
+          description: "Paquete de 10 sesiones de hidroterapia. El más popular entre nuestros clientes.",
+          categoryId: hidroterapiaCat?.id,
+          sessionCount: 10,
+          basePrice: 1200,
+          duration: 60,
+          requiresAdvancePayment: false,
+          advancePaymentAmount: null,
           sortOrder: 3,
         },
         {
-          name: "Plus",
-          description: "Paquete de 10 sesiones de hidroterapia - El más popular",
-          category: "HIDROTERAPIA",
-          sessionCount: 10,
-          basePrice: 1200,
-          sortOrder: 4,
-        },
-        {
-          name: "Premium",
-          description: "Paquete de 20 sesiones de hidroterapia",
-          category: "HIDROTERAPIA",
+          name: "Premium (20 sesiones)",
+          description: "Paquete de 20 sesiones de hidroterapia. Máximo ahorro para clientes frecuentes y casos terapéuticos.",
+          categoryId: hidroterapiaCat?.id,
           sessionCount: 20,
           basePrice: 2200,
-          sortOrder: 5,
+          duration: 60,
+          requiresAdvancePayment: false,
+          advancePaymentAmount: null,
+          sortOrder: 4,
         },
         // CUMPLE_MES packages
         {
-          name: "Cumple Mes Individual",
-          description: "Sesión especial de cumple mes para tu bebé",
-          category: "CUMPLE_MES",
+          name: "Cumple Mes Básico",
+          description: "Celebra el cumple mes de tu bebé con una sesión especial de 90 minutos. Incluye decoración básica.",
+          categoryId: cumpleMesCat?.id,
           sessionCount: 1,
-          basePrice: 180,
+          basePrice: 250,
+          duration: 90,
+          requiresAdvancePayment: true,
+          advancePaymentAmount: 100,
           sortOrder: 10,
         },
         {
-          name: "Cumple Mes Mensual",
-          description: "4 sesiones de cumple mes (un mes completo)",
-          category: "CUMPLE_MES",
-          sessionCount: 4,
-          basePrice: 650,
+          name: "Cumple Mes Premium",
+          description: "La experiencia completa de cumple mes: 2 horas con fotos profesionales y decoración premium.",
+          categoryId: cumpleMesCat?.id,
+          sessionCount: 1,
+          basePrice: 450,
+          duration: 120,
+          requiresAdvancePayment: true,
+          advancePaymentAmount: 200,
           sortOrder: 11,
         },
-        // GRUPAL packages
+        // VACUNAS packages
         {
-          name: "Grupal Individual",
-          description: "Sesión grupal de hidroterapia",
-          category: "GRUPAL",
+          name: "Vacuna + Hidroterapia",
+          description: "Sesión de vacunación combinada con hidroterapia relajante para calmar al bebé después.",
+          categoryId: vacunasCat?.id,
           sessionCount: 1,
-          basePrice: 100,
+          basePrice: 180,
+          duration: 45,
+          requiresAdvancePayment: true,
+          advancePaymentAmount: 50,
           sortOrder: 20,
-        },
-        {
-          name: "Grupal Mensual",
-          description: "4 sesiones grupales (un mes completo)",
-          category: "GRUPAL",
-          sessionCount: 4,
-          basePrice: 350,
-          sortOrder: 21,
         },
       ],
     });
 
-    console.log("   ✅ 9 packages created (5 hidroterapia + 2 cumple mes + 2 grupal)");
+    console.log("   ✅ 8 packages created (5 hidroterapia + 2 cumple mes + 1 vacunas)");
   } else {
     console.log(`📦 Packages table already has ${existingPackages} records - skipping`);
   }
@@ -304,11 +414,31 @@ async function main() {
   if (existingProducts === 0) {
     console.log("📦 Creating inventory products...");
 
+    // Get category IDs for products
+    const panalesCat = await prisma.category.findFirst({
+      where: { name: "Pañales", type: CategoryType.PRODUCT },
+    });
+    const aceitesCat = await prisma.category.findFirst({
+      where: { name: "Aceites", type: CategoryType.PRODUCT },
+    });
+    const cremasCat = await prisma.category.findFirst({
+      where: { name: "Cremas", type: CategoryType.PRODUCT },
+    });
+    const toallasCat = await prisma.category.findFirst({
+      where: { name: "Toallas", type: CategoryType.PRODUCT },
+    });
+    const accesoriosCat = await prisma.category.findFirst({
+      where: { name: "Accesorios", type: CategoryType.PRODUCT },
+    });
+    const otrosCat = await prisma.category.findFirst({
+      where: { name: "Otros", type: CategoryType.PRODUCT },
+    });
+
     const products = [
-      // DIAPERS
+      // PAÑALES
       {
         name: "Pañal para piscina Talla S",
-        category: "DIAPERS",
+        categoryId: panalesCat?.id,
         costPrice: 12,
         salePrice: 20,
         currentStock: 50,
@@ -317,7 +447,7 @@ async function main() {
       },
       {
         name: "Pañal para piscina Talla M",
-        category: "DIAPERS",
+        categoryId: panalesCat?.id,
         costPrice: 14,
         salePrice: 22,
         currentStock: 60,
@@ -326,17 +456,17 @@ async function main() {
       },
       {
         name: "Pañal para piscina Talla L",
-        category: "DIAPERS",
+        categoryId: panalesCat?.id,
         costPrice: 16,
         salePrice: 25,
         currentStock: 40,
         minStock: 15,
         isChargeableByDefault: true,
       },
-      // OILS
+      // ACEITES
       {
         name: "Aceite de masaje relajante",
-        category: "OILS",
+        categoryId: aceitesCat?.id,
         costPrice: 25,
         salePrice: 45,
         currentStock: 20,
@@ -345,17 +475,17 @@ async function main() {
       },
       {
         name: "Aceite de almendras para bebé",
-        category: "OILS",
+        categoryId: aceitesCat?.id,
         costPrice: 30,
         salePrice: 55,
         currentStock: 15,
         minStock: 5,
         isChargeableByDefault: false,
       },
-      // CREAMS
+      // CREMAS
       {
         name: "Crema hidratante hipoalergénica",
-        category: "CREAMS",
+        categoryId: cremasCat?.id,
         costPrice: 35,
         salePrice: 60,
         currentStock: 25,
@@ -364,17 +494,17 @@ async function main() {
       },
       {
         name: "Crema para dermatitis",
-        category: "CREAMS",
+        categoryId: cremasCat?.id,
         costPrice: 45,
         salePrice: 75,
         currentStock: 10,
         minStock: 5,
         isChargeableByDefault: true,
       },
-      // TOWELS
+      // TOALLAS
       {
         name: "Toalla pequeña de algodón",
-        category: "TOWELS",
+        categoryId: toallasCat?.id,
         costPrice: 15,
         salePrice: 30,
         currentStock: 40,
@@ -383,17 +513,17 @@ async function main() {
       },
       {
         name: "Toalla grande con capucha",
-        category: "TOWELS",
+        categoryId: toallasCat?.id,
         costPrice: 35,
         salePrice: 65,
         currentStock: 20,
         minStock: 8,
         isChargeableByDefault: true,
       },
-      // ACCESSORIES
+      // ACCESORIOS
       {
         name: "Gorro de natación bebé",
-        category: "ACCESSORIES",
+        categoryId: accesoriosCat?.id,
         costPrice: 18,
         salePrice: 35,
         currentStock: 30,
@@ -402,7 +532,7 @@ async function main() {
       },
       {
         name: "Flotador de cuello",
-        category: "ACCESSORIES",
+        categoryId: accesoriosCat?.id,
         costPrice: 80,
         salePrice: 150,
         currentStock: 8,
@@ -411,17 +541,17 @@ async function main() {
       },
       {
         name: "Juguetes para piscina (set)",
-        category: "ACCESSORIES",
+        categoryId: accesoriosCat?.id,
         costPrice: 25,
         salePrice: 45,
         currentStock: 12,
         minStock: 5,
         isChargeableByDefault: false,
       },
-      // OTHER
+      // OTROS
       {
         name: "Bolsa impermeable",
-        category: "OTHER",
+        categoryId: otrosCat?.id,
         costPrice: 20,
         salePrice: 40,
         currentStock: 15,
@@ -430,7 +560,7 @@ async function main() {
       },
       {
         name: "Jabón líquido neutro",
-        category: "OTHER",
+        categoryId: otrosCat?.id,
         costPrice: 12,
         salePrice: 25,
         currentStock: 20,
@@ -441,7 +571,15 @@ async function main() {
 
     for (const product of products) {
       const createdProduct = await prisma.product.create({
-        data: product,
+        data: {
+          name: product.name,
+          categoryId: product.categoryId,
+          costPrice: product.costPrice,
+          salePrice: product.salePrice,
+          currentStock: product.currentStock,
+          minStock: product.minStock,
+          isChargeableByDefault: product.isChargeableByDefault,
+        },
       });
 
       // Create initial stock movement
@@ -572,6 +710,36 @@ async function main() {
   }
 
   // ============================================================
+  // SYSTEM SETTINGS - Check if exists
+  // ============================================================
+  const existingSettings = await prisma.systemSettings.findUnique({
+    where: { id: "default" },
+  });
+
+  if (!existingSettings) {
+    console.log("⚙️ Creating system settings...");
+
+    // Get the Individual package to set as default (Sesión Individual in Hidroterapia category)
+    const individualPackage = await prisma.package.findFirst({
+      where: { name: "Sesión Individual", sessionCount: 1 },
+    });
+
+    await prisma.systemSettings.create({
+      data: {
+        id: "default",
+        defaultPackageId: individualPackage?.id || null,
+        paymentQrImageUrl: null,
+        whatsappNumber: "+591 70000000",
+        whatsappMessage: "Hola Baby Spa! Adjunto mi comprobante de pago para la cita del {fecha} para {bebe}. Monto: {monto}",
+      },
+    });
+
+    console.log(`   ✅ System settings created (default package: ${individualPackage?.name || "none"})`);
+  } else {
+    console.log("⚙️ SystemSettings already exists - skipping");
+  }
+
+  // ============================================================
   // RESUMEN FINAL
   // ============================================================
   console.log("\n========================================");
@@ -588,19 +756,31 @@ async function main() {
     products: await prisma.product.count(),
     businessHours: await prisma.businessHours.count(),
     systemConfig: await prisma.systemConfig.count(),
+    systemSettings: await prisma.systemSettings.count(),
   };
+
+  // Get default package info
+  const settings = await prisma.systemSettings.findUnique({
+    where: { id: "default" },
+    include: { defaultPackage: true },
+  });
 
   console.log("\n📊 Database Summary:");
   console.log("----------------------------------------");
-  console.log(`   Users:            ${finalCounts.users}`);
-  console.log(`   Parents:          ${finalCounts.parents}`);
-  console.log(`   Babies:           ${finalCounts.babies}`);
-  console.log(`   Packages:         ${finalCounts.packages}`);
+  console.log(`   Users:             ${finalCounts.users}`);
+  console.log(`   Parents:           ${finalCounts.parents}`);
+  console.log(`   Babies:            ${finalCounts.babies}`);
+  console.log(`   Packages:          ${finalCounts.packages}`);
   console.log(`   Package Purchases: ${finalCounts.packagePurchases}`);
-  console.log(`   Products:         ${finalCounts.products}`);
-  console.log(`   Business Hours:   ${finalCounts.businessHours}`);
-  console.log(`   System Configs:   ${finalCounts.systemConfig}`);
+  console.log(`   Products:          ${finalCounts.products}`);
+  console.log(`   Business Hours:    ${finalCounts.businessHours}`);
+  console.log(`   System Configs:    ${finalCounts.systemConfig}`);
+  console.log(`   System Settings:   ${finalCounts.systemSettings}`);
   console.log("----------------------------------------");
+  if (settings?.defaultPackage) {
+    console.log(`   📦 Default Package: ${settings.defaultPackage.name}`);
+    console.log("----------------------------------------");
+  }
 
   console.log("\n🔐 Credenciales de acceso (Staff):");
   console.log("----------------------------------------");

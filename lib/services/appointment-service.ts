@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db";
 import { AppointmentStatus, Prisma } from "@prisma/client";
-import { packageService } from "./package-service";
 import {
   BUSINESS_HOURS,
   MAX_APPOINTMENTS_PER_SLOT,
@@ -20,6 +19,7 @@ export const MAX_APPOINTMENTS_PER_HOUR = MAX_APPOINTMENTS_PER_SLOT;
 export interface AppointmentWithRelations {
   id: string;
   babyId: string;
+  selectedPackageId: string | null; // Provisional package selection
   packagePurchaseId: string | null;
   date: Date;
   startTime: string; // "09:00", "09:30", etc.
@@ -54,6 +54,10 @@ export interface AppointmentWithRelations {
       name: string;
     };
   } | null;
+  selectedPackage?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export interface TimeSlot {
@@ -82,6 +86,8 @@ export interface CreateAppointmentInput {
   userId: string;
   userName: string;
   maxAppointments?: number; // Optional: defaults to staff limit (5). For parents portal, pass 2
+  selectedPackageId?: string; // Provisional package selection
+  packagePurchaseId?: string; // If using existing package purchase
 }
 
 export interface UpdateAppointmentInput {
@@ -91,15 +97,17 @@ export interface UpdateAppointmentInput {
   notes?: string;
   cancelReason?: string;
   maxAppointments?: number; // Optional: defaults to staff limit (5). For parents portal, pass 2
+  selectedPackageId?: string; // To change the provisional package
+  packagePurchaseId?: string; // To assign an existing package purchase
 }
 
-// Session duration in minutes (from package type, default 60)
-const SESSION_DURATION_MINUTES = 60;
+// Default session duration in minutes (used when no package is specified)
+const DEFAULT_SESSION_DURATION_MINUTES = 60;
 
 // Helper: Calculate end time from start time (adding session duration)
-function calculateEndTime(startTime: string): string {
+function calculateEndTime(startTime: string, durationMinutes: number = DEFAULT_SESSION_DURATION_MINUTES): string {
   const [hours, minutes] = startTime.split(":").map(Number);
-  const totalMinutes = hours * 60 + minutes + SESSION_DURATION_MINUTES;
+  const totalMinutes = hours * 60 + minutes + durationMinutes;
   const endHours = Math.floor(totalMinutes / 60);
   const endMinutes = totalMinutes % 60;
   return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
@@ -187,6 +195,12 @@ export const appointmentService = {
                 name: true,
               },
             },
+          },
+        },
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -454,14 +468,56 @@ export const appointmentService = {
 
   // Create appointment
   async create(input: CreateAppointmentInput): Promise<AppointmentWithRelations> {
-    const { babyId, date, startTime, notes, userId, userName, maxAppointments = MAX_APPOINTMENTS_FOR_STAFF } = input;
+    const {
+      babyId,
+      date,
+      startTime,
+      notes,
+      userId,
+      userName,
+      maxAppointments = MAX_APPOINTMENTS_FOR_STAFF,
+      selectedPackageId,
+      packagePurchaseId
+    } = input;
 
     // Normalize date to start of day
     const appointmentDate = new Date(date);
     appointmentDate.setHours(0, 0, 0, 0);
 
-    // Calculate end time
-    const endTime = calculateEndTime(startTime);
+    // Get package duration (from selectedPackageId, packagePurchaseId, or system default)
+    let sessionDuration = DEFAULT_SESSION_DURATION_MINUTES;
+
+    if (selectedPackageId) {
+      // Look up the package duration
+      const pkg = await prisma.package.findUnique({
+        where: { id: selectedPackageId },
+        select: { duration: true }
+      });
+      if (pkg) {
+        sessionDuration = pkg.duration;
+      }
+    } else if (packagePurchaseId) {
+      // Look up duration from package purchase
+      const purchase = await prisma.packagePurchase.findUnique({
+        where: { id: packagePurchaseId },
+        include: { package: { select: { duration: true } } }
+      });
+      if (purchase?.package) {
+        sessionDuration = purchase.package.duration;
+      }
+    } else {
+      // Use system default package duration
+      const settings = await prisma.systemSettings.findUnique({
+        where: { id: "default" },
+        include: { defaultPackage: { select: { duration: true } } }
+      });
+      if (settings?.defaultPackage) {
+        sessionDuration = settings.defaultPackage.duration;
+      }
+    }
+
+    // Calculate end time based on package duration
+    const endTime = calculateEndTime(startTime, sessionDuration);
 
     // Validate baby exists
     const baby = await prisma.baby.findUnique({
@@ -499,8 +555,8 @@ export const appointmentService = {
       throw new Error("TIME_SLOT_FULL");
     }
 
-    // Note: We no longer require a package to book an appointment
-    // The session will be charged/associated with a package when completed by reception
+    // Package selection is provisional - confirmed at checkout
+    // Session will be deducted from package when completed by reception
 
     // Create appointment (no session deduction at booking time)
     const appointment = await prisma.$transaction(async (tx) => {
@@ -513,6 +569,8 @@ export const appointmentService = {
           endTime,
           status: AppointmentStatus.SCHEDULED,
           notes,
+          selectedPackageId,
+          packagePurchaseId,
         },
         include: {
           baby: {
@@ -590,7 +648,24 @@ export const appointmentService = {
       newDate.setHours(0, 0, 0, 0);
 
       const newStartTime = input.startTime || existing.startTime;
-      const newEndTime = calculateEndTime(newStartTime);
+
+      // Get package duration from existing appointment's package
+      let sessionDuration = DEFAULT_SESSION_DURATION_MINUTES;
+      if (existing.selectedPackageId) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: existing.selectedPackageId },
+          select: { duration: true }
+        });
+        if (pkg) sessionDuration = pkg.duration;
+      } else if (existing.packagePurchaseId) {
+        const purchase = await prisma.packagePurchase.findUnique({
+          where: { id: existing.packagePurchaseId },
+          include: { package: { select: { duration: true } } }
+        });
+        if (purchase?.package) sessionDuration = purchase.package.duration;
+      }
+
+      const newEndTime = calculateEndTime(newStartTime, sessionDuration);
 
       // Validate if changing date/time
       if (input.date || input.startTime) {
@@ -655,6 +730,72 @@ export const appointmentService = {
       oldValue.notes = existing.notes;
       newValue.notes = input.notes;
       updateData.notes = input.notes;
+    }
+
+    // Handle package change
+    if (input.packagePurchaseId !== undefined || input.selectedPackageId !== undefined) {
+      // Changing to an existing package purchase
+      if (input.packagePurchaseId) {
+        const purchase = await prisma.packagePurchase.findUnique({
+          where: { id: input.packagePurchaseId },
+          include: { package: { select: { id: true, name: true, duration: true } } }
+        });
+        if (!purchase || purchase.babyId !== existing.babyId) {
+          throw new Error("INVALID_PACKAGE_PURCHASE");
+        }
+        if (purchase.remainingSessions <= 0) {
+          throw new Error("NO_SESSIONS_REMAINING");
+        }
+
+        oldValue.packagePurchaseId = existing.packagePurchaseId;
+        oldValue.selectedPackageId = existing.selectedPackageId;
+        newValue.packagePurchaseId = input.packagePurchaseId;
+        newValue.selectedPackageId = null;
+
+        updateData.packagePurchase = { connect: { id: input.packagePurchaseId } };
+        updateData.selectedPackage = { disconnect: true };
+
+        // Recalculate end time based on new package duration
+        const newEndTime = calculateEndTime(existing.startTime, purchase.package.duration);
+        if (newEndTime !== existing.endTime) {
+          oldValue.endTime = existing.endTime;
+          newValue.endTime = newEndTime;
+          updateData.endTime = newEndTime;
+        }
+      }
+      // Changing to a catalog package (provisional)
+      else if (input.selectedPackageId) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: input.selectedPackageId },
+          select: { id: true, name: true, duration: true, isActive: true }
+        });
+        if (!pkg || !pkg.isActive) {
+          throw new Error("INVALID_PACKAGE");
+        }
+
+        oldValue.packagePurchaseId = existing.packagePurchaseId;
+        oldValue.selectedPackageId = existing.selectedPackageId;
+        newValue.packagePurchaseId = null;
+        newValue.selectedPackageId = input.selectedPackageId;
+
+        // Disconnect package purchase if there was one
+        if (existing.packagePurchaseId) {
+          updateData.packagePurchase = { disconnect: true };
+        }
+        updateData.selectedPackage = { connect: { id: input.selectedPackageId } };
+
+        // Recalculate end time based on new package duration
+        const newEndTime = calculateEndTime(existing.startTime, pkg.duration);
+        if (newEndTime !== existing.endTime) {
+          oldValue.endTime = existing.endTime;
+          newValue.endTime = newEndTime;
+          updateData.endTime = newEndTime;
+        }
+      }
+      // Clearing package (setting to null) - not typically allowed, but handle gracefully
+      else if (input.packagePurchaseId === null && input.selectedPackageId === null) {
+        // Do nothing - we don't allow removing package selection entirely
+      }
     }
 
     // Perform update

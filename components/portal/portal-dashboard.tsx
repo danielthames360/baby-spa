@@ -23,10 +23,15 @@ import { ScheduleDialog, ScheduleBabyData } from "./portal-appointments";
 
 interface BabyPackage {
   id: string;
-  name: string;
   totalSessions: number;
   usedSessions: number;
   remainingSessions: number;
+  package: {
+    id: string;
+    name: string;
+    categoryId: string | null;
+    duration: number;
+  };
 }
 
 interface BabyData {
@@ -314,8 +319,10 @@ export function PortalDashboard() {
             totalRemainingSessions: baby.remainingSessions,
             packages: baby.packages.map((pkg) => ({
               id: pkg.id,
-              name: pkg.name,
+              totalSessions: pkg.totalSessions,
+              usedSessions: pkg.usedSessions,
               remainingSessions: pkg.remainingSessions,
+              package: pkg.package,
             })),
           }))}
           onSuccess={() => {
@@ -397,7 +404,7 @@ function BabyCard({ baby, requiresPrepayment, onScheduleClick }: BabyCardProps) 
                   className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2 py-1 text-xs"
                 >
                   <Package className="h-3 w-3 text-teal-500" />
-                  <span className="text-teal-700">{pkg.name}</span>
+                  <span className="text-teal-700">{pkg.package.name}</span>
                   <span className="text-teal-500">
                     ({pkg.remainingSessions}/{pkg.totalSessions})
                   </span>

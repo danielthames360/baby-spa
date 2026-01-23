@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/db";
 import { Prisma, MovementType } from "@prisma/client";
 
-// Re-export constants from the constants file for backward compatibility
-export { PRODUCT_CATEGORIES, type ProductCategory } from "@/lib/constants";
-
 // Types
 export interface ProductWithMovements {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
+  categoryRef?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
   costPrice: Prisma.Decimal;
   salePrice: Prisma.Decimal;
   currentStock: number;
@@ -27,7 +29,7 @@ export interface ProductWithMovements {
 export interface ProductCreateInput {
   name: string;
   description?: string;
-  category?: string;
+  categoryId?: string | null;
   costPrice: number;
   salePrice: number;
   currentStock?: number;
@@ -39,7 +41,7 @@ export interface ProductCreateInput {
 export interface ProductUpdateInput {
   name?: string;
   description?: string;
-  category?: string;
+  categoryId?: string | null;
   costPrice?: number;
   salePrice?: number;
   minStock?: number;
@@ -85,7 +87,7 @@ export interface UseProductInput {
 
 export interface ProductListFilters {
   search?: string;
-  category?: string;
+  categoryId?: string;
   status?: "all" | "active" | "inactive" | "lowStock" | "outOfStock";
   page?: number;
   limit?: number;
@@ -108,7 +110,7 @@ export const inventoryService = {
   async list(filters: ProductListFilters = {}): Promise<ProductListResult> {
     const {
       search,
-      category,
+      categoryId,
       status = "all",
       page = 1,
       limit = 20,
@@ -125,8 +127,8 @@ export const inventoryService = {
     }
 
     // Category filter
-    if (category) {
-      where.category = category;
+    if (categoryId) {
+      where.categoryId = categoryId;
     }
 
     // Status filter
@@ -159,9 +161,12 @@ export const inventoryService = {
               { name: { contains: search, mode: "insensitive" } },
             ],
           }),
-          ...(category && { category }),
+          ...(categoryId && { categoryId }),
         },
         include: {
+          categoryRef: {
+            select: { id: true, name: true, color: true },
+          },
           _count: {
             select: { movements: true, sessionUsages: true },
           },
@@ -178,19 +183,29 @@ export const inventoryService = {
       products = lowStockProducts.slice(skip, skip + limit) as ProductWithMovements[];
     } else {
       // Standard query
-      [products, total] = await Promise.all([
+      const [fetchedProducts, count] = await Promise.all([
         prisma.product.findMany({
           where,
+          include: {
+            categoryRef: {
+              select: { id: true, name: true, color: true },
+            },
+            _count: {
+              select: { movements: true, sessionUsages: true },
+            },
+          },
           orderBy: { name: "asc" },
           skip: (page - 1) * limit,
           take: limit,
         }),
         prisma.product.count({ where }),
       ]);
+      products = fetchedProducts as ProductWithMovements[];
+      total = count;
     }
 
     return {
-      products: products as ProductWithMovements[],
+      products,
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -202,6 +217,9 @@ export const inventoryService = {
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
+        categoryRef: {
+          select: { id: true, name: true, color: true },
+        },
         _count: {
           select: { movements: true, sessionUsages: true },
         },
@@ -217,7 +235,7 @@ export const inventoryService = {
       data: {
         name: data.name,
         description: data.description,
-        category: data.category,
+        categoryId: data.categoryId,
         costPrice: data.costPrice,
         salePrice: data.salePrice,
         currentStock: data.currentStock ?? 0,
@@ -226,6 +244,9 @@ export const inventoryService = {
         isChargeableByDefault: data.isChargeableByDefault ?? true,
       },
       include: {
+        categoryRef: {
+          select: { id: true, name: true, color: true },
+        },
         _count: {
           select: { movements: true, sessionUsages: true },
         },
@@ -245,7 +266,7 @@ export const inventoryService = {
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
-        ...(data.category !== undefined && { category: data.category }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
         ...(data.costPrice !== undefined && { costPrice: data.costPrice }),
         ...(data.salePrice !== undefined && { salePrice: data.salePrice }),
         ...(data.minStock !== undefined && { minStock: data.minStock }),
@@ -255,6 +276,9 @@ export const inventoryService = {
         }),
       },
       include: {
+        categoryRef: {
+          select: { id: true, name: true, color: true },
+        },
         _count: {
           select: { movements: true, sessionUsages: true },
         },
@@ -506,6 +530,9 @@ export const inventoryService = {
         isActive: true,
       },
       include: {
+        categoryRef: {
+          select: { id: true, name: true, color: true },
+        },
         _count: {
           select: { movements: true, sessionUsages: true },
         },
@@ -527,6 +554,9 @@ export const inventoryService = {
         currentStock: 0,
       },
       include: {
+        categoryRef: {
+          select: { id: true, name: true, color: true },
+        },
         _count: {
           select: { movements: true, sessionUsages: true },
         },
@@ -552,7 +582,12 @@ export const inventoryService = {
     Array<{
       id: string;
       name: string;
-      category: string | null;
+      categoryId: string | null;
+      categoryRef: {
+        id: string;
+        name: string;
+        color: string | null;
+      } | null;
       salePrice: Prisma.Decimal;
       currentStock: number;
       isChargeableByDefault: boolean;
@@ -566,7 +601,10 @@ export const inventoryService = {
       select: {
         id: true,
         name: true,
-        category: true,
+        categoryId: true,
+        categoryRef: {
+          select: { id: true, name: true, color: true },
+        },
         salePrice: true,
         currentStock: true,
         isChargeableByDefault: true,

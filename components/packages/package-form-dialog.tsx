@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -31,15 +32,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { packageSchema, type PackageFormData } from "@/lib/validations/package";
-import { PACKAGE_CATEGORIES } from "@/lib/constants";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+  isActive: boolean;
+}
 
 interface PackageData {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
   sessionCount: number;
   basePrice: number | string;
+  duration?: number;
+  requiresAdvancePayment?: boolean;
+  advancePaymentAmount?: number | string | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -59,29 +69,51 @@ export function PackageFormDialog({
 }: PackageFormDialogProps) {
   const t = useTranslations();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
       name: "",
       description: "",
-      category: null,
+      categoryId: null,
       sessionCount: 1,
       basePrice: 0,
+      duration: 60,
+      requiresAdvancePayment: false,
+      advancePaymentAmount: null,
       isActive: true,
       sortOrder: 0,
     },
   });
 
+  const requiresAdvancePayment = form.watch("requiresAdvancePayment");
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories?type=PACKAGE");
+      const data = await response.json();
+      setCategories(data.categories || []);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
+      fetchCategories();
       if (packageData) {
         form.reset({
           name: packageData.name,
           description: packageData.description || "",
-          category: packageData.category as PackageFormData["category"],
+          categoryId: packageData.categoryId,
           sessionCount: packageData.sessionCount,
           basePrice: Number(packageData.basePrice),
+          duration: packageData.duration ?? 60,
+          requiresAdvancePayment: packageData.requiresAdvancePayment ?? false,
+          advancePaymentAmount: packageData.advancePaymentAmount
+            ? Number(packageData.advancePaymentAmount)
+            : null,
           isActive: packageData.isActive,
           sortOrder: packageData.sortOrder,
         });
@@ -89,15 +121,18 @@ export function PackageFormDialog({
         form.reset({
           name: "",
           description: "",
-          category: null,
+          categoryId: null,
           sessionCount: 1,
           basePrice: 0,
+          duration: 60,
+          requiresAdvancePayment: false,
+          advancePaymentAmount: null,
           isActive: true,
           sortOrder: 0,
         });
       }
     }
-  }, [open, packageData, form]);
+  }, [open, packageData, form, fetchCategories]);
 
   const translateZodError = (error: string | undefined): string => {
     if (!error) return "";
@@ -118,7 +153,12 @@ export function PackageFormDialog({
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          advancePaymentAmount: data.requiresAdvancePayment
+            ? data.advancePaymentAmount
+            : null,
+        }),
       });
 
       if (!response.ok) {
@@ -136,7 +176,7 @@ export function PackageFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
+      <DialogContent className="max-w-md rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
@@ -198,7 +238,7 @@ export function PackageFormDialog({
 
             <FormField
               control={form.control}
-              name="category"
+              name="categoryId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-gray-700">
@@ -214,9 +254,9 @@ export function PackageFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {PACKAGE_CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {t(`packages.categories.${category}`)}
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -252,6 +292,38 @@ export function PackageFormDialog({
 
               <FormField
                 control={form.control}
+                name="duration"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">
+                      {t("packages.form.duration")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={15}
+                        max={180}
+                        step={15}
+                        {...field}
+                        value={field.value ?? 60}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      {t("packages.form.durationHelp")}
+                    </FormDescription>
+                    <FormMessage>
+                      {translateZodError(fieldState.error?.message)}
+                    </FormMessage>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
                 name="basePrice"
                 render={({ field, fieldState }) => (
                   <FormItem>
@@ -274,31 +346,86 @@ export function PackageFormDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="sortOrder"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">
+                      {t("packages.form.sortOrder")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                      />
+                    </FormControl>
+                    <FormMessage>
+                      {translateZodError(fieldState.error?.message)}
+                    </FormMessage>
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
               control={form.control}
-              name="sortOrder"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700">
-                    {t("packages.form.sortOrder")}
-                  </FormLabel>
+              name="requiresAdvancePayment"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-xl bg-amber-50 p-4">
+                  <div>
+                    <FormLabel className="text-gray-700">
+                      {t("packages.form.requiresAdvancePayment")}
+                    </FormLabel>
+                    <p className="text-sm text-gray-500">
+                      {t("packages.form.requiresAdvancePaymentDescription")}
+                    </p>
+                  </div>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                      className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormMessage>
-                    {translateZodError(fieldState.error?.message)}
-                  </FormMessage>
                 </FormItem>
               )}
             />
+
+            {requiresAdvancePayment && (
+              <FormField
+                control={form.control}
+                name="advancePaymentAmount"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">
+                      {t("packages.form.advancePaymentAmount")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value ? Number(e.target.value) : null
+                          )
+                        }
+                        className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                      />
+                    </FormControl>
+                    <FormMessage>
+                      {translateZodError(fieldState.error?.message)}
+                    </FormMessage>
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

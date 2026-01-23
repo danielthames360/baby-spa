@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,13 +32,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { productSchema, type ProductFormData } from "@/lib/validations/inventory";
-import { PRODUCT_CATEGORIES } from "@/lib/constants";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+  isActive: boolean;
+}
 
 interface ProductData {
   id: string;
   name: string;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
   costPrice: number | string;
   salePrice: number | string;
   currentStock: number;
@@ -62,13 +68,14 @@ export function ProductFormDialog({
 }: ProductFormDialogProps) {
   const t = useTranslations();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
       description: "",
-      category: "",
+      categoryId: null,
       costPrice: 0,
       salePrice: 0,
       currentStock: 0,
@@ -78,13 +85,24 @@ export function ProductFormDialog({
     },
   });
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch("/api/categories?type=PRODUCT");
+      const data = await response.json();
+      setCategories(data.categories || []);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
+      fetchCategories();
       if (product) {
         form.reset({
           name: product.name,
           description: product.description || "",
-          category: product.category || "",
+          categoryId: product.categoryId,
           costPrice: Number(product.costPrice),
           salePrice: Number(product.salePrice),
           currentStock: product.currentStock,
@@ -96,7 +114,7 @@ export function ProductFormDialog({
         form.reset({
           name: "",
           description: "",
-          category: "",
+          categoryId: null,
           costPrice: 0,
           salePrice: 0,
           currentStock: 0,
@@ -106,7 +124,7 @@ export function ProductFormDialog({
         });
       }
     }
-  }, [open, product, form]);
+  }, [open, product, form, fetchCategories]);
 
   const translateZodError = (error: string | undefined): string => {
     if (!error) return "";
@@ -127,7 +145,7 @@ export function ProductFormDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          category: data.category || null,
+          categoryId: data.categoryId || null,
         }),
       });
 
@@ -206,14 +224,14 @@ export function ProductFormDialog({
 
             <FormField
               control={form.control}
-              name="category"
+              name="categoryId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-gray-700">
                     {t("inventory.form.category")}
                   </FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => field.onChange(value || null)}
                     value={field.value || ""}
                   >
                     <FormControl>
@@ -222,9 +240,9 @@ export function ProductFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {PRODUCT_CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {t(`inventory.categories.${category}`)}
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
