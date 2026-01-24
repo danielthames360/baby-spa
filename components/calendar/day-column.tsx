@@ -19,7 +19,7 @@ interface Appointment {
   packageName?: string;
   startTime: string;
   endTime: string;
-  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  status: "PENDING_PAYMENT" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 }
 
 interface TimeSlotData {

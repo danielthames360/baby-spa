@@ -420,6 +420,97 @@ When implementing new features, reference these existing files:
 
 ---
 
+## 🗄️ Direct Database Queries (Claude)
+
+Para consultar la base de datos directamente desde la terminal, usa este patrón con Node.js:
+
+```bash
+cd D:/projects/next/baby-spa && node -e "
+require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
+
+const connectionString = process.env.DATABASE_URL;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+// Tu query aquí
+prisma.appointment.findFirst({
+  orderBy: { createdAt: 'desc' },
+  include: {
+    baby: true,
+    selectedPackage: true,
+    therapist: true,
+    session: true,
+    packagePurchase: true
+  }
+}).then(data => {
+  console.log(JSON.stringify(data, null, 2));
+}).catch(err => {
+  console.error('Error:', err.message);
+}).finally(() => {
+  prisma.\$disconnect();
+});
+"
+```
+
+### Puntos importantes:
+- **Siempre** usar `require('dotenv').config()` para cargar variables de entorno
+- **Siempre** usar `@prisma/adapter-pg` (PrismaPg) - el proyecto usa PostgreSQL adapter
+- **Escapar** el `$` en `prisma.$disconnect()` como `prisma.\$disconnect()` en bash
+- Consultar `prisma/schema.prisma` para ver los modelos y relaciones disponibles
+
+### Modelos principales:
+- `appointment` - Citas (include: baby, selectedPackage, therapist, session, packagePurchase, payments)
+- `baby` - Bebés (include: parents, appointments, packagePurchases)
+- `parent` - Padres (include: babies)
+- `package` - Paquetes disponibles
+- `packagePurchase` - Compras de paquetes
+- `session` - Sesiones de terapia
+- `user` - Usuarios del sistema (staff)
+
+### Ejemplo: Ver últimas citas con formato legible
+```bash
+cd D:/projects/next/baby-spa && node -e "
+require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
+
+const connectionString = process.env.DATABASE_URL;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+prisma.appointment.findMany({
+  orderBy: { createdAt: 'desc' },
+  take: 5,
+  select: {
+    id: true,
+    date: true,
+    startTime: true,
+    endTime: true,
+    status: true,
+    createdAt: true,
+    baby: { select: { name: true } }
+  }
+}).then(data => {
+  console.log('=== Últimas 5 citas ===');
+  data.forEach(apt => {
+    console.log('---');
+    console.log('Baby:', apt.baby.name);
+    console.log('Date stored:', apt.date.toISOString());
+    console.log('Time:', apt.startTime, '-', apt.endTime);
+    console.log('Status:', apt.status);
+  });
+}).catch(err => {
+  console.error('Error:', err.message);
+}).finally(() => {
+  prisma.\$disconnect();
+});
+"
+```
+
+---
+
 ## 🔍 Code Verification Guidelines (Post-Implementation)
 
 After completing any implementation phase, run these verification steps to ensure code quality.
@@ -478,3 +569,102 @@ The project follows these Next.js App Router best practices:
 ✅ After resolving merge conflicts
 ✅ When preparing for deployment
 ✅ After upgrading dependencies
+
+---
+
+## 📱 Mobile UX Best Practices
+
+### Modal Viewport Auto-Adjustment (MANDATORY)
+
+All modals/dialogs MUST auto-adjust their height based on the visual viewport to handle iOS Safari toolbar behavior. When the toolbar appears/disappears, the modal content must remain visible and accessible.
+
+**Required Pattern:**
+```tsx
+// 1. Use this hook for iOS Safari compatible viewport handling
+function useMobileViewport() {
+  const [styles, setStyles] = useState<{ height?: number; isMobile: boolean }>({ isMobile: false });
+
+  useLayoutEffect(() => {
+    function update() {
+      const isMobile = window.innerWidth < 640;
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      setStyles({ height, isMobile });
+    }
+
+    update();
+
+    const viewport = window.visualViewport;
+    if (viewport) {
+      viewport.addEventListener('resize', update);
+      viewport.addEventListener('scroll', update);
+    }
+    window.addEventListener('orientationchange', update);
+
+    return () => {
+      if (viewport) {
+        viewport.removeEventListener('resize', update);
+        viewport.removeEventListener('scroll', update);
+      }
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
+  return styles;
+}
+
+// 2. Apply in component
+const { height: viewportHeight, isMobile } = useMobileViewport();
+
+// 3. Use in DialogContent
+<DialogContent
+  className="flex w-full max-w-full flex-col gap-0 rounded-none border-0 p-0 sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl sm:border"
+  style={viewportHeight && isMobile ? { height: viewportHeight, maxHeight: viewportHeight } : undefined}
+>
+  {/* Header - shrink-0 */}
+  <div className="shrink-0 border-b ...">...</div>
+
+  {/* Content - flex-1 overflow-y-auto */}
+  <div className="flex-1 overflow-y-auto">...</div>
+
+  {/* Footer - shrink-0 */}
+  <div className="shrink-0 border-t bg-white ...">...</div>
+</DialogContent>
+```
+
+**Key Requirements:**
+- ✅ Use `visualViewport` API (more reliable than `innerHeight` on iOS)
+- ✅ Full height on mobile (`rounded-none border-0`), contained on desktop (`sm:max-h-[85vh] sm:rounded-2xl`)
+- ✅ Flex layout with `shrink-0` header/footer and `flex-1 overflow-y-auto` content
+- ✅ Dynamic height style only applied on mobile
+
+### Web Share API for Images (Mobile Only)
+
+When offering image download, use Web Share API **only on mobile** to allow saving to photo gallery. On desktop, use direct download to avoid Windows share dialog:
+
+```tsx
+const handleDownload = async () => {
+  try {
+    const response = await fetch(imageDataUrl);
+    const blob = await response.blob();
+    const file = new File([blob], "image.png", { type: "image/png" });
+
+    // IMPORTANT: Only use Web Share API on mobile (avoid Windows share dialog on desktop)
+    const isMobileDevice = window.innerWidth < 640 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobileDevice && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Image Title" });
+      return;
+    }
+  } catch (error) {
+    console.log("Share cancelled or failed, using download fallback");
+  }
+
+  // Fallback: direct download (used on desktop or when share fails)
+  const link = document.createElement("a");
+  link.href = imageDataUrl;
+  link.download = "image.png";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+```

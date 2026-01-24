@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { parseDateToUTCNoon, getStartOfDayUTC } from "@/lib/utils/date-utils";
 
 export async function GET() {
   try {
@@ -57,9 +58,8 @@ export async function GET() {
 
     const babyIds = parentBabies.map((bp) => bp.babyId);
 
-    // Get all appointments
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get all appointments (use UTC for consistent date comparison)
+    const today = getStartOfDayUTC(new Date());
 
     const appointments = await prisma.appointment.findMany({
       where: {
@@ -92,6 +92,7 @@ export async function GET() {
           select: {
             id: true,
             name: true,
+            advancePaymentAmount: true,
           },
         },
       },
@@ -102,9 +103,10 @@ export async function GET() {
     });
 
     // Separate upcoming and past
+    // Include both SCHEDULED and PENDING_PAYMENT in upcoming
     const upcoming = appointments.filter((apt) => {
       const aptDate = new Date(apt.date);
-      return aptDate >= today && apt.status === "SCHEDULED";
+      return aptDate >= today && (apt.status === "SCHEDULED" || apt.status === "PENDING_PAYMENT");
     }).sort((a, b) => {
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
@@ -116,7 +118,7 @@ export async function GET() {
 
     const past = appointments.filter((apt) => {
       const aptDate = new Date(apt.date);
-      return aptDate < today || apt.status !== "SCHEDULED";
+      return aptDate < today || (apt.status !== "SCHEDULED" && apt.status !== "PENDING_PAYMENT");
     });
 
     // Transform babies for selection
@@ -248,9 +250,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Parse date as local (flat date - no UTC conversion)
+    // Parse date as UTC noon to avoid timezone day-shift issues
+    // Using 12:00 UTC ensures the date never shifts regardless of timezone
     const [year, month, day] = date.split("-").map(Number);
-    const appointmentDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const appointmentDate = parseDateToUTCNoon(year, month, day);
 
     // Calculate end time based on package duration
     const [hours, minutes] = startTime.split(":").map(Number);
@@ -298,10 +301,13 @@ export async function POST(request: Request) {
     const MAX_SLOTS_PER_HOUR = 2;
     const SLOT_DURATION_MINUTES = 30;
 
+    // PENDING_PAYMENT appointments don't block slots
     const existingAppointments = await prisma.appointment.findMany({
       where: {
         date: appointmentDate,
-        status: "SCHEDULED",
+        status: {
+          in: ["SCHEDULED", "IN_PROGRESS"],
+        },
       },
       select: { startTime: true, endTime: true },
     });
@@ -326,6 +332,33 @@ export async function POST(request: Request) {
       }
     }
 
+    // Check if the selected package requires advance payment
+    let requiresAdvancePayment = false;
+    let advancePaymentAmount: number | null = null;
+    let packageName = "";
+
+    if (validPackagePurchaseId) {
+      // Using existing package purchase - no advance payment needed
+      requiresAdvancePayment = false;
+    } else if (validSelectedPackageId) {
+      // Check if catalog package requires advance payment
+      const catalogPackage = await prisma.package.findUnique({
+        where: { id: validSelectedPackageId },
+        select: {
+          name: true,
+          requiresAdvancePayment: true,
+          advancePaymentAmount: true,
+        },
+      });
+      if (catalogPackage) {
+        requiresAdvancePayment = catalogPackage.requiresAdvancePayment;
+        advancePaymentAmount = catalogPackage.advancePaymentAmount
+          ? parseFloat(catalogPackage.advancePaymentAmount.toString())
+          : null;
+        packageName = catalogPackage.name;
+      }
+    }
+
     // Create appointment (NO session deduction - that happens when session is completed)
     const result = await prisma.$transaction(async (tx) => {
       // Create appointment with package pre-selected (provisional until checkout)
@@ -337,7 +370,8 @@ export async function POST(request: Request) {
           date: appointmentDate,
           startTime,
           endTime,
-          status: "SCHEDULED",
+          status: requiresAdvancePayment ? "PENDING_PAYMENT" : "SCHEDULED",
+          isPendingPayment: requiresAdvancePayment,
         },
       });
 
@@ -354,6 +388,7 @@ export async function POST(request: Request) {
             startTime,
             endTime,
             packagePurchaseId: validPackagePurchaseId,
+            status: requiresAdvancePayment ? "PENDING_PAYMENT" : "SCHEDULED",
           },
         },
       });
@@ -361,7 +396,12 @@ export async function POST(request: Request) {
       return appointment;
     });
 
-    return NextResponse.json({ appointment: result });
+    return NextResponse.json({
+      appointment: result,
+      requiresAdvancePayment,
+      advancePaymentAmount,
+      packageName,
+    });
   } catch (error) {
     console.error("Create appointment error:", error);
     return NextResponse.json(

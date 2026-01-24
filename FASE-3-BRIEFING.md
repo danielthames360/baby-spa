@@ -377,6 +377,8 @@ Primera cuota a pagar hoy: 500 Bs
    - paidAmount = 500
 6. Se crea PackagePayment (cuota 1)
 
+Tabien deberiamos poder hacer la compra de un paquete en cuotas desde la pagina del bebe, donde ya vendemos paquetes actualmente 
+
 ### Vista de Paquete del Bebé
 
 En el perfil del bebé, mostrar estado de pagos:

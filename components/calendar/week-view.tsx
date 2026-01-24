@@ -10,7 +10,7 @@ interface Appointment {
   date: Date;
   startTime: string; // HH:mm format
   endTime: string;   // HH:mm format
-  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  status: "PENDING_PAYMENT" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
   baby: {
     id: string;
     name: string;

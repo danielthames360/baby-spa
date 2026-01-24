@@ -34,6 +34,7 @@ enum BirthType {
 }
 
 enum AppointmentStatus {
+  PENDING_PAYMENT  // Waiting for advance payment
   SCHEDULED
   IN_PROGRESS
   COMPLETED
@@ -114,6 +115,7 @@ model User {
   registrationLinks    RegistrationLink[]
   babyNotes            BabyNote[]
   staffPayments        StaffPayment[]
+  appointmentPayments  AppointmentPayment[]
 
   @@map("users")
 }
@@ -405,11 +407,15 @@ model Appointment {
   notes        String?
   cancelReason String?
 
+  // For advance payment tracking
+  isPendingPayment Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  session Session?
-  history AppointmentHistory[]
+  session  Session?
+  history  AppointmentHistory[]
+  payments AppointmentPayment[]
 
   @@map("appointments")
 }
@@ -435,6 +441,28 @@ model AppointmentHistory {
   createdAt DateTime @default(now())
 
   @@map("appointment_history")
+}
+
+// ============================================================
+// PAGOS DE CITAS (Anticipos y pagos parciales)
+// ============================================================
+
+model AppointmentPayment {
+  id            String        @id @default(cuid())
+  appointmentId String
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  paymentType   String        // ADVANCE | COMPLETION | PARTIAL
+  reference     String?       // Receipt/transaction number
+  notes         String?
+
+  createdAt   DateTime @default(now())
+  createdById String
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  @@map("appointment_payments")
 }
 
 // ============================================================
@@ -740,9 +768,11 @@ model SystemSettings {
   defaultPackage        Package? @relation("DefaultPackage", fields: [defaultPackageId], references: [id])
 
   // Configuración de pagos (para Fase 3.2)
-  paymentQrImageUrl     String?  // URL de la imagen del QR de pago
+  paymentQrImage        String?  @db.Text  // Base64 encoded QR image
+  paymentQrImageUrl     String?  // URL de la imagen del QR de pago (legacy)
   whatsappNumber        String?  // Número de WhatsApp para comprobantes
-  whatsappMessage       String?  // Mensaje predeterminado con variables {fecha}, {monto}, {bebe}
+  whatsappCountryCode   String?  @default("+591")  // Country code for WhatsApp
+  whatsappMessage       String?  @default("Hola, adjunto mi comprobante de pago para la cita del {fecha} a las {hora}. Bebé: {bebe}")
 
   updatedAt             DateTime @updatedAt
 

@@ -9,6 +9,12 @@ import {
   getSlotEndTime,
   isWithinBusinessHours,
 } from "@/lib/constants/business-hours";
+import {
+  normalizeToUTCNoon,
+  getStartOfDayUTC,
+  getEndOfDayUTC,
+  fromDateOnly,
+} from "@/lib/utils/date-utils";
 
 // Re-export for backwards compatibility
 export { BUSINESS_HOURS, MAX_APPOINTMENTS_PER_SLOT, SLOT_DURATION_MINUTES, generateTimeSlots, isWithinBusinessHours };
@@ -88,6 +94,7 @@ export interface CreateAppointmentInput {
   maxAppointments?: number; // Optional: defaults to staff limit (5). For parents portal, pass 2
   selectedPackageId?: string; // Provisional package selection
   packagePurchaseId?: string; // If using existing package purchase
+  createAsPending?: boolean; // If true, create as PENDING_PAYMENT (for packages requiring advance payment)
 }
 
 export interface UpdateAppointmentInput {
@@ -135,12 +142,10 @@ function timeRangesOverlap(
   return s1 < e2 && s2 < e1;
 }
 
-// Helper: Get date string in YYYY-MM-DD format (local)
+// Helper: Get date string in YYYY-MM-DD format (UTC)
+// Uses centralized date utility for consistency
 function formatDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return fromDateOnly(date);
 }
 
 
@@ -193,6 +198,8 @@ export const appointmentService = {
               select: {
                 id: true,
                 name: true,
+                basePrice: true,
+                advancePaymentAmount: true,
               },
             },
           },
@@ -201,6 +208,8 @@ export const appointmentService = {
           select: {
             id: true,
             name: true,
+            basePrice: true,
+            advancePaymentAmount: true,
           },
         },
       },
@@ -212,12 +221,9 @@ export const appointmentService = {
 
   // Get appointments for a specific date
   async getByDate(date: Date): Promise<AppointmentWithRelations[]> {
-    // Normalize to start of day
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use centralized date utilities for consistent handling
+    const startOfDay = getStartOfDayUTC(date);
+    const endOfDay = getEndOfDayUTC(date);
 
     return this.getByDateRange(startOfDay, endOfDay);
   },
@@ -251,6 +257,27 @@ export const appointmentService = {
           select: {
             id: true,
             status: true,
+          },
+        },
+        packagePurchase: {
+          select: {
+            id: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+                basePrice: true,
+                advancePaymentAmount: true,
+              },
+            },
+          },
+        },
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
+            basePrice: true,
+            advancePaymentAmount: true,
           },
         },
       },
@@ -340,11 +367,9 @@ export const appointmentService = {
 
   // Check if baby already has an appointment on this date
   async babyHasAppointmentOnDate(babyId: string, date: Date, excludeAppointmentId?: string): Promise<boolean> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use centralized date utilities for consistent handling
+    const startOfDay = getStartOfDayUTC(date);
+    const endOfDay = getEndOfDayUTC(date);
 
     const existing = await prisma.appointment.findFirst({
       where: {
@@ -370,11 +395,9 @@ export const appointmentService = {
     endTime: string,
     excludeAppointmentId?: string
   ): Promise<number> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use centralized date utilities for consistent handling
+    const startOfDay = getStartOfDayUTC(date);
+    const endOfDay = getEndOfDayUTC(date);
 
     // Get all appointments for the day
     const appointments = await prisma.appointment.findMany({
@@ -406,17 +429,17 @@ export const appointmentService = {
     excludeAppointmentId?: string,
     maxAppointments: number = MAX_APPOINTMENTS_FOR_STAFF
   ): Promise<{ available: boolean; conflictingSlot?: string; occupiedCount?: number }> {
-    // Use the exact date passed in (should already be normalized to start of day)
-    // Query using equals on the date to avoid timezone issues with gte/lte
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
+    // Use centralized date utilities for consistent handling
+    const startOfDay = getStartOfDayUTC(date);
+    const endOfDay = getEndOfDayUTC(date);
 
     // Get all appointments for this specific date
-    // Using a date range that accounts for the fact that @db.Date stores as UTC midnight
+    // Using a date range to handle any time component variations
     const appointments = await prisma.appointment.findMany({
       where: {
         date: {
-          equals: targetDate,
+          gte: startOfDay,
+          lte: endOfDay,
         },
         status: {
           notIn: [AppointmentStatus.CANCELLED],
@@ -477,12 +500,12 @@ export const appointmentService = {
       userName,
       maxAppointments = MAX_APPOINTMENTS_FOR_STAFF,
       selectedPackageId,
-      packagePurchaseId
+      packagePurchaseId,
+      createAsPending = false,
     } = input;
 
-    // Normalize date to start of day
-    const appointmentDate = new Date(date);
-    appointmentDate.setHours(0, 0, 0, 0);
+    // Normalize date to UTC noon to avoid timezone day-shift issues
+    const appointmentDate = normalizeToUTCNoon(date);
 
     // Get package duration (from selectedPackageId, packagePurchaseId, or system default)
     let sessionDuration = DEFAULT_SESSION_DURATION_MINUTES;
@@ -558,6 +581,12 @@ export const appointmentService = {
     // Package selection is provisional - confirmed at checkout
     // Session will be deducted from package when completed by reception
 
+    // Determine initial status
+    // If createAsPending is true, start as PENDING_PAYMENT (for packages requiring advance payment)
+    const initialStatus = createAsPending
+      ? AppointmentStatus.PENDING_PAYMENT
+      : AppointmentStatus.SCHEDULED;
+
     // Create appointment (no session deduction at booking time)
     const appointment = await prisma.$transaction(async (tx) => {
       // Create appointment
@@ -567,7 +596,7 @@ export const appointmentService = {
           date: appointmentDate,
           startTime,
           endTime,
-          status: AppointmentStatus.SCHEDULED,
+          status: initialStatus,
           notes,
           selectedPackageId,
           packagePurchaseId,
@@ -615,7 +644,7 @@ export const appointmentService = {
             date: formatDateString(appointmentDate),
             startTime,
             endTime,
-            status: AppointmentStatus.SCHEDULED,
+            status: initialStatus,
           } as Prisma.InputJsonValue,
         },
       });
@@ -644,8 +673,7 @@ export const appointmentService = {
 
     // Handle date/time change
     if (input.date || input.startTime) {
-      const newDate = input.date ? new Date(input.date) : new Date(existing.date);
-      newDate.setHours(0, 0, 0, 0);
+      const newDate = normalizeToUTCNoon(input.date ? new Date(input.date) : new Date(existing.date));
 
       const newStartTime = input.startTime || existing.startTime;
 
@@ -1063,8 +1091,8 @@ export const appointmentService = {
 
   // Get upcoming appointments for a baby
   async getUpcomingForBaby(babyId: string): Promise<AppointmentWithRelations[]> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use start of day to include all appointments from today onwards
+    const today = getStartOfDayUTC(new Date());
 
     const appointments = await prisma.appointment.findMany({
       where: {

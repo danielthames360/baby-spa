@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import Link from "next/link";
 import {
   Dialog,
@@ -32,6 +33,7 @@ import {
 import { StartSessionDialog } from "@/components/sessions/start-session-dialog";
 import { CompleteSessionDialog } from "@/components/sessions/complete-session-dialog";
 import { ViewBabyDialog } from "@/components/sessions/view-baby-dialog";
+import { RegisterPaymentDialog } from "@/components/appointments/register-payment-dialog";
 import {
   PackageSelector,
   type PackageData,
@@ -54,6 +56,7 @@ import {
   Info,
   Package,
   Pencil,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
@@ -66,7 +69,8 @@ interface AppointmentDetailsProps {
     date: Date;
     startTime: string; // HH:mm format
     endTime: string;   // HH:mm format
-    status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+    status: "PENDING_PAYMENT" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+    isPendingPayment?: boolean;
     notes: string | null;
     cancelReason: string | null;
     packagePurchaseId?: string | null;
@@ -90,17 +94,25 @@ interface AppointmentDetailsProps {
       package: {
         id: string;
         name: string;
+        basePrice?: number | string | null;
+        advancePaymentAmount?: number | string | null;
       };
     } | null;
     selectedPackage?: {
       id: string;
       name: string;
+      basePrice?: number | string | null;
+      advancePaymentAmount?: number | string | null;
     } | null;
   } | null;
   onUpdate?: () => void;
 }
 
 const statusConfig = {
+  PENDING_PAYMENT: {
+    label: "pendingPayment",
+    color: "bg-orange-100 text-orange-800 border-orange-300",
+  },
   SCHEDULED: {
     label: "scheduled",
     color: "bg-amber-100 text-amber-800 border-amber-300",
@@ -154,6 +166,9 @@ export function AppointmentDetails({
 
   // View baby state
   const [showViewBabyDialog, setShowViewBabyDialog] = useState(false);
+
+  // Register payment state
+  const [showRegisterPaymentDialog, setShowRegisterPaymentDialog] = useState(false);
   const [babyDetails, setBabyDetails] = useState<{
     id: string;
     name: string;
@@ -283,21 +298,9 @@ export function AppointmentDetails({
     return time.slice(0, 5);
   };
 
-  // Format date - parse from ISO string directly to avoid timezone conversion
+  // Format date using utility to avoid timezone issues
   const formatDate = () => {
-    const dateValue = appointment.date as unknown as string | Date;
-    let dateObj: Date;
-
-    if (typeof dateValue === "string") {
-      // Extract date portion from ISO string (e.g., "2026-01-23" from "2026-01-23T00:00:00.000Z")
-      const datePart = dateValue.split("T")[0];
-      const [year, month, day] = datePart.split("-").map(Number);
-      dateObj = new Date(year, month - 1, day);
-    } else {
-      dateObj = dateValue;
-    }
-
-    return dateObj.toLocaleDateString(dateLocale, {
+    return formatDateForDisplay(appointment.date, dateLocale, {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -334,9 +337,10 @@ export function AppointmentDetails({
 
   const canStart = appointment.status === "SCHEDULED";
   const canComplete = appointment.status === "IN_PROGRESS";
-  const canCancel = ["SCHEDULED", "IN_PROGRESS"].includes(appointment.status);
+  const canCancel = ["SCHEDULED", "IN_PROGRESS", "PENDING_PAYMENT"].includes(appointment.status);
   const canMarkNoShow = appointment.status === "SCHEDULED";
-  const canReschedule = appointment.status === "SCHEDULED";
+  const canReschedule = appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT";
+  const canRegisterPayment = appointment.status === "PENDING_PAYMENT";
 
   // Handle reschedule
   const handleReschedule = async () => {
@@ -566,6 +570,12 @@ export function AppointmentDetails({
                             ? appointment.selectedPackage.name
                             : t("calendar.sessionToDefine")}
                       </p>
+                      {/* Advance payment amount for PENDING_PAYMENT */}
+                      {appointment.status === "PENDING_PAYMENT" && appointment.selectedPackage?.advancePaymentAmount && (
+                        <p className="mt-1 text-sm font-bold text-orange-600">
+                          💰 {t("payment.advanceRequired")}: Bs. {parseFloat(appointment.selectedPackage.advancePaymentAmount.toString()).toFixed(2)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   {/* Edit button - only for scheduled appointments */}
@@ -723,8 +733,20 @@ export function AppointmentDetails({
             )}
 
             {/* Actions */}
-            {(canStart || canComplete || canCancel || canMarkNoShow || canReschedule) && (
+            {(canStart || canComplete || canCancel || canMarkNoShow || canReschedule || canRegisterPayment) && (
               <div className="space-y-3">
+                {/* Register Payment - for PENDING_PAYMENT appointments */}
+                {canRegisterPayment && (
+                  <Button
+                    onClick={() => setShowRegisterPaymentDialog(true)}
+                    disabled={isUpdating}
+                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-6 text-base font-semibold text-white shadow-lg shadow-amber-200 hover:from-amber-600 hover:to-orange-600"
+                  >
+                    <CreditCard className="mr-2 h-5 w-5" />
+                    {t("payment.registerPayment")}
+                  </Button>
+                )}
+
                 {/* Primary workflow action - Start or Complete */}
                 {(canStart || canComplete) && (
                   <div className="flex gap-2">
@@ -1007,6 +1029,19 @@ export function AppointmentDetails({
         onOpenChange={setShowViewBabyDialog}
         baby={babyDetails}
       />
+
+      {/* Register payment dialog */}
+      {appointment && (
+        <RegisterPaymentDialog
+          open={showRegisterPaymentDialog}
+          onOpenChange={setShowRegisterPaymentDialog}
+          appointment={appointment}
+          onPaymentRegistered={() => {
+            onUpdate?.();
+            onOpenChange(false);
+          }}
+        />
+      )}
     </>
   );
 }

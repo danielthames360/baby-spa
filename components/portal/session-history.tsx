@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import {
   History,
   Baby,
@@ -88,6 +89,7 @@ interface BabyFilter {
 
 export function SessionHistory() {
   const t = useTranslations();
+  const locale = useLocale();
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [babies, setBabies] = useState<BabyFilter[]>([]);
   const [selectedBabyId, setSelectedBabyId] = useState<string>("all");
@@ -122,8 +124,7 @@ export function SessionHistory() {
   }, [selectedBabyId]);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
+    return formatDateForDisplay(dateString, locale, {
       weekday: "long",
       day: "numeric",
       month: "long",

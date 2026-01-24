@@ -9,6 +9,7 @@ import { DayView } from "./day-view";
 import { AppointmentDialog } from "./appointment-dialog";
 import { AppointmentDetails } from "./appointment-details";
 import { cn } from "@/lib/utils";
+import { formatLocalDateString } from "@/lib/utils/date-utils";
 
 interface Appointment {
   id: string;
@@ -56,14 +57,6 @@ interface ClosedDate {
 }
 
 type ViewMode = "week" | "day";
-
-// Format date as local YYYY-MM-DD (no UTC conversion)
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 // Get start of week (Monday)
 function getWeekStart(date: Date): Date {
@@ -153,7 +146,7 @@ export function CalendarView() {
     try {
       const weekEnd = getWeekEnd(currentWeekStart);
       const response = await fetch(
-        `/api/appointments?startDate=${formatLocalDate(currentWeekStart)}&endDate=${formatLocalDate(weekEnd)}`
+        `/api/appointments?startDate=${formatLocalDateString(currentWeekStart)}&endDate=${formatLocalDateString(weekEnd)}`
       );
       const data = await response.json();
       const newAppointments = data.appointments || [];

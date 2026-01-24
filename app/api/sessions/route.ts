@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sessionService } from "@/lib/services/session-service";
+import { parseDateToUTCNoon } from "@/lib/utils/date-utils";
 
 // GET /api/sessions - Get today's sessions
 export async function GET(request: NextRequest) {
@@ -32,9 +33,9 @@ export async function GET(request: NextRequest) {
     let targetDate: Date | undefined;
 
     if (dateParam) {
-      // Parse date string (YYYY-MM-DD) in local timezone to avoid UTC offset issues
+      // Parse date string (YYYY-MM-DD) as UTC noon to avoid server timezone issues
       const [year, month, day] = dateParam.split("-").map(Number);
-      targetDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      targetDate = parseDateToUTCNoon(year, month, day);
     }
 
     if (session.user.role === "THERAPIST") {

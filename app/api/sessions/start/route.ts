@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
           message: "APPOINTMENT_NOT_SCHEDULED",
           status: 400,
         },
+        APPOINTMENT_PENDING_PAYMENT: {
+          message: "APPOINTMENT_PENDING_PAYMENT",
+          status: 400,
+        },
         SESSION_ALREADY_EXISTS: {
           message: "SESSION_ALREADY_EXISTS",
           status: 400,

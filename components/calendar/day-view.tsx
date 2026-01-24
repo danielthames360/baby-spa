@@ -54,6 +54,12 @@ interface DayViewProps {
 }
 
 const statusConfig = {
+  PENDING_PAYMENT: {
+    bg: "bg-gradient-to-r from-orange-50 via-orange-100 to-orange-50 bg-[length:10px_10px]",
+    border: "border-orange-400 border-dashed",
+    text: "text-orange-800",
+    dot: "bg-orange-500 animate-pulse",
+  },
   SCHEDULED: {
     bg: "bg-amber-50",
     border: "border-amber-300",
@@ -88,6 +94,7 @@ const statusConfig = {
 
 // Map status enum values to translation keys
 const statusTranslationKey: Record<string, string> = {
+  PENDING_PAYMENT: "pendingPayment",
   SCHEDULED: "scheduled",
   IN_PROGRESS: "inProgress",
   COMPLETED: "completed",

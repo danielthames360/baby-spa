@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment-service";
 import { updateAppointmentSchema } from "@/lib/validations/appointment";
 import { AppointmentStatus } from "@prisma/client";
+import { parseDateToUTCNoon } from "@/lib/utils/date-utils";
 
 // GET /api/appointments/[id] - Get single appointment
 export async function GET(
@@ -67,11 +68,11 @@ export async function PUT(
 
     const { date, startTime, status, notes, cancelReason, packageId, packagePurchaseId } = validationResult.data;
 
-    // Parse date as local date (YYYY-MM-DD format) to avoid timezone issues
+    // Parse date as UTC noon (YYYY-MM-DD format) to avoid server timezone issues
     let dateObj: Date | undefined;
     if (date) {
       const [year, month, day] = date.split("-").map(Number);
-      dateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+      dateObj = parseDateToUTCNoon(year, month, day);
     }
 
     const appointment = await appointmentService.update(

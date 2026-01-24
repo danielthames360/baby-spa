@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 // Hook for mobile fullscreen modal (iOS Safari compatible)
 function useMobileViewport() {
@@ -50,6 +50,9 @@ import {
   CheckCircle,
   Package,
   X,
+  CreditCard,
+  Download,
+  QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,6 +64,7 @@ import {
 } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { cn } from "@/lib/utils";
+import { formatLocalDateString, formatDateForDisplay } from "@/lib/utils/date-utils";
 import {
   PackageSelector,
   type PackageData,
@@ -114,6 +118,7 @@ interface Appointment {
   selectedPackage: {
     id: string;
     name: string;
+    advancePaymentAmount?: string | number | null;
   } | null;
 }
 
@@ -125,6 +130,11 @@ interface TimeSlot {
 
 export function PortalAppointments() {
   const t = useTranslations();
+  const locale = useLocale();
+
+  // Mobile viewport handling for payment dialog (iOS Safari compatible)
+  const { height: paymentDialogHeight, isMobile: isPaymentDialogMobile } = useMobileViewport();
+
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [past, setPast] = useState<Appointment[]>([]);
   const [babies, setBabies] = useState<BabyData[]>([]);
@@ -133,6 +143,12 @@ export function PortalAppointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+
+  // Payment instructions dialog state
+  const [showPaymentInstructionsDialog, setShowPaymentInstructionsDialog] = useState(false);
+  const [selectedAppointmentForPayment, setSelectedAppointmentForPayment] = useState<Appointment | null>(null);
+  const [paymentSettingsForDialog, setPaymentSettingsForDialog] = useState<PaymentSettings | null>(null);
+  const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -157,8 +173,9 @@ export function PortalAppointments() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
+    // Use formatDateForDisplay to avoid timezone shift
+    // Database dates are UTC, toLocaleDateString would shift them in negative UTC offsets
+    return formatDateForDisplay(dateString, locale === "pt-BR" ? "pt-BR" : "es-ES", {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -167,6 +184,7 @@ export function PortalAppointments() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
+      PENDING_PAYMENT: "bg-orange-100 text-orange-700",
       SCHEDULED: "bg-amber-100 text-amber-700",
       IN_PROGRESS: "bg-blue-100 text-blue-700",
       COMPLETED: "bg-emerald-100 text-emerald-700",
@@ -174,7 +192,7 @@ export function PortalAppointments() {
       NO_SHOW: "bg-rose-100 text-rose-700",
     };
     return (
-      <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", styles[status])}>
+      <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", styles[status] || styles.SCHEDULED)}>
         {t(`portal.appointments.status.${status}`)}
       </span>
     );
@@ -182,6 +200,83 @@ export function PortalAppointments() {
 
   // All active babies can schedule (package is selected during booking flow)
   const canScheduleBabies = babies;
+
+  // Handle viewing payment instructions
+  const handleViewPaymentInstructions = async (appointment: Appointment) => {
+    setSelectedAppointmentForPayment(appointment);
+    setLoadingPaymentSettings(true);
+    setShowPaymentInstructionsDialog(true);
+
+    try {
+      const response = await fetch("/api/settings/payment");
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentSettingsForDialog(data.settings);
+      }
+    } catch (error) {
+      console.error("Error fetching payment settings:", error);
+    } finally {
+      setLoadingPaymentSettings(false);
+    }
+  };
+
+  // Generate WhatsApp URL for payment instructions dialog
+  const getWhatsAppUrlForDialog = () => {
+    if (!paymentSettingsForDialog?.whatsappNumber || !selectedAppointmentForPayment) return "";
+
+    const countryCode = (paymentSettingsForDialog.whatsappCountryCode || "+591").replace("+", "");
+    const phone = countryCode + paymentSettingsForDialog.whatsappNumber.replace(/\D/g, "");
+
+    const advanceAmount = selectedAppointmentForPayment.selectedPackage?.advancePaymentAmount
+      ? parseFloat(selectedAppointmentForPayment.selectedPackage.advancePaymentAmount.toString())
+      : 0;
+
+    let message = paymentSettingsForDialog.whatsappMessage || "";
+    message = message
+      .replace("{fecha}", formatDateForDisplay(selectedAppointmentForPayment.date, locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }))
+      .replace("{hora}", selectedAppointmentForPayment.startTime)
+      .replace("{bebe}", selectedAppointmentForPayment.baby.name)
+      .replace("{monto}", advanceAmount.toString());
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  };
+
+  // Download QR for dialog (with Web Share API for mobile gallery save)
+  const handleDownloadQrDialog = async () => {
+    if (!paymentSettingsForDialog?.paymentQrImage) return;
+
+    try {
+      // Convert base64 to blob for sharing
+      const response = await fetch(paymentSettingsForDialog.paymentQrImage);
+      const blob = await response.blob();
+      const file = new File([blob], "QR-Pago-BabySpa.png", { type: "image/png" });
+
+      // Only use Web Share API on mobile (avoid Windows share dialog on desktop)
+      const isMobileDevice = window.innerWidth < 640 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobileDevice && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "QR Pago Baby Spa",
+        });
+        return;
+      }
+    } catch (error) {
+      console.log("Share cancelled or failed, using download fallback");
+    }
+
+    // Fallback: direct download (used on desktop or when share fails)
+    const link = document.createElement("a");
+    link.href = paymentSettingsForDialog.paymentQrImage;
+    link.download = "QR-Pago-BabySpa.png";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (loading) {
     return (
@@ -264,7 +359,13 @@ export function PortalAppointments() {
         ) : (
           <div className="space-y-3">
             {upcoming.map((apt) => (
-              <AppointmentCard key={apt.id} appointment={apt} formatDate={formatDate} getStatusBadge={getStatusBadge} />
+              <AppointmentCard
+                key={apt.id}
+                appointment={apt}
+                formatDate={formatDate}
+                getStatusBadge={getStatusBadge}
+                onViewPaymentInstructions={handleViewPaymentInstructions}
+              />
             ))}
           </div>
         )}
@@ -295,6 +396,128 @@ export function PortalAppointments() {
           fetchData();
         }}
       />
+
+      {/* Payment Instructions Dialog - Mobile responsive */}
+      <Dialog open={showPaymentInstructionsDialog} onOpenChange={setShowPaymentInstructionsDialog}>
+        <DialogContent
+          showCloseButton={false}
+          className="flex w-full max-w-full flex-col gap-0 rounded-none border-0 bg-white/95 p-0 backdrop-blur-md sm:h-auto sm:max-h-[85vh] sm:max-w-md sm:rounded-2xl sm:border sm:border-white/50"
+          style={paymentDialogHeight && isPaymentDialogMobile ? { height: paymentDialogHeight, maxHeight: paymentDialogHeight } : undefined}
+        >
+          {/* Header - Fixed */}
+          <div className="shrink-0 border-b border-gray-100 px-6 py-4 sm:rounded-t-2xl">
+            <DialogHeader className="p-0">
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-gray-800">
+                <CreditCard className="h-5 w-5 text-orange-600" />
+                {t("payment.required")}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500">
+                {selectedAppointmentForPayment?.selectedPackage?.name}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          {/* Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {loadingPaymentSettings ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+              </div>
+            ) : (
+              <>
+                {/* Amount */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">{t("payment.advanceRequired")}</p>
+                  <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-orange-50 px-6 py-3 text-xl font-bold text-orange-700">
+                    <span>Bs.</span>
+                    <span>
+                      {selectedAppointmentForPayment?.selectedPackage?.advancePaymentAmount
+                        ? parseFloat(selectedAppointmentForPayment.selectedPackage.advancePaymentAmount.toString())
+                        : 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* QR Code */}
+                {paymentSettingsForDialog?.paymentQrImage && (
+                  <div className="space-y-3">
+                    <p className="text-center text-sm font-medium text-gray-600">
+                      {t("payment.scanQr")}
+                    </p>
+                    <div className="mx-auto w-44 h-44 rounded-xl border-2 border-teal-200 bg-white p-2 shadow-lg">
+                      <img
+                        src={paymentSettingsForDialog.paymentQrImage}
+                        alt="QR Code"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <button
+                      onClick={handleDownloadQrDialog}
+                      className="mx-auto flex items-center justify-center gap-2 rounded-xl border-2 border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 transition-all hover:bg-teal-50"
+                    >
+                      <Download className="h-4 w-4" />
+                      {t("payment.downloadQr")}
+                    </button>
+                  </div>
+                )}
+
+                {/* WhatsApp Button */}
+                {paymentSettingsForDialog?.whatsappNumber && (
+                  <a
+                    href={getWhatsAppUrlForDialog()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-600"
+                  >
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    {t("payment.sendWhatsapp")}
+                  </a>
+                )}
+
+                {/* Appointment Summary */}
+                {selectedAppointmentForPayment && (
+                  <div className="rounded-xl bg-gray-50 p-4 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">{t("common.baby")}:</span>
+                      <span className="font-medium text-gray-800">{selectedAppointmentForPayment.baby.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">{t("common.date")}:</span>
+                      <span className="font-medium text-gray-800">{formatDate(selectedAppointmentForPayment.date)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">{t("common.time")}:</span>
+                      <span className="font-medium text-gray-800">{selectedAppointmentForPayment.startTime}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Info message */}
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
+                  <div className="flex items-start gap-2">
+                    <Clock className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                    <p className="text-xs text-amber-700">
+                      {t("payment.confirmationPending")}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Footer - Fixed */}
+          <div className="shrink-0 border-t border-gray-100 bg-white px-6 py-4 sm:rounded-b-2xl">
+            <Button
+              onClick={() => setShowPaymentInstructionsDialog(false)}
+              className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-200"
+            >
+              {t("payment.understood")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -304,9 +527,10 @@ interface AppointmentCardProps {
   formatDate: (date: string) => string;
   getStatusBadge: (status: string) => React.ReactNode;
   isPast?: boolean;
+  onViewPaymentInstructions?: (appointment: Appointment) => void;
 }
 
-function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast }: AppointmentCardProps) {
+function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onViewPaymentInstructions }: AppointmentCardProps) {
   const t = useTranslations();
   const getGenderColor = (gender: string) => {
     switch (gender) {
@@ -316,60 +540,98 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast }: Ap
     }
   };
 
+  const isPendingPayment = appointment.status === "PENDING_PAYMENT";
+  const advanceAmount = appointment.selectedPackage?.advancePaymentAmount
+    ? parseFloat(appointment.selectedPackage.advancePaymentAmount.toString())
+    : null;
+
   return (
     <div className={cn(
-      "flex items-center gap-4 rounded-xl border p-4 transition-all",
+      "rounded-xl border p-4 transition-all",
       isPast
         ? "border-gray-100 bg-gray-50/50"
-        : "border-teal-100 bg-gradient-to-r from-white to-teal-50/30 hover:shadow-md"
+        : isPendingPayment
+          ? "border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50"
+          : "border-teal-100 bg-gradient-to-r from-white to-teal-50/30 hover:shadow-md"
     )}>
-      <div
-        className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-md",
-          isPast ? "bg-gray-300" : `bg-gradient-to-br ${getGenderColor(appointment.baby.gender)}`
-        )}
-      >
-        {appointment.baby.name.charAt(0)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-gray-800">{appointment.baby.name}</h3>
-          {getStatusBadge(appointment.status)}
-          {/* Package badge */}
-          {appointment.packagePurchase ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
-              <Package className="h-3 w-3" />
-              {appointment.packagePurchase.package.name}
-            </span>
-          ) : appointment.selectedPackage ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-              <Package className="h-3 w-3" />
-              {appointment.selectedPackage.name}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
-              <Package className="h-3 w-3" />
-              {t("portal.appointments.provisional")}
-            </span>
+      <div className="flex items-center gap-4">
+        <div
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-md",
+            isPast ? "bg-gray-300" : `bg-gradient-to-br ${getGenderColor(appointment.baby.gender)}`
           )}
+        >
+          {appointment.baby.name.charAt(0)}
         </div>
-        <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3.5 w-3.5" />
-            {formatDate(appointment.date)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            {appointment.startTime}
-          </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-gray-800">{appointment.baby.name}</h3>
+            {getStatusBadge(appointment.status)}
+            {/* Package badge */}
+            {appointment.packagePurchase ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                <Package className="h-3 w-3" />
+                {appointment.packagePurchase.package.name}
+              </span>
+            ) : appointment.selectedPackage ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                <Package className="h-3 w-3" />
+                {appointment.selectedPackage.name}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
+                <Package className="h-3 w-3" />
+                {t("portal.appointments.provisional")}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              {formatDate(appointment.date)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {appointment.startTime}
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Pending Payment Info */}
+      {isPendingPayment && (
+        <div className="mt-3 pt-3 border-t border-orange-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-orange-600" />
+              <span className="text-sm font-medium text-orange-700">
+                {t("payment.advanceRequired")}: <span className="font-bold">Bs. {advanceAmount}</span>
+              </span>
+            </div>
+            <button
+              onClick={() => onViewPaymentInstructions?.(appointment)}
+              className="flex items-center gap-1 rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-200"
+            >
+              <QrCode className="h-3.5 w-3.5" />
+              {t("payment.viewPaymentInstructions")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // Wizard step type
-type WizardStep = 'baby' | 'package' | 'datetime' | 'success';
+type WizardStep = 'baby' | 'package' | 'datetime' | 'payment' | 'success';
+
+// Payment settings interface
+interface PaymentSettings {
+  paymentQrImage: string | null;
+  whatsappNumber: string | null;
+  whatsappCountryCode: string | null;
+  whatsappMessage: string | null;
+}
 
 export interface ScheduleDialogProps {
   open: boolean;
@@ -398,6 +660,12 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Payment step state
+  const [requiresPayment, setRequiresPayment] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState<number | null>(null);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+  const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
 
   // Animation trigger for button
   const [buttonAnimated, setButtonAnimated] = useState(false);
@@ -486,11 +754,23 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     }
   }, [selectedDate]);
 
+  // Scroll to top when entering payment step
+  useEffect(() => {
+    if (step === 'payment') {
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [step]);
+
   const fetchSlots = async () => {
     if (!selectedDate) return;
     setLoadingSlots(true);
     try {
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const dateStr = formatLocalDateString(selectedDate);
       const response = await fetch(`/api/portal/appointments/availability?date=${dateStr}`);
       const data = await response.json();
       if (data.available) {
@@ -527,7 +807,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
           babyId: selectedBaby.id,
           packagePurchaseId: selectedPurchaseId, // null if new package from catalog
           packageId: selectedPackageId, // For displaying package info (provisional)
-          date: selectedDate.toISOString().split("T")[0],
+          date: formatLocalDateString(selectedDate),
           startTime: selectedTime,
         }),
       });
@@ -545,7 +825,18 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
         return;
       }
 
-      setStep('success');
+      const data = await response.json();
+
+      // Check if payment is required
+      if (data.requiresAdvancePayment && data.advancePaymentAmount) {
+        setRequiresPayment(true);
+        setAdvanceAmount(data.advancePaymentAmount);
+        // Fetch payment settings for QR and WhatsApp
+        await fetchPaymentSettings();
+        setStep('payment');
+      } else {
+        setStep('success');
+      }
       // Don't call onSuccess here - will be called when user closes success screen
     } catch {
       setSubmitError(t("portal.appointments.errors.generic"));
@@ -554,9 +845,77 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     }
   };
 
+  const fetchPaymentSettings = async () => {
+    setLoadingPaymentSettings(true);
+    try {
+      const response = await fetch("/api/settings/payment");
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentSettings(data.settings);
+      }
+    } catch (error) {
+      console.error("Error fetching payment settings:", error);
+    } finally {
+      setLoadingPaymentSettings(false);
+    }
+  };
+
+  const getWhatsAppUrl = () => {
+    if (!paymentSettings?.whatsappNumber || !selectedDate) return "";
+
+    const countryCode = (paymentSettings.whatsappCountryCode || "+591").replace("+", "");
+    const phone = countryCode + paymentSettings.whatsappNumber.replace(/\D/g, "");
+
+    let message = paymentSettings.whatsappMessage || "";
+    message = message
+      .replace("{fecha}", selectedDate.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }))
+      .replace("{hora}", selectedTime)
+      .replace("{bebe}", selectedBaby?.name || "")
+      .replace("{monto}", advanceAmount?.toString() || "");
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  };
+
+  const handleDownloadQr = async () => {
+    if (!paymentSettings?.paymentQrImage) return;
+
+    try {
+      // Convert base64 to blob for sharing
+      const response = await fetch(paymentSettings.paymentQrImage);
+      const blob = await response.blob();
+      const file = new File([blob], "QR-Pago-BabySpa.png", { type: "image/png" });
+
+      // Only use Web Share API on mobile (avoid Windows share dialog on desktop)
+      const isMobileDevice = window.innerWidth < 640 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobileDevice && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "QR Pago Baby Spa",
+        });
+        return;
+      }
+    } catch (error) {
+      // If share fails or is cancelled, fall through to download
+      console.log("Share cancelled or failed, using download fallback");
+    }
+
+    // Fallback: direct download (used on desktop or when share fails)
+    const link = document.createElement("a");
+    link.href = paymentSettings.paymentQrImage;
+    link.download = "QR-Pago-BabySpa.png";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const resetAndClose = (fromSuccess = false) => {
-    // If closing from success screen, trigger data refresh
-    if (fromSuccess || step === 'success') {
+    // If closing from success or payment screen, trigger data refresh
+    if (fromSuccess || step === 'success' || step === 'payment') {
       onSuccess();
     }
     setStep('baby');
@@ -566,6 +925,9 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     setSelectedDate(null);
     setSelectedTime("");
     setButtonAnimated(false);
+    setRequiresPayment(false);
+    setAdvanceAmount(null);
+    setPaymentSettings(null);
     onOpenChange(false);
   };
 
@@ -895,6 +1257,118 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
             </div>
           )}
 
+          {/* Payment Step */}
+          {step === 'payment' && (
+            <div className="p-4 space-y-6">
+              {loadingPaymentSettings ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+                </div>
+              ) : (
+                <>
+                  {/* Payment header */}
+                  <div className="text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-orange-100 shadow-lg shadow-amber-100">
+                      <CreditCard className="h-8 w-8 text-amber-600" />
+                    </div>
+                    <h3 className="mt-4 text-xl font-bold text-gray-800">
+                      {t("payment.required")}
+                    </h3>
+                    <p className="mt-2 text-sm text-gray-500">
+                      {getSelectedPackageName()}
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-6 py-3 text-lg font-bold text-amber-700">
+                      <span>Bs.</span>
+                      <span>{advanceAmount}</span>
+                    </div>
+                  </div>
+
+                  {/* QR Code */}
+                  {paymentSettings?.paymentQrImage && (
+                    <div className="space-y-3">
+                      <p className="text-center text-sm font-medium text-gray-600">
+                        {t("payment.scanQr")}
+                      </p>
+                      <div className="mx-auto w-48 h-48 rounded-xl border-2 border-teal-200 bg-white p-2 shadow-lg">
+                        <img
+                          src={paymentSettings.paymentQrImage}
+                          alt="QR Code"
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      {/* Download QR Button */}
+                      <button
+                        onClick={handleDownloadQr}
+                        className="mx-auto flex items-center justify-center gap-2 rounded-xl border-2 border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 transition-all hover:bg-teal-50 hover:border-teal-300"
+                      >
+                        <Download className="h-4 w-4" />
+                        {t("payment.downloadQr")}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* WhatsApp Button */}
+                  {paymentSettings?.whatsappNumber && (
+                    <div className="space-y-3">
+                      <p className="text-center text-sm font-medium text-gray-600">
+                        {t("payment.sendWhatsapp")}
+                      </p>
+                      <a
+                        href={getWhatsAppUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-4 font-semibold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-600"
+                      >
+                        <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        {t("payment.sendWhatsapp")}
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Confirmation pending message */}
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">
+                          {t("payment.confirmationPending")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Appointment summary */}
+                  <div className="rounded-xl bg-gray-50 p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t("common.baby")}:</span>
+                      <span className="font-medium text-gray-800">{selectedBaby?.name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t("common.date")}:</span>
+                      <span className="font-medium text-gray-800">
+                        {selectedDate?.toLocaleDateString("es-ES", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t("common.time")}:</span>
+                      <span className="font-medium text-gray-800">{selectedTime}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t("common.package")}:</span>
+                      <span className="font-medium text-gray-800">{getSelectedPackageName()}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Success Step */}
           {step === 'success' && (
             <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">
@@ -954,7 +1428,19 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
         </div>
 
         {/* Footer - Fixed */}
-        {step !== 'success' && step !== 'baby' && (
+        {step === 'payment' && (
+          <div className="shrink-0 border-t border-gray-100 bg-white p-4 sm:rounded-b-2xl">
+            <Button
+              onClick={() => resetAndClose(true)}
+              className="h-12 w-full gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-base font-semibold text-white shadow-lg shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600"
+            >
+              <CheckCircle className="h-5 w-5" />
+              {t("payment.understood")}
+            </Button>
+          </div>
+        )}
+
+        {step !== 'success' && step !== 'baby' && step !== 'payment' && (
           <div className="shrink-0 border-t border-gray-100 bg-white p-4 sm:rounded-b-2xl">
             {/* Error message */}
             {submitError && (

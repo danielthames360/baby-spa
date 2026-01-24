@@ -10,6 +10,7 @@ export const createAppointmentSchema = z.object({
   notes: z.string().max(500, "NOTES_TOO_LONG").optional().or(z.literal("")),
   packageId: z.string().optional().nullable(), // Provisional package from catalog
   packagePurchaseId: z.string().optional().nullable(), // Existing package purchase
+  createAsPending: z.boolean().optional(), // If true, create as PENDING_PAYMENT (for packages requiring advance payment)
 });
 
 export type CreateAppointmentData = z.infer<typeof createAppointmentSchema>;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import {
   Calendar,
   Clock,
@@ -85,8 +86,7 @@ export function SessionHistoryCard({ session, locale }: SessionHistoryCardProps)
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(dateLocale, {
+    return formatDateForDisplay(dateStr, dateLocale, {
       weekday: "short",
       year: "numeric",
       month: "short",

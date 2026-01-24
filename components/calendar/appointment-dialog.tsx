@@ -21,6 +21,8 @@ import {
   AlertCircle,
   User,
   Package,
+  CreditCard,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +30,7 @@ import {
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
+import { RegisterPaymentDialog } from "@/components/appointments/register-payment-dialog";
 
 interface BabySearchResult {
   id: string;
@@ -93,6 +96,16 @@ export function AppointmentDialog({
   );
   const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
+  // Advance payment flow states
+  const [showAdvancePaymentConfirm, setShowAdvancePaymentConfirm] = useState(false);
+  const [createdAppointment, setCreatedAppointment] = useState<{
+    id: string;
+    date: Date;
+    startTime: string;
+    baby: { id: string; name: string };
+    selectedPackage?: { id: string; name: string; basePrice?: number | string | null; advancePaymentAmount?: number | string | null } | null;
+  } | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   // Ref for scrollable content
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +135,9 @@ export function AppointmentDialog({
       setError(null);
       setSelectedPackageId(null);
       setSelectedPurchaseId(null);
+      setShowAdvancePaymentConfirm(false);
+      setCreatedAppointment(null);
+      setShowPaymentDialog(false);
     }
   }, [open]);
 
@@ -224,10 +240,61 @@ export function AppointmentDialog({
     }
   }, [selectedBaby]);
 
+  // Auto-scroll to bottom when advance payment confirmation appears
+  useEffect(() => {
+    if (showAdvancePaymentConfirm && scrollContainerRef.current) {
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }, 100);
+    }
+  }, [showAdvancePaymentConfirm]);
+
+  // Get selected package data for advance payment check
+  const getSelectedPackageData = (): PackageData | null => {
+    if (!selectedPackageId || selectedPurchaseId) return null;
+    return catalogPackages.find((pkg) => pkg.id === selectedPackageId) || null;
+  };
+
+  // Check if selected package requires advance payment
+  const selectedPackageRequiresAdvance = (): boolean => {
+    const pkg = getSelectedPackageData();
+    return pkg?.requiresAdvancePayment === true;
+  };
+
+  // Get advance payment amount for selected package
+  const getAdvancePaymentAmount = (): number => {
+    const pkg = getSelectedPackageData();
+    if (!pkg?.advancePaymentAmount) return 0;
+    return typeof pkg.advancePaymentAmount === "string"
+      ? parseFloat(pkg.advancePaymentAmount)
+      : pkg.advancePaymentAmount;
+  };
+
   // Handle form submission
   const handleSubmit = async () => {
     if (!selectedBaby) return;
     if (!selectedPackageId && !selectedPurchaseId) return;
+
+    // Check if package requires advance payment and show confirmation
+    if (selectedPackageRequiresAdvance() && !showAdvancePaymentConfirm) {
+      setShowAdvancePaymentConfirm(true);
+      return;
+    }
+
+    // If showing confirmation, this means user clicked one of the action buttons
+    // which should call createAppointment directly
+    if (showAdvancePaymentConfirm) return;
+
+    await createAppointment(false);
+  };
+
+  // Create appointment with optional pending status
+  // showPaymentAfter: if true, open payment dialog after creating (for "Registrar Pago Ahora" flow)
+  const createAppointment = async (createAsPending: boolean, showPaymentAfter: boolean = false) => {
+    if (!selectedBaby) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -244,6 +311,7 @@ export function AppointmentDialog({
           date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
           startTime: time,
           notes: notes || undefined,
+          createAsPending,
         }),
       });
 
@@ -256,6 +324,27 @@ export function AppointmentDialog({
         return;
       }
 
+      // If user chose to pay now, show payment dialog
+      if (showPaymentAfter) {
+        const pkg = getSelectedPackageData();
+        setCreatedAppointment({
+          id: data.appointment.id,
+          date: new Date(data.appointment.date),
+          startTime: data.appointment.startTime,
+          baby: { id: selectedBaby.id, name: selectedBaby.name },
+          selectedPackage: pkg ? {
+            id: pkg.id,
+            name: pkg.name,
+            basePrice: pkg.basePrice,
+            advancePaymentAmount: pkg.advancePaymentAmount,
+          } : null,
+        });
+        setShowAdvancePaymentConfirm(false);
+        setShowPaymentDialog(true);
+        return;
+      }
+
+      // Otherwise just close and refresh
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {
@@ -264,6 +353,24 @@ export function AppointmentDialog({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Handle payment registered
+  const handlePaymentRegistered = () => {
+    setShowPaymentDialog(false);
+    setCreatedAppointment(null);
+    onOpenChange(false);
+    onSuccess?.();
+  };
+
+  // Handle skip payment (schedule without payment)
+  const handleScheduleWithoutPayment = async () => {
+    await createAppointment(true);
+  };
+
+  // Handle register payment now - creates as PENDING_PAYMENT first, payment API will change to SCHEDULED
+  const handleRegisterPaymentNow = async () => {
+    await createAppointment(true, true); // createAsPending=true, showPaymentAfter=true
   };
 
   // Format date for display
@@ -447,6 +554,56 @@ export function AppointmentDialog({
             </div>
           )}
 
+          {/* Advance payment confirmation step */}
+          {showAdvancePaymentConfirm && (
+            <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 space-y-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-medium text-amber-800">
+                    {t("calendar.advancePaymentRequired")}
+                  </p>
+                  <p className="text-sm text-amber-700">
+                    {t("calendar.advancePaymentAmount", { amount: getAdvancePaymentAmount() })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleRegisterPaymentNow}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-300/50"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="mr-2 h-4 w-4" />
+                  )}
+                  {t("calendar.registerPaymentNow")}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleScheduleWithoutPayment}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl border-2 border-amber-300 text-amber-700 hover:bg-amber-100"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  {t("calendar.scheduleWithoutPayment")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAdvancePaymentConfirm(false)}
+                  disabled={isSubmitting}
+                  className="w-full text-gray-500"
+                >
+                  {t("common.back")}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Error message */}
           {error && (
             <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
@@ -458,41 +615,62 @@ export function AppointmentDialog({
         </div>
 
         {/* Actions - Fixed footer */}
-        <div className="shrink-0 border-t border-gray-100 px-6 py-4">
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="rounded-xl border-2 border-gray-200"
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={
-                !selectedBaby ||
-                isSubmitting ||
-                (!selectedPackageId && !selectedPurchaseId)
-              }
-              className={cn(
-                "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
-                (!selectedBaby ||
-                  (!selectedPackageId && !selectedPurchaseId)) &&
-                  "opacity-50",
-              )}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("common.saving")}
-                </>
-              ) : (
-                t("calendar.schedule")
-              )}
-            </Button>
+        {!showAdvancePaymentConfirm && (
+          <div className="shrink-0 border-t border-gray-100 px-6 py-4">
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="rounded-xl border-2 border-gray-200"
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  !selectedBaby ||
+                  isSubmitting ||
+                  (!selectedPackageId && !selectedPurchaseId)
+                }
+                className={cn(
+                  "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
+                  (!selectedBaby ||
+                    (!selectedPackageId && !selectedPurchaseId)) &&
+                    "opacity-50",
+                )}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("common.saving")}
+                  </>
+                ) : (
+                  t("calendar.schedule")
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </DialogContent>
+
+      {/* Payment registration dialog */}
+      {createdAppointment && (
+        <RegisterPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              // If closed without payment, the appointment remains as PENDING_PAYMENT
+              // User can register payment later from the calendar
+              setShowPaymentDialog(false);
+              setCreatedAppointment(null);
+              onOpenChange(false);
+              onSuccess?.();
+            }
+          }}
+          appointment={createdAppointment}
+          onPaymentRegistered={handlePaymentRegistered}
+        />
+      )}
     </Dialog>
   );
 }

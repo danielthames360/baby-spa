@@ -23,6 +23,7 @@ import {
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatLocalDateString } from "@/lib/utils/date-utils";
 
 interface TimeSlot {
   time: string;
@@ -94,7 +95,7 @@ export function ScheduleAppointmentDialog({
     setError(null);
 
     try {
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const dateStr = formatLocalDateString(date);
       const response = await fetch(`/api/appointments/availability?date=${dateStr}`);
       const data = await response.json();
 
@@ -125,7 +126,7 @@ export function ScheduleAppointmentDialog({
     setError(null);
 
     try {
-      const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+      const dateStr = formatLocalDateString(selectedDate);
 
       const response = await fetch("/api/appointments", {
         method: "POST",

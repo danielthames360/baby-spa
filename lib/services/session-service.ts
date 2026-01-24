@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { inventoryService } from "./inventory-service";
 import { packageService } from "./package-service";
+import { normalizeToUTCNoon, getStartOfDayUTC, getEndOfDayUTC } from "@/lib/utils/date-utils";
 
 // Types for service inputs
 interface StartSessionInput {
@@ -92,6 +93,11 @@ export const sessionService = {
 
     if (!appointment) {
       throw new Error("APPOINTMENT_NOT_FOUND");
+    }
+
+    // Check for PENDING_PAYMENT status specifically
+    if (appointment.status === "PENDING_PAYMENT") {
+      throw new Error("APPOINTMENT_PENDING_PAYMENT");
     }
 
     if (appointment.status !== "SCHEDULED") {
@@ -717,13 +723,19 @@ export const sessionService = {
    * - IN_PROGRESS/COMPLETED: visible only to the ASSIGNED therapist
    */
   async getSessionsForTherapist(therapistId: string, date?: Date) {
-    const targetDate = date ? new Date(date) : new Date();
-    targetDate.setHours(0, 0, 0, 0);
+    // Normalize to UTC noon for consistent date handling
+    const targetDate = normalizeToUTCNoon(date || new Date());
+    const startOfDay = getStartOfDayUTC(targetDate);
+    const endOfDay = getEndOfDayUTC(targetDate);
 
     // Get ALL scheduled appointments for the date (visible to all therapists)
+    // Use date range query to handle any time component variations
     const scheduledAppointments = await prisma.appointment.findMany({
       where: {
-        date: targetDate,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
         status: "SCHEDULED",
       },
       include: {
@@ -771,10 +783,14 @@ export const sessionService = {
     });
 
     // Get only IN_PROGRESS and COMPLETED appointments assigned to this therapist
+    // Use date range query to handle any time component variations
     const assignedAppointments = await prisma.appointment.findMany({
       where: {
         therapistId,
-        date: targetDate,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
         status: {
           in: ["IN_PROGRESS", "COMPLETED"],
         },
@@ -835,12 +851,17 @@ export const sessionService = {
    * Get today's all appointments (for admin/reception)
    */
   async getTodayAll() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC noon for consistent date handling
+    const today = normalizeToUTCNoon(new Date());
+    const startOfDay = getStartOfDayUTC(today);
+    const endOfDay = getEndOfDayUTC(today);
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        date: today,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
       },
       include: {
         baby: {

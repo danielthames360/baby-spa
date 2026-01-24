@@ -538,7 +538,65 @@
     "card": "Cartão",
     "other": "Outro",
     "paid": "Pago",
-    "pending": "Pendente"
+    "pending": "Pendente",
+    "required": "Pagamento Antecipado Obrigatório",
+    "advanceAmount": "Valor do adiantamento",
+    "pendingPayment": "Aguardando pagamento",
+    "scanQr": "Escaneie o código QR para realizar o pagamento",
+    "downloadQr": "Baixar QR",
+    "sendWhatsapp": "Enviar Comprovante por WhatsApp",
+    "confirmationPending": "Sua consulta será confirmada quando verificarmos seu pagamento.",
+    "understood": "Entendido",
+    "registerPayment": "Registrar Pagamento",
+    "amountReceived": "Valor recebido",
+    "minimumAmount": "Mínimo: R$ {amount}",
+    "paymentMethod": "Forma de pagamento",
+    "reference": "Referência/Comprovante",
+    "referencePlaceholder": "Número da transação ou comprovante",
+    "optional": "opcional",
+    "confirmPayment": "Confirmar Pagamento",
+    "paymentRegistered": "Pagamento registrado com sucesso",
+    "appointmentConfirmed": "A consulta foi confirmada",
+    "totalPrice": "Preço total",
+    "advanceRequired": "Adiantamento obrigatório",
+    "confirmationWarning": "Ao registrar o pagamento, a consulta será confirmada e bloqueará o horário.",
+    "methods": {
+      "cash": "Dinheiro",
+      "transfer": "Transferência",
+      "qr": "QR",
+      "card": "Cartão"
+    },
+    "types": {
+      "advance": "Adiantamento",
+      "completion": "Pagamento final",
+      "partial": "Pagamento parcial"
+    },
+    "cannotStartPending": "Esta consulta está aguardando pagamento. Registre o pagamento antes de iniciar a sessão.",
+    "viewPaymentInstructions": "Ver instruções de pagamento",
+    "errors": {
+      "invalidAmount": "O valor inserido não é válido",
+      "belowMinimum": "O valor deve ser no mínimo R$ {amount}",
+      "generic": "Ocorreu um erro ao registrar o pagamento"
+    }
+  },
+
+  "settings": {
+    "title": "Configurações",
+    "payment": {
+      "title": "Configurações de Pagamento",
+      "qrImage": "QR de Pagamento",
+      "uploadQr": "Enviar imagem",
+      "qrFormats": "Formatos: JPG, PNG, WebP. Tamanho máximo: 2MB",
+      "whatsappNumber": "Número de WhatsApp",
+      "whatsappPlaceholder": "Número sem código do país",
+      "messageTemplate": "Mensagem padrão",
+      "messageVariables": "Variáveis disponíveis: {fecha}, {hora}, {bebe}, {monto}",
+      "saveChanges": "Salvar Alterações",
+      "saved": "Configurações salvas com sucesso",
+      "invalidFormat": "Formato de imagem inválido. Use JPG, PNG ou WebP.",
+      "fileTooLarge": "A imagem é muito grande. Máximo 2MB.",
+      "invalidPhone": "Número de telefone inválido"
+    }
   },
 
   "categoryManager": {
@@ -620,6 +678,7 @@
     "noShowConfirmation": "Marcar como não compareceu? O contador de faltas do responsável será incrementado.",
     "confirmNoShow": "Confirmar Não Compareceu",
     "status": {
+      "pendingPayment": "Aguardando pagamento",
       "scheduled": "Agendado",
       "inProgress": "Em andamento",
       "in_progress": "Em andamento",
@@ -653,7 +712,11 @@
       "NO_SESSIONS_REMAINING": "Não há sessões restantes no pacote",
       "APPOINTMENT_NOT_FOUND": "Agendamento não encontrado",
       "UNKNOWN_ERROR": "Erro desconhecido"
-    }
+    },
+    "advancePaymentRequired": "Este pacote requer pagamento antecipado",
+    "advancePaymentAmount": "É necessário um adiantamento de R$ {amount}",
+    "registerPaymentNow": "Registrar Pagamento Agora",
+    "scheduleWithoutPayment": "Agendar sem Pagamento"
   },
 
   "notifications": {
@@ -1178,6 +1241,7 @@
         "successMessage": "Esperamos você no Baby Spa"
       },
       "status": {
+        "PENDING_PAYMENT": "Aguardando pagamento",
         "SCHEDULED": "Agendada",
         "IN_PROGRESS": "Em andamento",
         "COMPLETED": "Concluída",

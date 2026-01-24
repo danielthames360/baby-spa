@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment-service";
 import { createAppointmentSchema } from "@/lib/validations/appointment";
+import { parseDateToUTCNoon, getStartOfDayUTC, getEndOfDayUTC } from "@/lib/utils/date-utils";
 
 // GET /api/appointments - Get appointments by date range or baby
 export async function GET(request: NextRequest) {
@@ -28,7 +29,8 @@ export async function GET(request: NextRequest) {
     // If single date provided (YYYY-MM-DD format)
     if (date) {
       const [year, month, day] = date.split("-").map(Number);
-      const dateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+      // Use UTC noon to avoid server timezone issues
+      const dateObj = parseDateToUTCNoon(year, month, day);
       const appointments = await appointmentService.getByDate(dateObj);
       return NextResponse.json({ appointments });
     }
@@ -37,8 +39,9 @@ export async function GET(request: NextRequest) {
     if (startDate && endDate) {
       const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
       const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
-      const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
-      const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+      // Use start/end of day for range queries
+      const start = getStartOfDayUTC(parseDateToUTCNoon(startYear, startMonth, startDay));
+      const end = getEndOfDayUTC(parseDateToUTCNoon(endYear, endMonth, endDay));
       const appointments = await appointmentService.getByDateRange(start, end);
       return NextResponse.json({ appointments });
     }
@@ -80,12 +83,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { babyId, date, startTime, notes, packageId, packagePurchaseId } = validationResult.data;
+    const { babyId, date, startTime, notes, packageId, packagePurchaseId, createAsPending } = validationResult.data;
 
-    // Parse date string as local date (YYYY-MM-DD format)
-    // Using new Date(string) parses as UTC which causes timezone issues
+    // Parse date string as UTC noon (YYYY-MM-DD format)
+    // Using UTC noon ensures date never shifts regardless of server timezone
     const [year, month, day] = date.split("-").map(Number);
-    const dateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const dateObj = parseDateToUTCNoon(year, month, day);
 
     const appointment = await appointmentService.create({
       babyId,
@@ -96,6 +99,7 @@ export async function POST(request: NextRequest) {
       userName: session.user.name || "Unknown",
       selectedPackageId: packageId || undefined,
       packagePurchaseId: packagePurchaseId || undefined,
+      createAsPending: createAsPending || false,
     });
 
     return NextResponse.json({ appointment }, { status: 201 });

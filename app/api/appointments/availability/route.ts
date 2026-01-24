@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { appointmentService } from "@/lib/services/appointment-service";
+import { parseDateToUTCNoon, getStartOfDayUTC } from "@/lib/utils/date-utils";
 
 // GET /api/appointments/availability - Get availability for a date
 export async function GET(request: NextRequest) {
@@ -22,14 +23,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse date string as local date (YYYY-MM-DD format)
-    // Using new Date(string) parses as UTC which causes timezone issues
+    // Parse date string as UTC noon (YYYY-MM-DD format)
+    // Using UTC noon ensures date never shifts regardless of timezone
     const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const date = parseDateToUTCNoon(year, month, day);
 
-    // Validate date is not in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Validate date is not in the past (using UTC for consistency)
+    const today = getStartOfDayUTC(new Date());
 
     if (date < today) {
       return NextResponse.json(

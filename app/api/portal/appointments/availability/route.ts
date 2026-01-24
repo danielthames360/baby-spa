@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { parseDateToUTCNoon } from "@/lib/utils/date-utils";
 
 const MAX_SLOTS_PER_HOUR = 2;
 
@@ -20,9 +21,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Date required" }, { status: 400 });
     }
 
-    // Parse date as local (flat date - no UTC conversion)
+    // Parse date as UTC noon to avoid server timezone issues
     const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const date = parseDateToUTCNoon(year, month, day);
 
     // Check if date is closed
     const closedDate = await prisma.closedDate.findFirst({
@@ -86,10 +87,13 @@ export async function GET(request: Request) {
     addSlots(businessHours.afternoonOpen, businessHours.afternoonClose);
 
     // Get existing appointments for this date (include endTime for overlap check)
+    // PENDING_PAYMENT appointments don't block slots
     const existingAppointments = await prisma.appointment.findMany({
       where: {
         date,
-        status: "SCHEDULED",
+        status: {
+          in: ["SCHEDULED", "IN_PROGRESS"],
+        },
       },
       select: {
         startTime: true,

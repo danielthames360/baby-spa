@@ -9,6 +9,7 @@ import { TherapistSessionCard } from "./therapist-session-card";
 import { EvaluationForm } from "./evaluation-form";
 import { ViewEvaluationDialog } from "./view-evaluation-dialog";
 import { ViewBabyDialog } from "./view-baby-dialog";
+import { formatLocalDateString } from "@/lib/utils/date-utils";
 
 interface BabyData {
   id: string;
@@ -97,8 +98,7 @@ export function TherapistTodayList() {
     setError(null);
 
     try {
-      // Format date as YYYY-MM-DD for the API
-      const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+      const dateStr = formatLocalDateString(selectedDate);
       const response = await fetch(`/api/sessions?date=${dateStr}`);
       const data = await response.json();
 
