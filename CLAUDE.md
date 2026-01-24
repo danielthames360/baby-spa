@@ -339,6 +339,14 @@ parent.noShowCount = 0;  // Reset!
 ❌ Don't use Spanish/Portuguese text directly in components
 ❌ Don't forget to translate Zod validation errors
 ❌ Don't hardcode date formats (use locale from getLocale())
+
+⚠️ PERFORMANCE - MUY IMPORTANTE:
+❌ Don't write inline auth checks - use lib/api-utils.ts withAuth()
+❌ Don't use sequential awaits for independent queries - use Promise.all()
+❌ Don't import heavy dialogs directly - use next/dynamic
+❌ Don't define static objects/arrays inside components - move outside
+❌ Don't fetch data twice - return from transaction
+❌ Don't duplicate form helpers - use lib/form-utils.ts
 ```
 
 ---
@@ -363,6 +371,15 @@ parent.noShowCount = 0;  // Reset!
 ✅ Always test in both /es/ and /pt-BR/ routes
 ✅ Always use getLocale() for date/number formatting
 ✅ Always use translateZodError() pattern for form errors
+
+✅ PERFORMANCE:
+✅ Always use lib/api-utils.ts for API route auth/validation/errors
+✅ Always use Promise.all() for independent async operations
+✅ Always use next/dynamic for heavy dialog components
+✅ Always define static constants outside component functions
+✅ Always return needed data from transactions (avoid extra fetches)
+✅ Always use lib/form-utils.ts for form helper functions
+✅ Always check Performance Checklist before committing
 ```
 
 ---
@@ -386,6 +403,15 @@ TRADUCCIONES (OBLIGATORIO):
 □ Probar en /pt-BR/... - textos en portugués
 □ Errores de validación se muestran traducidos
 □ Fechas formateadas según locale (es-ES o pt-BR)
+
+PERFORMANCE (OBLIGATORIO - vercel-react-best-practices):
+□ API routes usan lib/api-utils.ts (withAuth, handleApiError)
+□ Queries independientes usan Promise.all() (async-parallel)
+□ Dialogs pesados usan next/dynamic (bundle-dynamic-imports)
+□ Objetos/arrays estáticos están fuera de componentes (rerender-*)
+□ No hay fetches redundantes (datos retornados de transacción)
+□ Form helpers vienen de lib/form-utils.ts
+□ Revisar reglas del skill vercel-react-best-practices si aplican
 ```
 
 ---
@@ -398,6 +424,10 @@ When implementing new features, reference these existing files:
 - Form pattern: `components/babies/baby-form.tsx`
 - Service pattern: `lib/services/baby-service.ts`
 - Validation pattern: `lib/validations/baby.ts`
+- **API utilities: `lib/api-utils.ts`** (auth, validation, error handling)
+- **Form utilities: `lib/form-utils.ts`** (translateError, getStringValue, etc.)
+- **Dynamic imports example: `app/[locale]/(admin)/admin/inventory/page.tsx`**
+- **Parallel queries example: `lib/services/session-service.ts:getSessionsForTherapist`**
 
 ---
 
@@ -542,6 +572,35 @@ npx tsc --noEmit && npx eslint . --ext .ts,.tsx --max-warnings 0 && npm run buil
 
 ---
 
+## 🎯 Code Standards & Skills
+
+### Skill: `vercel-react-best-practices`
+
+**SIEMPRE aplicar las mejores prácticas del skill `vercel-react-best-practices` instalado en `.agents/skills/`.**
+
+Este skill contiene 57 reglas de optimización organizadas por prioridad:
+
+| Prioridad | Categoría | Prefijo | Ejemplos |
+|-----------|-----------|---------|----------|
+| 1 - CRÍTICO | Eliminar Waterfalls | `async-` | Promise.all(), Suspense |
+| 2 - CRÍTICO | Bundle Size | `bundle-` | next/dynamic, barrel imports |
+| 3 - ALTO | Server Performance | `server-` | React.cache(), after() |
+| 4 - MEDIO-ALTO | Client Data | `client-` | SWR, event listeners |
+| 5 - MEDIO | Re-renders | `rerender-` | useMemo, useCallback |
+| 6 - MEDIO | Rendering | `rendering-` | content-visibility |
+| 7 - BAJO-MEDIO | JavaScript | `js-` | Set/Map lookups |
+| 8 - BAJO | Advanced | `advanced-` | useLatest |
+
+**Cuándo aplicar:**
+- Al escribir componentes nuevos
+- Al refactorizar código existente
+- Al revisar código para issues de performance
+- Al optimizar bundle size o tiempos de carga
+
+**Referencia:** `.agents/skills/vercel-react-best-practices/AGENTS.md` para reglas detalladas.
+
+---
+
 ## 🏗️ Architecture Best Practices
 
 The project follows these Next.js App Router best practices:
@@ -559,6 +618,170 @@ The project follows these Next.js App Router best practices:
    - Client: `useTranslations()`
 7. **Form Validation**: Zod schemas with translated error messages
 8. **Database**: Prisma with proper TypeScript types
+
+---
+
+## ⚡ Performance Best Practices (MANDATORY)
+
+### Utility Files - USE THESE
+
+The project has shared utility files to avoid code duplication. **ALWAYS use these instead of writing inline code:**
+
+```
+lib/api-utils.ts     → API route helpers (auth, validation, error handling)
+lib/form-utils.ts    → Form helpers (translateError, getStringValue, etc.)
+```
+
+### 1. API Routes - Use `lib/api-utils.ts`
+
+```typescript
+import { withAuth, validateRequest, handleApiError, ApiError } from "@/lib/api-utils";
+
+export async function POST(request: Request) {
+  try {
+    // Auth check (throws ApiError if unauthorized)
+    const session = await withAuth(["ADMIN", "RECEPTION"]);
+
+    // Validation (throws ApiError if invalid)
+    const body = await request.json();
+    const data = validateRequest(body, mySchema);
+
+    // Your logic here...
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return handleApiError(error, "creating resource");
+  }
+}
+```
+
+### 2. Async Operations - Parallelize with Promise.all()
+
+```typescript
+// ❌ BAD - Sequential (slow)
+const users = await prisma.user.findMany();
+const products = await prisma.product.findMany();
+const orders = await prisma.order.findMany();
+
+// ✅ GOOD - Parallel (fast)
+const [users, products, orders] = await Promise.all([
+  prisma.user.findMany(),
+  prisma.product.findMany(),
+  prisma.order.findMany(),
+]);
+```
+
+### 3. Heavy Dialogs - Use `next/dynamic`
+
+Modal/dialog components should be dynamically imported to reduce initial bundle:
+
+```typescript
+import dynamic from "next/dynamic";
+
+// ✅ GOOD - Lazy loaded when needed
+const HeavyDialog = dynamic(
+  () => import("@/components/dialogs/heavy-dialog").then((mod) => mod.HeavyDialog),
+  { ssr: false }
+);
+
+// ❌ BAD - Loaded on page load even if never opened
+import { HeavyDialog } from "@/components/dialogs/heavy-dialog";
+```
+
+**Apply to:** Any dialog/modal with forms, complex UI, or >10KB size.
+
+### 4. Constants - Move Outside Components
+
+Static objects, arrays, and config should be defined OUTSIDE component functions:
+
+```typescript
+// ✅ GOOD - Created once at module level
+const STATUS_STYLES: Record<string, string> = {
+  PENDING: "bg-amber-100 text-amber-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
+};
+
+const WEEK_DAYS: Record<string, string[]> = {
+  es: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+  "pt-BR": ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+};
+
+export function MyComponent() {
+  const locale = useLocale();
+  const weekDays = WEEK_DAYS[locale] || WEEK_DAYS["es"];
+  // ...
+}
+
+// ❌ BAD - Recreated on every render
+export function MyComponent() {
+  const statusStyles = {  // Creates new object every render!
+    PENDING: "bg-amber-100",
+    COMPLETED: "bg-emerald-100",
+  };
+}
+```
+
+### 5. Form Helpers - Use `lib/form-utils.ts`
+
+```typescript
+import { translateError, getStringValue, getDateValue } from "@/lib/form-utils";
+
+// In your form component:
+<FormMessage>{translateError(fieldState.error?.message, t, "babyForm.errors")}</FormMessage>
+<Input value={getStringValue(field.value)} />
+```
+
+### 6. Database Queries - Avoid Redundant Fetches
+
+```typescript
+// ❌ BAD - Fetching same data twice
+const result = await prisma.$transaction(async (tx) => {
+  await tx.appointment.update({ where: { id }, data: {...} });
+  return { success: true };
+});
+const updated = await prisma.appointment.findUnique({ where: { id } }); // Extra query!
+
+// ✅ GOOD - Return data from transaction
+const result = await prisma.$transaction(async (tx) => {
+  const updated = await tx.appointment.update({
+    where: { id },
+    data: {...},
+    include: { baby: true, therapist: true }, // Include what you need
+  });
+  return updated;
+});
+// Use result directly, no extra fetch needed
+```
+
+### 7. Shared Include Objects
+
+When multiple queries need the same includes, define once and reuse:
+
+```typescript
+// ✅ GOOD - Define once, use multiple times
+const appointmentInclude = {
+  baby: { include: { parents: true } },
+  therapist: { select: { id: true, name: true } },
+  session: true,
+} as const;
+
+const [scheduled, completed] = await Promise.all([
+  prisma.appointment.findMany({ where: { status: "SCHEDULED" }, include: appointmentInclude }),
+  prisma.appointment.findMany({ where: { status: "COMPLETED" }, include: appointmentInclude }),
+]);
+```
+
+---
+
+### Performance Checklist (Before Committing)
+
+```
+□ API routes use lib/api-utils.ts helpers
+□ Multiple independent queries use Promise.all()
+□ Heavy dialogs use next/dynamic
+□ Static objects/arrays are outside components
+□ No redundant database fetches
+□ Form helpers from lib/form-utils.ts are used
+```
 
 ---
 

@@ -3,13 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
 import { Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TherapistSessionCard } from "./therapist-session-card";
-import { EvaluationForm } from "./evaluation-form";
 import { ViewEvaluationDialog } from "./view-evaluation-dialog";
 import { ViewBabyDialog } from "./view-baby-dialog";
 import { formatLocalDateString } from "@/lib/utils/date-utils";
+
+// Dynamic import for heavy evaluation form (reduces initial bundle size)
+const EvaluationForm = dynamic(
+  () => import("./evaluation-form").then((mod) => mod.EvaluationForm),
+  { ssr: false }
+);
 
 interface BabyData {
   id: string;

@@ -403,14 +403,16 @@ export const sessionService = {
       ? subtotalAmount.sub(discountDecimal)
       : new Prisma.Decimal(0);
 
-    // Deduct products from inventory (outside transaction to avoid nested transactions)
-    for (const sp of session.products) {
-      await inventoryService.useProduct({
-        productId: sp.productId,
-        quantity: sp.quantity,
-        sessionId: session.id,
-      });
-    }
+    // Deduct products from inventory in parallel (outside transaction to avoid nested transactions)
+    await Promise.all(
+      session.products.map((sp) =>
+        inventoryService.useProduct({
+          productId: sp.productId,
+          quantity: sp.quantity,
+          sessionId: session.id,
+        })
+      )
+    );
 
     const result = await prisma.$transaction(async (tx) => {
       let newPackagePurchase = null;
@@ -728,116 +730,81 @@ export const sessionService = {
     const startOfDay = getStartOfDayUTC(targetDate);
     const endOfDay = getEndOfDayUTC(targetDate);
 
-    // Get ALL scheduled appointments for the date (visible to all therapists)
-    // Use date range query to handle any time component variations
-    const scheduledAppointments = await prisma.appointment.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
+    // Common include object for both queries
+    const appointmentInclude = {
+      baby: {
+        include: {
+          parents: {
+            where: { isPrimary: true },
+            include: { parent: true },
+            take: 1,
+          },
         },
-        status: "SCHEDULED",
       },
-      include: {
-        baby: {
-          include: {
-            parents: {
-              where: { isPrimary: true },
-              include: { parent: true },
-              take: 1,
+      therapist: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      session: {
+        include: {
+          evaluation: true,
+        },
+      },
+      packagePurchase: {
+        select: {
+          id: true,
+          package: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
-        therapist: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        session: {
-          include: {
-            evaluation: true,
-          },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            package: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        selectedPackage: {
-          select: {
-            id: true,
-            name: true,
-          },
+      },
+      selectedPackage: {
+        select: {
+          id: true,
+          name: true,
         },
       },
-      orderBy: {
-        startTime: "asc",
-      },
-    });
+    } as const;
 
-    // Get only IN_PROGRESS and COMPLETED appointments assigned to this therapist
-    // Use date range query to handle any time component variations
-    const assignedAppointments = await prisma.appointment.findMany({
-      where: {
-        therapistId,
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
+    // Fetch both queries in parallel for better performance
+    const [scheduledAppointments, assignedAppointments] = await Promise.all([
+      // Get ALL scheduled appointments for the date (visible to all therapists)
+      prisma.appointment.findMany({
+        where: {
+          date: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+          status: "SCHEDULED",
         },
-        status: {
-          in: ["IN_PROGRESS", "COMPLETED"],
+        include: appointmentInclude,
+        orderBy: {
+          startTime: "asc",
         },
-      },
-      include: {
-        baby: {
-          include: {
-            parents: {
-              where: { isPrimary: true },
-              include: { parent: true },
-              take: 1,
-            },
+      }),
+      // Get only IN_PROGRESS and COMPLETED appointments assigned to this therapist
+      prisma.appointment.findMany({
+        where: {
+          therapistId,
+          date: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+          status: {
+            in: ["IN_PROGRESS", "COMPLETED"],
           },
         },
-        therapist: {
-          select: {
-            id: true,
-            name: true,
-          },
+        include: appointmentInclude,
+        orderBy: {
+          startTime: "asc",
         },
-        session: {
-          include: {
-            evaluation: true,
-          },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            package: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        selectedPackage: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        startTime: "asc",
-      },
-    });
+      }),
+    ]);
 
     // Combine and sort by startTime
     const allAppointments = [...scheduledAppointments, ...assignedAppointments].sort(

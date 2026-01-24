@@ -2,14 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, Calendar, Loader2, CalendarDays, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WeekView } from "./week-view";
 import { DayView } from "./day-view";
-import { AppointmentDialog } from "./appointment-dialog";
-import { AppointmentDetails } from "./appointment-details";
 import { cn } from "@/lib/utils";
 import { formatLocalDateString } from "@/lib/utils/date-utils";
+
+// Dynamic imports for heavy dialog components (reduces initial bundle size)
+const AppointmentDialog = dynamic(
+  () => import("./appointment-dialog").then((mod) => mod.AppointmentDialog),
+  { ssr: false }
+);
+const AppointmentDetails = dynamic(
+  () => import("./appointment-details").then((mod) => mod.AppointmentDetails),
+  { ssr: false }
+);
 
 interface Appointment {
   id: string;

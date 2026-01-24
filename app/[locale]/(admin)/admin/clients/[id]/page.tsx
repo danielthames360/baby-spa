@@ -46,11 +46,20 @@ import {
   AlertDialogCancel,
   AlertDialogDestructiveAction,
 } from "@/components/ui/alert-dialog";
+import dynamic from "next/dynamic";
 import { calculateExactAge, formatAge } from "@/lib/utils/age";
 import { AddParentDialog } from "@/components/babies/add-parent-dialog";
-import { SellPackageDialog } from "@/components/packages/sell-package-dialog";
-import { ScheduleAppointmentDialog } from "@/components/appointments/schedule-appointment-dialog";
 import { SessionHistoryCard } from "@/components/sessions/session-history-card";
+
+// Dynamic imports for heavy dialog components (reduces initial bundle size)
+const SellPackageDialog = dynamic(
+  () => import("@/components/packages/sell-package-dialog").then((mod) => mod.SellPackageDialog),
+  { ssr: false }
+);
+const ScheduleAppointmentDialog = dynamic(
+  () => import("@/components/appointments/schedule-appointment-dialog").then((mod) => mod.ScheduleAppointmentDialog),
+  { ssr: false }
+);
 
 interface BabyWithRelations {
   id: string;

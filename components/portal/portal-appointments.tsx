@@ -128,6 +128,16 @@ interface TimeSlot {
   remaining: number;
 }
 
+// Constants moved outside component to prevent re-creation on each render
+const STATUS_BADGE_STYLES: Record<string, string> = {
+  PENDING_PAYMENT: "bg-orange-100 text-orange-700",
+  SCHEDULED: "bg-amber-100 text-amber-700",
+  IN_PROGRESS: "bg-blue-100 text-blue-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
+  CANCELLED: "bg-gray-100 text-gray-700",
+  NO_SHOW: "bg-rose-100 text-rose-700",
+};
+
 export function PortalAppointments() {
   const t = useTranslations();
   const locale = useLocale();
@@ -183,16 +193,8 @@ export function PortalAppointments() {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      PENDING_PAYMENT: "bg-orange-100 text-orange-700",
-      SCHEDULED: "bg-amber-100 text-amber-700",
-      IN_PROGRESS: "bg-blue-100 text-blue-700",
-      COMPLETED: "bg-emerald-100 text-emerald-700",
-      CANCELLED: "bg-gray-100 text-gray-700",
-      NO_SHOW: "bg-rose-100 text-rose-700",
-    };
     return (
-      <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", styles[status] || styles.SCHEDULED)}>
+      <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE_STYLES[status] || STATUS_BADGE_STYLES.SCHEDULED)}>
         {t(`portal.appointments.status.${status}`)}
       </span>
     );

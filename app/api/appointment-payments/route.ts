@@ -101,6 +101,7 @@ export async function POST(request: Request) {
     }
 
     // Create payment and update appointment in a transaction
+    // Return both payment and updated appointment from transaction to avoid redundant fetch
     const result = await prisma.$transaction(async (tx) => {
       // Create the payment record
       const payment = await tx.appointmentPayment.create({
@@ -146,34 +147,34 @@ export async function POST(request: Request) {
         });
       }
 
-      return payment;
-    });
-
-    // Fetch updated appointment
-    const updatedAppointment = await prisma.appointment.findUnique({
-      where: { id: appointmentId },
-      include: {
-        baby: {
-          select: { id: true, name: true },
-        },
-        selectedPackage: {
-          select: { id: true, name: true },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            package: { select: { name: true } },
+      // Fetch updated appointment within transaction (avoids extra query outside)
+      const updatedAppointment = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        include: {
+          baby: {
+            select: { id: true, name: true },
+          },
+          selectedPackage: {
+            select: { id: true, name: true },
+          },
+          packagePurchase: {
+            select: {
+              id: true,
+              package: { select: { name: true } },
+            },
+          },
+          payments: {
+            orderBy: { createdAt: "desc" },
           },
         },
-        payments: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
+      });
+
+      return { payment, updatedAppointment };
     });
 
     return NextResponse.json({
-      payment: result,
-      appointment: updatedAppointment,
+      payment: result.payment,
+      appointment: result.updatedAppointment,
     });
   } catch (error) {
     console.error("Register payment error:", error);

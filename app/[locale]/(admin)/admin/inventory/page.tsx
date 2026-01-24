@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import {
   Package,
   Plus,
@@ -26,12 +27,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ProductFormDialog,
-  PurchaseDialog,
-  AdjustStockDialog,
-} from "@/components/inventory";
-import { CategoryManagerDialog } from "@/components/categories/category-manager-dialog";
+
+// Dynamic imports for heavy dialog components (reduces initial bundle size)
+const ProductFormDialog = dynamic(
+  () => import("@/components/inventory/product-form-dialog").then((mod) => mod.ProductFormDialog),
+  { ssr: false }
+);
+const PurchaseDialog = dynamic(
+  () => import("@/components/inventory/purchase-dialog").then((mod) => mod.PurchaseDialog),
+  { ssr: false }
+);
+const AdjustStockDialog = dynamic(
+  () => import("@/components/inventory/adjust-stock-dialog").then((mod) => mod.AdjustStockDialog),
+  { ssr: false }
+);
+const CategoryManagerDialog = dynamic(
+  () => import("@/components/categories/category-manager-dialog").then((mod) => mod.CategoryManagerDialog),
+  { ssr: false }
+);
 
 interface Category {
   id: string;

@@ -25,6 +25,12 @@ import {
 import { cn } from "@/lib/utils";
 import { formatLocalDateString } from "@/lib/utils/date-utils";
 
+// Constants moved outside component to prevent re-creation on each render
+const WEEK_DAYS: Record<string, string[]> = {
+  es: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+  "pt-BR": ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+};
+
 interface TimeSlot {
   time: string;
   available: number;
@@ -186,9 +192,7 @@ export function ScheduleAppointmentDialog({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const weekDays = locale === "pt-BR"
-    ? ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-    : ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const weekDays = WEEK_DAYS[locale] || WEEK_DAYS["es"];
 
   const isDateDisabled = (date: Date) => {
     const d = new Date(date);
