@@ -63,9 +63,12 @@ export interface BabyWithRelations {
     finalPrice: Prisma.Decimal;
     totalPrice: Prisma.Decimal | null;
     installmentsPayOnSessions: string | null;
+    // Schedule preferences from parent
+    schedulePreferences: string | null;
     package: {
       id: string;
       name: string;
+      duration: number;
     };
     installmentPayments?: {
       id: string;
@@ -74,6 +77,9 @@ export interface BabyWithRelations {
       paymentMethod: string;
       paidAt: Date;
     }[];
+    _count?: {
+      appointments: number;
+    };
   }[];
   _count?: {
     sessions: number;
@@ -102,6 +108,7 @@ export interface BabyListItem {
     totalSessions: number;
     usedSessions: number;
     isActive: boolean;
+    schedulePreferences: string | null;
     package: {
       id: string;
       name: string;
@@ -244,6 +251,7 @@ export const babyService = {
               totalSessions: true,
               usedSessions: true,
               isActive: true,
+              schedulePreferences: true,
               package: {
                 select: {
                   id: true,
@@ -298,6 +306,7 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
+                duration: true,
               },
             },
             installmentPayments: {
@@ -309,6 +318,16 @@ export const babyService = {
                 paidAt: true,
               },
               orderBy: { installmentNumber: "asc" },
+            },
+            // Count scheduled appointments to calculate truly available sessions
+            _count: {
+              select: {
+                appointments: {
+                  where: {
+                    status: { in: ["SCHEDULED", "PENDING_PAYMENT", "IN_PROGRESS"] },
+                  },
+                },
+              },
             },
           },
           orderBy: { createdAt: "desc" },
@@ -390,6 +409,7 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
+                duration: true,
               },
             },
           },
@@ -479,6 +499,7 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
+                duration: true,
               },
             },
           },
@@ -671,6 +692,7 @@ export const babyService = {
               select: {
                 id: true,
                 name: true,
+                duration: true,
               },
             },
           },

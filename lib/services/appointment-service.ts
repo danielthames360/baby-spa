@@ -33,6 +33,8 @@ export interface AppointmentWithRelations {
   status: AppointmentStatus;
   notes: string | null;
   cancelReason: string | null;
+  // Pending schedule preferences (from portal, before checkout)
+  pendingSchedulePreferences: string | null;
   createdAt: Date;
   updatedAt: Date;
   baby: {
@@ -197,6 +199,8 @@ export const appointmentService = {
             totalSessions: true,
             usedSessions: true,
             remainingSessions: true,
+            // Schedule preferences (transferred from appointment at checkout)
+            schedulePreferences: true,
             // Installment fields
             paymentPlan: true,
             installments: true,
@@ -276,6 +280,8 @@ export const appointmentService = {
             totalSessions: true,
             usedSessions: true,
             remainingSessions: true,
+            // Schedule preferences (transferred from appointment at checkout)
+            schedulePreferences: true,
             // Installment fields
             paymentPlan: true,
             installments: true,

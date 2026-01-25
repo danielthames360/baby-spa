@@ -265,8 +265,19 @@ import { FloatingBubbles } from "@/components/ui/floating-bubbles";
 2. PAGOS:
    - Algunos paquetes requieren pago anticipado
    - Citas PENDING_PAYMENT no bloquean slot
-   - Paquetes pueden pagarse en cuotas
-   - Alertas según tramo de sesiones
+   
+   CUOTAS (configuradas POR PAQUETE):
+   - Cada paquete define SI permite cuotas
+   - El precio en cuotas puede ser MAYOR al precio único (financiamiento)
+   - Se define EN QUÉ SESIONES se paga cada cuota (ej: sesiones 1, 3, 5)
+   - El cliente NO elige cuántas cuotas, el paquete lo define
+   - El sistema ALERTA pero NO BLOQUEA si hay pagos atrasados
+   - Pagos flexibles: puede pagar más o menos de una cuota
+   
+   ALERTAS DE PAGO:
+   - Se muestran basadas en la sesión actual vs sesiones de pago definidas
+   - Ej: Si debe pagar en sesión 3 y está en sesión 4 sin pagar → ALERTA
+   - Staff puede continuar a pesar de la alerta (no es bloqueo)
 
 3. EVALUACIONES:
    - Solo THERAPIST puede evaluar
@@ -428,6 +439,8 @@ When implementing new features, reference these existing files:
 - **Form utilities: `lib/form-utils.ts`** (translateError, getStringValue, etc.)
 - **Dynamic imports example: `app/[locale]/(admin)/admin/inventory/page.tsx`**
 - **Parallel queries example: `lib/services/session-service.ts:getSessionsForTherapist`**
+- **Installments utilities: `lib/utils/installments.ts`** (payment status, installment calculations)
+- **Date utilities: `lib/utils/date-utils.ts`** (UTC noon, timezone-safe dates)
 
 ---
 
@@ -891,3 +904,33 @@ const handleDownload = async () => {
   document.body.removeChild(link);
 };
 ```
+
+## 📅 Date Handling (MANDATORY)
+
+### UTC Noon Strategy
+
+ALL dates in the system are stored at **12:00:00 UTC** to avoid timezone issues:
+```typescript
+// ❌ WRONG - Will shift days in different timezones
+const date = new Date("2026-02-06");
+const date = someDate.toISOString();
+
+// ✅ CORRECT - Use date utilities
+import { parseDateToUTCNoon, formatDateForDisplay, fromDateOnly } from '@/lib/utils/date-utils';
+
+// Saving to DB:
+const dateForDb = parseDateToUTCNoon(2026, 2, 6); // → 2026-02-06T12:00:00Z
+
+// Reading from DB:
+const dateString = fromDateOnly(dbDate); // → "2026-02-06"
+
+// Displaying to user:
+const formatted = formatDateForDisplay(dbDate, locale, options); // → "viernes, 6 de febrero"
+```
+
+**Golden Rules:**
+1. NEVER use `toISOString()` for user-selected dates
+2. NEVER use `new Date(string)` without specifying time
+3. ALWAYS send dates as "YYYY-MM-DD" strings to API
+4. ALWAYS convert to UTC noon when saving to DB
+5. ALWAYS use `formatDateForDisplay()` for showing dates from DB

@@ -128,6 +128,11 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
       INVALID_PAYMENT_METHOD: 400,
       INVALID_PAYMENT_TYPE: 400,
       AMOUNT_BELOW_MINIMUM: 400,
+      INSTALLMENT_ALREADY_PAID: 400,
+      INVALID_INSTALLMENT_NUMBER: 400,
+      INVALID_INSTALLMENT_AMOUNT: 400,
+      PACKAGE_PAYMENT_NOT_FOUND: 404,
+      CAN_ONLY_DELETE_LATEST_PAYMENT: 400,
     };
 
     const statusCode = knownErrors[error.message];

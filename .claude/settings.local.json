@@ -63,7 +63,11 @@
       "Bash(npx prisma validate:*)",
       "Bash(npx prisma db execute --stdin:*)",
       "Bash(node -e:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "mcp__prisma__migrate-status",
+      "Bash(npx prisma:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"si\" npx prisma migrate reset:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"si\" npx prisma db push:*)"
     ]
   }
 }

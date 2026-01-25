@@ -38,6 +38,7 @@ function useMobileViewport() {
 }
 import {
   Calendar,
+  CalendarClock,
   Clock,
   Baby,
   Plus,
@@ -70,6 +71,8 @@ import {
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
+import { SchedulePreferenceSelector } from "@/components/appointments/schedule-preference-selector";
+import { SchedulePreference } from "@/lib/types/scheduling";
 
 export interface BabyPackage {
   id: string;
@@ -625,7 +628,7 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onVi
 }
 
 // Wizard step type
-type WizardStep = 'baby' | 'package' | 'datetime' | 'payment' | 'success';
+type WizardStep = 'baby' | 'package' | 'preferences' | 'datetime' | 'payment' | 'success';
 
 // Payment settings interface
 interface PaymentSettings {
@@ -662,6 +665,11 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Schedule preferences step state
+  const [wantsFixedSchedule, setWantsFixedSchedule] = useState<boolean | null>(null);
+  const [schedulePreferences, setSchedulePreferences] = useState<SchedulePreference[]>([]);
+  const [autoScheduling, setAutoScheduling] = useState(false);
 
   // Payment step state
   const [requiresPayment, setRequiresPayment] = useState(false);
@@ -749,6 +757,109 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
 
   const availableDates = getAvailableDates();
 
+  // Find the next date matching a specific day of week (0=Sunday, 1=Monday, etc.)
+  const findNextMatchingDate = (dayOfWeek: number): Date => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    let daysToAdd = dayOfWeek - currentDay;
+
+    // If the target day is today or has passed this week, go to next week
+    if (daysToAdd <= 0) {
+      daysToAdd += 7;
+    }
+
+    const nextDate = new Date(today);
+    nextDate.setDate(today.getDate() + daysToAdd);
+    return nextDate;
+  };
+
+  // Auto-schedule appointment based on first preference
+  const autoScheduleFromPreferences = async (): Promise<boolean> => {
+    if (!selectedBaby || schedulePreferences.length === 0) return false;
+    if (!selectedPurchaseId && !selectedPackageId) return false;
+
+    setAutoScheduling(true);
+    setSubmitError(null);
+
+    const firstPref = schedulePreferences[0];
+    const targetDate = findNextMatchingDate(firstPref.dayOfWeek);
+    const targetTime = firstPref.time;
+
+    try {
+      // Check if slot is available
+      const dateStr = formatLocalDateString(targetDate);
+      const availabilityResponse = await fetch(`/api/portal/appointments/availability?date=${dateStr}`);
+      const availabilityData = await availabilityResponse.json();
+
+      if (!availabilityData.available) {
+        // Date is closed, show error and go to datetime step
+        setSubmitError(t("portal.appointments.errors.autoScheduleFailed"));
+        setAutoScheduling(false);
+        return false;
+      }
+
+      // Find the matching slot
+      const slot = availabilityData.slots?.find((s: TimeSlot) => s.time === targetTime);
+      if (!slot || !slot.available) {
+        // Slot not available at that time, show error and go to datetime step
+        setSubmitError(t("portal.appointments.errors.autoScheduleSlotFull"));
+        setAutoScheduling(false);
+        return false;
+      }
+
+      // Slot is available! Auto-submit the appointment
+      const response = await fetch("/api/portal/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          babyId: selectedBaby.id,
+          packagePurchaseId: selectedPurchaseId,
+          packageId: selectedPackageId,
+          date: dateStr,
+          startTime: targetTime,
+          schedulePreferences: schedulePreferences,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        if (data.error === "Baby already has an appointment at this time") {
+          setSubmitError(t("portal.appointments.errors.babyHasAppointment"));
+        } else if (data.error === "Time slot is full") {
+          setSubmitError(t("portal.appointments.errors.slotFull"));
+        } else {
+          setSubmitError(t("portal.appointments.errors.generic"));
+        }
+        setAutoScheduling(false);
+        return false;
+      }
+
+      const data = await response.json();
+
+      // Set the date and time for display in success/payment screens
+      setSelectedDate(targetDate);
+      setSelectedTime(targetTime);
+
+      // Check if payment is required
+      if (data.requiresAdvancePayment && data.advancePaymentAmount) {
+        setRequiresPayment(true);
+        setAdvanceAmount(data.advancePaymentAmount);
+        await fetchPaymentSettings();
+        setStep('payment');
+      } else {
+        setStep('success');
+      }
+
+      setAutoScheduling(false);
+      return true;
+    } catch (error) {
+      console.error("Error auto-scheduling:", error);
+      setSubmitError(t("portal.appointments.errors.generic"));
+      setAutoScheduling(false);
+      return false;
+    }
+  };
+
   // Fetch slots when date changes
   useEffect(() => {
     if (selectedDate) {
@@ -811,6 +922,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
           packageId: selectedPackageId, // For displaying package info (provisional)
           date: formatLocalDateString(selectedDate),
           startTime: selectedTime,
+          schedulePreferences: wantsFixedSchedule ? schedulePreferences : null,
         }),
       });
 
@@ -927,6 +1039,9 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     setSelectedDate(null);
     setSelectedTime("");
     setButtonAnimated(false);
+    setWantsFixedSchedule(null);
+    setSchedulePreferences([]);
+    setAutoScheduling(false);
     setRequiresPayment(false);
     setAdvanceAmount(null);
     setPaymentSettings(null);
@@ -973,28 +1088,55 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
   const handleBack = () => {
     if (step === 'package' && babies.length > 1 && !preselectedBabyId) {
       setStep('baby');
-    } else if (step === 'datetime') {
+    } else if (step === 'preferences') {
       setStep('package');
+    } else if (step === 'datetime') {
+      if (shouldShowPreferencesStep) {
+        setStep('preferences');
+      } else {
+        setStep('package');
+      }
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 'package' && (selectedPackageId || selectedPurchaseId)) {
-      setStep('datetime');
+      if (shouldShowPreferencesStep) {
+        setStep('preferences');
+      } else {
+        setStep('datetime');
+      }
+    } else if (step === 'preferences') {
+      if (wantsFixedSchedule === true && schedulePreferences.length > 0) {
+        // Auto-schedule based on first preference
+        const success = await autoScheduleFromPreferences();
+        if (!success) {
+          // If auto-schedule failed, fall back to datetime step
+          setStep('datetime');
+        }
+      } else {
+        // Single appointment mode - go to datetime step
+        setStep('datetime');
+      }
     }
   };
 
   // Calculate step numbers for display
   const getStepNumber = () => {
     if (step === 'package') return 1;
-    if (step === 'datetime') return 2;
+    if (step === 'preferences') return 2;
+    if (step === 'datetime') return shouldShowPreferencesStep ? 3 : 2;
     return 1;
   };
 
-  const getTotalSteps = () => 2;
+  const getTotalSteps = () => shouldShowPreferencesStep ? 3 : 2;
 
   const canProceed = () => {
     if (step === 'package') return !!(selectedPackageId || selectedPurchaseId);
+    if (step === 'preferences') {
+      // Can proceed if user chose single appointment OR defined at least 1 preference
+      return wantsFixedSchedule === false || (wantsFixedSchedule === true && schedulePreferences.length > 0);
+    }
     if (step === 'datetime') return !!(selectedDate && selectedTime);
     return false;
   };
@@ -1011,6 +1153,22 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     }
     return '';
   };
+
+  // Check if the selected package has multiple sessions (for preferences step)
+  const hasMultipleSessions = (): boolean => {
+    if (selectedPurchaseId && selectedBaby) {
+      const pkg = selectedBaby.packages.find(p => p.id === selectedPurchaseId);
+      return (pkg?.remainingSessions || 0) > 1;
+    }
+    if (selectedPackageId) {
+      const pkg = catalogPackages.find(p => p.id === selectedPackageId);
+      return (pkg?.sessionCount || 0) > 1;
+    }
+    return false;
+  };
+
+  // Check if preferences step should be shown
+  const shouldShowPreferencesStep = hasMultipleSessions();
 
   return (
     <Dialog open={open} onOpenChange={resetAndClose}>
@@ -1031,7 +1189,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Back button */}
-                {((step === 'package' && babies.length > 1 && !preselectedBabyId) || step === 'datetime') && (
+                {((step === 'package' && babies.length > 1 && !preselectedBabyId) || step === 'preferences' || step === 'datetime') && (
                   <button
                     onClick={handleBack}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
@@ -1043,6 +1201,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                   <h2 className="text-lg font-semibold text-gray-800">
                     {step === 'baby' && t("portal.appointments.selectBaby")}
                     {step === 'package' && t("packages.selectPackage")}
+                    {step === 'preferences' && t("portal.appointments.wizard.schedulePreferences")}
                     {step === 'datetime' && t("portal.appointments.wizard.selectDateTime")}
                   </h2>
                   {step !== 'baby' && (
@@ -1147,6 +1306,141 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                   showProvisionalMessage={false}
                   maxHeight="none"
                 />
+              )}
+            </div>
+          )}
+
+          {/* Schedule Preferences Step */}
+          {step === 'preferences' && selectedBaby && (
+            <div className="p-4 space-y-6">
+              {/* Selected package summary */}
+              <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
+                <Package className="h-5 w-5 text-teal-600" />
+                <span className="text-sm font-medium text-teal-700">
+                  {getSelectedPackageName()}
+                </span>
+              </div>
+
+              {/* Explanation */}
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+                <div className="flex items-start gap-3">
+                  <CalendarClock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">
+                      {t("portal.appointments.wizard.preferencesExplanation")}
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      {t("portal.appointments.wizard.preferencesHelp")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Choice: Single appointment vs Fixed schedule */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setWantsFixedSchedule(false);
+                    setSchedulePreferences([]);
+                  }}
+                  className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                    wantsFixedSchedule === false
+                      ? "border-teal-500 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md"
+                      : "border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      wantsFixedSchedule === false
+                        ? "bg-teal-500 text-white"
+                        : "bg-gray-100 text-gray-400"
+                    }`}>
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${wantsFixedSchedule === false ? "text-teal-700" : "text-gray-700"}`}>
+                        {t("portal.appointments.wizard.singleAppointment")}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {t("portal.appointments.wizard.singleAppointmentDesc")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setWantsFixedSchedule(true);
+                    if (schedulePreferences.length === 0) {
+                      setSchedulePreferences([{ dayOfWeek: 2, time: '09:00' }]);
+                    }
+                  }}
+                  className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                    wantsFixedSchedule === true
+                      ? "border-teal-500 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-md"
+                      : "border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      wantsFixedSchedule === true
+                        ? "bg-teal-500 text-white"
+                        : "bg-gray-100 text-gray-400"
+                    }`}>
+                      <CalendarClock className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${wantsFixedSchedule === true ? "text-teal-700" : "text-gray-700"}`}>
+                        {t("portal.appointments.wizard.fixedSchedule")}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {t("portal.appointments.wizard.fixedScheduleDesc")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Schedule preference selector (only if fixed schedule is chosen) */}
+              {wantsFixedSchedule === true && (
+                <div className="animate-fadeIn space-y-4">
+                  <div className="rounded-xl border border-teal-100 bg-white/50 p-4">
+                    <SchedulePreferenceSelector
+                      value={schedulePreferences}
+                      onChange={setSchedulePreferences}
+                      maxPreferences={3}
+                      compact={true}
+                      showLabel={false}
+                    />
+                  </div>
+
+                  {/* Auto-schedule preview */}
+                  {schedulePreferences.length > 0 && (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-emerald-800">
+                            {t("portal.appointments.wizard.autoSchedulePreview")}
+                          </p>
+                          <p className="mt-1 text-sm text-emerald-700 font-semibold">
+                            {(() => {
+                              const firstPref = schedulePreferences[0];
+                              const nextDate = findNextMatchingDate(firstPref.dayOfWeek);
+                              const dayNames: Record<string, string[]> = {
+                                es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
+                                "pt-BR": ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"]
+                              };
+                              const locale = typeof window !== 'undefined' ? document.documentElement.lang || 'es' : 'es';
+                              const dayName = dayNames[locale]?.[firstPref.dayOfWeek] || dayNames['es'][firstPref.dayOfWeek];
+                              return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${nextDate.getDate()}/${nextDate.getMonth() + 1} a las ${firstPref.time}`;
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -1459,17 +1753,29 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
               </p>
             )}
 
+            {/* Preferences info message */}
+            {step === 'preferences' && wantsFixedSchedule && schedulePreferences.length > 0 && !submitError && (
+              <p className="mb-3 text-center text-xs text-gray-500">
+                {t("portal.appointments.wizard.preferencesWillBeSaved")}
+              </p>
+            )}
+
             <Button
               onClick={step === 'datetime' ? handleSubmit : handleNext}
-              disabled={!canProceed() || submitting}
+              disabled={!canProceed() || submitting || autoScheduling}
               className={cn(
                 "h-12 w-full gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-base font-semibold text-white shadow-lg shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600 disabled:opacity-50 disabled:shadow-none",
                 canProceed() && buttonAnimated && "animate-pulse-subtle"
               )}
             >
-              {submitting ? (
+              {submitting || autoScheduling ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : step === 'datetime' ? (
+                <>
+                  <CheckCircle className="h-5 w-5" />
+                  {t("portal.appointments.confirmAppointment")}
+                </>
+              ) : step === 'preferences' && wantsFixedSchedule === true && schedulePreferences.length > 0 ? (
                 <>
                   <CheckCircle className="h-5 w-5" />
                   {t("portal.appointments.confirmAppointment")}

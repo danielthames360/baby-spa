@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
 import { getPaymentStatus, type PaymentStatus } from "@/lib/utils/installments";
+import { parseSchedulePreferences, formatPreferencesText } from "@/lib/utils/bulk-scheduling";
 
 interface AppointmentDetailsProps {
   open: boolean;
@@ -84,6 +85,8 @@ interface AppointmentDetailsProps {
     notes: string | null;
     cancelReason: string | null;
     packagePurchaseId?: string | null;
+    // Pending schedule preferences (from portal, before checkout)
+    pendingSchedulePreferences?: string | null;
     session?: {
       id: string;
     } | null;
@@ -104,6 +107,8 @@ interface AppointmentDetailsProps {
       totalSessions?: number;
       usedSessions?: number;
       remainingSessions?: number;
+      // Schedule preferences (transferred from appointment at checkout)
+      schedulePreferences?: string | null;
       // Installment fields
       paymentPlan?: string;
       installments?: number;
@@ -544,6 +549,17 @@ export function AppointmentDetails({
   // Check if baby has medical alerts (based on current appointment data)
   const hasMedicalAlerts = false; // Will be updated when baby details are fetched
 
+  // Get schedule preferences text from either packagePurchase or pending appointment preferences
+  const getSchedulePreferencesText = () => {
+    const prefsJson = appointment?.packagePurchase?.schedulePreferences
+      || appointment?.pendingSchedulePreferences;
+    if (!prefsJson) return null;
+    const prefs = parseSchedulePreferences(prefsJson);
+    return prefs.length > 0 ? formatPreferencesText(prefs, locale) : null;
+  };
+
+  const schedulePreferencesText = getSchedulePreferencesText();
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -717,6 +733,19 @@ export function AppointmentDetails({
                 </div>
               )}
             </div>
+
+            {/* Parent schedule preferences - shows when parent set preferred schedule */}
+            {schedulePreferencesText && (
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-cyan-600" />
+                  <div>
+                    <p className="text-xs text-gray-500">{t("calendar.parentPreferredSchedule")}</p>
+                    <p className="text-sm font-semibold text-cyan-700">{schedulePreferencesText}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Installment payment alert - shows when package has overdue payments */}
             {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && appointment.packagePurchase && (

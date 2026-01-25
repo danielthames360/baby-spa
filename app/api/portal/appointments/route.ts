@@ -187,7 +187,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { babyId, packagePurchaseId, packageId, date, startTime } = body;
+    const { babyId, packagePurchaseId, packageId, date, startTime, schedulePreferences } = body;
 
     // Verify baby belongs to parent
     const babyParent = await prisma.babyParent.findFirst({
@@ -362,6 +362,8 @@ export async function POST(request: Request) {
     // Create appointment (NO session deduction - that happens when session is completed)
     const result = await prisma.$transaction(async (tx) => {
       // Create appointment with package pre-selected (provisional until checkout)
+      // If there's no existing packagePurchase, save schedule preferences to appointment
+      // They will be transferred to the new PackagePurchase at checkout
       const appointment = await tx.appointment.create({
         data: {
           babyId,
@@ -372,8 +374,22 @@ export async function POST(request: Request) {
           endTime,
           status: requiresAdvancePayment ? "PENDING_PAYMENT" : "SCHEDULED",
           isPendingPayment: requiresAdvancePayment,
+          // Save preferences to appointment if using a catalog package (no purchase yet)
+          pendingSchedulePreferences: !validPackagePurchaseId && schedulePreferences?.length > 0
+            ? JSON.stringify(schedulePreferences)
+            : null,
         },
       });
+
+      // If schedule preferences were provided, save them to the packagePurchase
+      if (schedulePreferences && Array.isArray(schedulePreferences) && schedulePreferences.length > 0 && validPackagePurchaseId) {
+        await tx.packagePurchase.update({
+          where: { id: validPackagePurchaseId },
+          data: {
+            schedulePreferences: JSON.stringify(schedulePreferences),
+          },
+        });
+      }
 
       // Create history record
       await tx.appointmentHistory.create({
@@ -389,6 +405,7 @@ export async function POST(request: Request) {
             endTime,
             packagePurchaseId: validPackagePurchaseId,
             status: requiresAdvancePayment ? "PENDING_PAYMENT" : "SCHEDULED",
+            schedulePreferences: schedulePreferences || null,
           },
         },
       });

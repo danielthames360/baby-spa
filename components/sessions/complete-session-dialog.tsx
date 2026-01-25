@@ -37,6 +37,7 @@ import {
   Percent,
   Search,
   AlertTriangle,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -45,10 +46,17 @@ import {
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
 import { getPaymentStatus, getRemainingBalance, type PaymentStatus } from "@/lib/utils/installments";
+import { parseSchedulePreferences, formatPreferencesText } from "@/lib/utils/bulk-scheduling";
 
 // Dynamic import for payment dialog
 const RegisterInstallmentPaymentDialog = dynamic(
   () => import("@/components/packages/register-installment-payment-dialog").then(mod => mod.RegisterInstallmentPaymentDialog),
+  { ssr: false }
+);
+
+// Dynamic import for bulk scheduling dialog
+const BulkSchedulingDialog = dynamic(
+  () => import("@/components/appointments/bulk-scheduling-dialog").then(mod => mod.BulkSchedulingDialog),
   { ssr: false }
 );
 
@@ -80,6 +88,8 @@ interface SessionData {
     remainingSessions: number;
     totalSessions: number;
     usedSessions: number;
+    // Schedule preferences (transferred from appointment at checkout)
+    schedulePreferences?: string | null;
     // Installment fields
     paymentPlan?: string;
     installments?: number;
@@ -97,6 +107,8 @@ interface SessionData {
   appointment: {
     isEvaluated: boolean;
     selectedPackageId: string | null; // Catalog package selected (provisional)
+    // Pending schedule preferences (from portal, before checkout)
+    pendingSchedulePreferences?: string | null;
     selectedPackage: {
       id: string;
       name: string;
@@ -170,6 +182,19 @@ export function CompleteSessionDialog({
   // Installment payment alert state
   const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] = useState(false);
   const [installmentPaymentStatus, setInstallmentPaymentStatus] = useState<PaymentStatus | null>(null);
+
+  // Bulk scheduling state (after completion)
+  const [showSuccessView, setShowSuccessView] = useState(false);
+  const [showBulkScheduling, setShowBulkScheduling] = useState(false);
+  const [completedPurchaseInfo, setCompletedPurchaseInfo] = useState<{
+    id: string;
+    remainingSessions: number;
+    packageName: string;
+    packageDuration: number;
+    babyId: string;
+    babyName: string;
+    schedulePreferences: string | null;
+  } | null>(null);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -260,6 +285,9 @@ export function CompleteSessionDialog({
       setDiscountReason("");
       setError(null);
       setBabyPackages([]);
+      setShowSuccessView(false);
+      setShowBulkScheduling(false);
+      setCompletedPurchaseInfo(null);
 
       fetchSession();
       fetchProducts();
@@ -462,8 +490,27 @@ export function CompleteSessionDialog({
         return;
       }
 
-      onOpenChange(false);
-      onSuccess?.();
+      // Check if we should show bulk scheduling option
+      // data should contain the updated packagePurchase with remainingSessions
+      const purchaseData = data.packagePurchase;
+      if (purchaseData && purchaseData.remainingSessions > 0) {
+        // Show success view with bulk scheduling option
+        setCompletedPurchaseInfo({
+          id: purchaseData.id,
+          remainingSessions: purchaseData.remainingSessions,
+          packageName: purchaseData.package?.name || selectedPurchaseName,
+          packageDuration: purchaseData.package?.duration || 30,
+          babyId: session!.appointment.baby.id,
+          babyName: session!.appointment.baby.name,
+          schedulePreferences: purchaseData.schedulePreferences || null,
+        });
+        setShowSuccessView(true);
+        onSuccess?.();
+      } else {
+        // No remaining sessions, just close
+        onOpenChange(false);
+        onSuccess?.();
+      }
     } catch (err) {
       console.error("Error completing session:", err);
       setError(t("common.error"));
@@ -475,6 +522,16 @@ export function CompleteSessionDialog({
   // Check if session was started with a package
   const hasLinkedPackage = session?.packagePurchase && session.packagePurchase.remainingSessions > 0;
   const needsPackageSelection = session && !session.packagePurchaseId;
+
+  // Get parent's schedule preferences (from packagePurchase or pending appointment)
+  const getParentPreferencesText = (): string | null => {
+    const prefsJson = session?.packagePurchase?.schedulePreferences
+      || session?.appointment?.pendingSchedulePreferences;
+    if (!prefsJson) return null;
+    const prefs = parseSchedulePreferences(prefsJson);
+    return prefs.length > 0 ? formatPreferencesText(prefs, locale) : null;
+  };
+  const parentPreferencesText = getParentPreferencesText();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -495,6 +552,47 @@ export function CompleteSessionDialog({
         ) : !session ? (
           <div className="py-8 text-center text-gray-500">
             {t("session.errors.SESSION_NOT_FOUND")}
+          </div>
+        ) : showSuccessView && completedPurchaseInfo ? (
+          // Success view with bulk scheduling option
+          <div className="flex flex-col items-center justify-center py-8 space-y-6">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100">
+              <CheckCircle className="h-10 w-10 text-emerald-500" />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-semibold text-gray-800">
+                {t("session.completedSuccessfully")}
+              </h3>
+              <p className="text-gray-600">
+                {t("bulkScheduling.scheduleNow")}
+              </p>
+              <div className="mt-4 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-4">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold text-teal-700">{completedPurchaseInfo.babyName}</span>
+                  {" - "}
+                  <span className="font-medium">{completedPurchaseInfo.packageName}</span>
+                </p>
+                <p className="text-lg font-bold text-emerald-600 mt-1">
+                  {t("bulkScheduling.remainingToSchedule", { count: completedPurchaseInfo.remainingSessions })}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="rounded-xl border-2 border-gray-200 px-6"
+              >
+                {t("common.close")}
+              </Button>
+              <Button
+                onClick={() => setShowBulkScheduling(true)}
+                className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50"
+              >
+                <Package className="mr-2 h-4 w-4" />
+                {t("bulkScheduling.scheduleRemaining")}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6 pt-4">
@@ -563,6 +661,18 @@ export function CompleteSessionDialog({
                       </Button>
                     </div>
                   </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Parent schedule preferences - highlighted alert */}
+            {parentPreferencesText && (
+              <Alert className="border-cyan-200 bg-gradient-to-r from-cyan-50 to-teal-50">
+                <CalendarClock className="h-4 w-4 text-cyan-600" />
+                <AlertDescription className="ml-2">
+                  <p className="font-medium text-cyan-800">{t("session.parentPreferredSchedule")}</p>
+                  <p className="font-semibold text-cyan-700">{parentPreferencesText}</p>
+                  <p className="text-xs text-cyan-600">{t("session.preferencesWillBeSaved")}</p>
                 </AlertDescription>
               </Alert>
             )}
@@ -1041,6 +1151,29 @@ export function CompleteSessionDialog({
           onSuccess={() => {
             setShowInstallmentPaymentDialog(false);
             fetchSession(); // Refresh to get updated payment status
+          }}
+        />
+      )}
+
+      {/* Bulk Scheduling Dialog */}
+      {completedPurchaseInfo && (
+        <BulkSchedulingDialog
+          open={showBulkScheduling}
+          onOpenChange={setShowBulkScheduling}
+          packagePurchaseId={completedPurchaseInfo.id}
+          babyId={completedPurchaseInfo.babyId}
+          babyName={completedPurchaseInfo.babyName}
+          packageName={completedPurchaseInfo.packageName}
+          packageDuration={completedPurchaseInfo.packageDuration}
+          availableSessions={completedPurchaseInfo.remainingSessions}
+          parentPreferences={
+            completedPurchaseInfo.schedulePreferences
+              ? JSON.parse(completedPurchaseInfo.schedulePreferences)
+              : undefined
+          }
+          onComplete={() => {
+            setShowBulkScheduling(false);
+            onOpenChange(false);
           }}
         />
       )}

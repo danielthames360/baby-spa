@@ -11,6 +11,8 @@ import {
   Phone,
   Mail,
   Calendar,
+  CalendarDays,
+  CalendarClock,
   Package,
   FileText,
   Loader2,
@@ -64,6 +66,10 @@ const ScheduleAppointmentDialog = dynamic(
 );
 const RegisterInstallmentPaymentDialog = dynamic(
   () => import("@/components/packages/register-installment-payment-dialog").then((mod) => mod.RegisterInstallmentPaymentDialog),
+  { ssr: false }
+);
+const BulkSchedulingDialog = dynamic(
+  () => import("@/components/appointments/bulk-scheduling-dialog").then((mod) => mod.BulkSchedulingDialog),
   { ssr: false }
 );
 
@@ -121,9 +127,12 @@ interface BabyWithRelations {
     finalPrice: Prisma.Decimal;
     totalPrice: Prisma.Decimal | null;
     installmentsPayOnSessions: string | null;
+    // Schedule preferences from parent
+    schedulePreferences: string | null;
     package: {
       id: string;
       name: string;
+      duration: number;
     };
     installmentPayments?: {
       id: string;
@@ -132,6 +141,9 @@ interface BabyWithRelations {
       paymentMethod: string;
       paidAt: Date;
     }[];
+    _count?: {
+      appointments: number;
+    };
   }[];
   _count?: {
     sessions: number;
@@ -239,6 +251,14 @@ export default function BabyProfilePage() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   // State for installment payment dialog
   const [paymentDialogPurchase, setPaymentDialogPurchase] = useState<BabyWithRelations["packagePurchases"][0] | null>(null);
+  // State for bulk scheduling dialog
+  const [bulkSchedulingPurchase, setBulkSchedulingPurchase] = useState<{
+    id: string;
+    remainingSessions: number;
+    packageName: string;
+    packageDuration: number;
+    schedulePreferences: string | null;
+  } | null>(null);
 
   const fetchBaby = useCallback(async () => {
     try {
@@ -1038,9 +1058,17 @@ export default function BabyProfilePage() {
                           />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">
-                            {purchase.package.name}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-800">
+                              {purchase.package.name}
+                            </p>
+                            {purchase.schedulePreferences && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                <CalendarClock className="h-3 w-3" />
+                                {t("bulkScheduling.hasPreference")}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-500">
                             {purchase.usedSessions} / {purchase.totalSessions}{" "}
                             {t("common.sessionsUnit")}
@@ -1048,6 +1076,31 @@ export default function BabyProfilePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Schedule Sessions button - show only when there are truly available sessions */}
+                        {(() => {
+                          const scheduledAppointments = purchase._count?.appointments || 0;
+                          const availableToSchedule = purchase.remainingSessions - scheduledAppointments;
+                          return availableToSchedule > 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setBulkSchedulingPurchase({
+                                  id: purchase.id,
+                                  remainingSessions: availableToSchedule,
+                                  packageName: purchase.package.name,
+                                  packageDuration: purchase.package.duration,
+                                  schedulePreferences: purchase.schedulePreferences,
+                                })
+                              }
+                              className="h-8 rounded-lg text-teal-600 hover:bg-teal-50 hover:text-teal-700"
+                              title={t("bulkScheduling.scheduleSessions")}
+                            >
+                              <CalendarDays className="mr-1 h-4 w-4" />
+                              {t("bulkScheduling.scheduleSessions")} ({availableToSchedule})
+                            </Button>
+                          ) : null;
+                        })()}
                         {/* Cancel button - only show when no sessions have been used */}
                         {purchase.usedSessions === 0 && (
                           <Button
@@ -1455,6 +1508,30 @@ export default function BabyProfilePage() {
           onSuccess={() => {
             fetchBaby();
             setPaymentDialogPurchase(null);
+          }}
+        />
+      )}
+
+      {/* Bulk Scheduling Dialog */}
+      {baby && bulkSchedulingPurchase && (
+        <BulkSchedulingDialog
+          open={!!bulkSchedulingPurchase}
+          onOpenChange={(open) => !open && setBulkSchedulingPurchase(null)}
+          packagePurchaseId={bulkSchedulingPurchase.id}
+          babyId={baby.id}
+          babyName={baby.name}
+          packageName={bulkSchedulingPurchase.packageName}
+          packageDuration={bulkSchedulingPurchase.packageDuration}
+          availableSessions={bulkSchedulingPurchase.remainingSessions}
+          parentPreferences={
+            bulkSchedulingPurchase.schedulePreferences
+              ? JSON.parse(bulkSchedulingPurchase.schedulePreferences)
+              : undefined
+          }
+          onComplete={() => {
+            fetchBaby();
+            fetchAppointments();
+            setBulkSchedulingPurchase(null);
           }}
         />
       )}

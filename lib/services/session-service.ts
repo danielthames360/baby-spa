@@ -335,6 +335,12 @@ export const sessionService = {
       },
     });
 
+    // Fetch appointment with pendingSchedulePreferences if needed
+    const appointmentWithPreferences = await prisma.appointment.findUnique({
+      where: { id: session?.appointmentId },
+      select: { pendingSchedulePreferences: true },
+    });
+
     if (!session) {
       throw new Error("SESSION_NOT_FOUND");
     }
@@ -475,19 +481,26 @@ export const sessionService = {
             finalPrice: packageFinalPrice,
             isActive: true,
             paymentId: payment?.id, // Link to payment
+            // Transfer schedule preferences from appointment (set by parent in portal)
+            schedulePreferences: appointmentWithPreferences?.pendingSchedulePreferences || null,
           },
         });
 
         packagePurchaseToDeduct = null; // Don't deduct from old package
       } else if (packagePurchaseToDeduct) {
-        // Deduct 1 session from existing active package
-        await tx.packagePurchase.update({
+        // Deduct 1 session from existing active package and get updated data
+        const updatedExistingPurchase = await tx.packagePurchase.update({
           where: { id: packagePurchaseToDeduct.id },
           data: {
             usedSessions: { increment: 1 },
             remainingSessions: { decrement: 1 },
           },
+          include: {
+            package: true,
+          },
         });
+        // Use updated purchase data for the return value
+        packagePurchaseToDeduct = updatedExistingPurchase;
       }
 
       // Link session to package purchase
@@ -550,10 +563,18 @@ export const sessionService = {
         },
       });
 
+      // Include the package purchase with its package info for bulk scheduling
+      const finalPackagePurchase = newPackagePurchase
+        ? await tx.packagePurchase.findUnique({
+            where: { id: newPackagePurchase.id },
+            include: { package: true }
+          })
+        : packagePurchaseToDeduct;
+
       return {
         session: updatedSession,
         payment,
-        packagePurchase: newPackagePurchase,
+        packagePurchase: finalPackagePurchase,
         productsAmount,
         packageAmount,
         totalAmount,

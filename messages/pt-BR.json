@@ -199,6 +199,7 @@
     "products": "Produtos utilizados",
     "startSession": "Iniciar Sessão",
     "completeSession": "Concluir Sessão",
+    "completedSuccessfully": "Sessão concluída com sucesso!",
     "selectTherapist": "Selecionar Terapeuta",
     "selectTherapistPlaceholder": "Selecione um terapeuta...",
     "selectPackage": "Selecionar Pacote",
@@ -238,6 +239,8 @@
     "packageSubtotal": "Pacote/Sessão",
     "usingExistingPackage": "Usando pacote existente",
     "total": "Total a cobrar",
+    "parentPreferredSchedule": "O responsável definiu horários preferidos",
+    "preferencesWillBeSaved": "Essas preferências serão salvas no pacote ao concluir",
     "viewEvaluation": "Ver Avaliação",
     "viewBaby": "Ver Bebê",
     "saveEvaluation": "Salvar Avaliação",
@@ -759,7 +762,8 @@
     "advancePaymentRequired": "Este pacote requer pagamento antecipado",
     "advancePaymentAmount": "É necessário um adiantamento de R$ {amount}",
     "registerPaymentNow": "Registrar Pagamento Agora",
-    "scheduleWithoutPayment": "Agendar sem Pagamento"
+    "scheduleWithoutPayment": "Agendar sem Pagamento",
+    "parentPreferredSchedule": "Horário preferido do responsável"
   },
 
   "notifications": {
@@ -1281,7 +1285,16 @@
         "selectDateTime": "Data e Hora",
         "selectBabyDescription": "Para qual bebê você quer agendar?",
         "noSessions": "Sem sessões disponíveis",
-        "successMessage": "Esperamos você no Baby Spa"
+        "successMessage": "Esperamos você no Baby Spa",
+        "schedulePreferences": "Preferências de Horário",
+        "preferencesExplanation": "Seu pacote tem várias sessões",
+        "preferencesHelp": "Você pode nos informar seu horário preferido para que a equipe possa agendar suas próximas consultas mais facilmente.",
+        "singleAppointment": "Apenas esta consulta",
+        "singleAppointmentDesc": "Agendar apenas esta sessão sem definir um horário fixo",
+        "fixedSchedule": "Definir horário preferido",
+        "fixedScheduleDesc": "Informar em quais dias e horários você gostaria de vir regularmente",
+        "preferencesWillBeSaved": "Sua preferência de horário será salva para futuras consultas",
+        "autoSchedulePreview": "Sua primeira consulta será agendada automaticamente para:"
       },
       "status": {
         "PENDING_PAYMENT": "Aguardando pagamento",
@@ -1294,7 +1307,9 @@
       "errors": {
         "babyHasAppointment": "Este bebê já tem uma consulta agendada neste horário",
         "slotFull": "Este horário já está cheio",
-        "generic": "Ocorreu um erro. Por favor tente novamente"
+        "generic": "Ocorreu um erro. Por favor tente novamente",
+        "autoScheduleFailed": "Não há disponibilidade para esse dia. Por favor selecione outra data.",
+        "autoScheduleSlotFull": "O horário selecionado não está disponível. Por favor escolha outro horário."
       }
     },
     "history": {
@@ -1349,5 +1364,52 @@
       "sensoryStimulation": "Estimulação sensorial",
       "relaxation": "Relaxamento"
     }
+  },
+
+  "bulkScheduling": {
+    "title": "Agendar Sessões",
+    "howToSchedule": "Como você quer agendar suas sessões?",
+    "singleAppointment": "Consulta única",
+    "singleAppointmentDesc": "Agendarei as demais sessões depois",
+    "fixedSchedule": "Definir horário fixo",
+    "fixedScheduleDesc": "Quero vir sempre nos mesmos dias e horários",
+    "preferredSchedules": "Meus horários preferidos",
+    "noPreferenceDefined": "Sem preferência definida",
+    "addSchedule": "Adicionar outro horário",
+    "scheduleNumber": "Horário {number}",
+    "atTime": "às",
+    "preferenceNote": "Isso é apenas uma indicação. As consultas serão confirmadas quando você chegar à sua primeira sessão.",
+    "parentPreference": "Preferência dos pais",
+    "preferredSchedule": "Horário preferido",
+    "useParentPreference": "Usar preferência dos pais",
+    "defineDifferent": "Definir horário diferente",
+    "sessionsToSchedule": "Sessões a agendar",
+    "availableToSchedule": "Disponíveis para agendar",
+    "sessions": "sessões",
+    "sessionsAvailable": "{count} sessões disponíveis para agendar",
+    "preview": "Pré-visualização",
+    "existing": "existentes",
+    "checkingConflicts": "Verificando disponibilidade...",
+    "conflictWarning": "{count} horário(s) têm conflito (serão agendados mesmo assim)",
+    "generateAppointments": "Gerar {count} Consultas",
+    "cancel": "Cancelar",
+    "scheduleNow": "Deseja agendar as sessões restantes?",
+    "scheduleLater": "Agendar Depois",
+    "scheduleNowButton": "Gerar Consultas Agora",
+    "scheduleSessions": "Agendar Sessões",
+    "noPreference": "Sem preferência definida",
+    "hasPreference": "Horário definido",
+    "remainingToSchedule": "{count} sessões pendentes de agendar",
+    "scheduleRemaining": "Agendar Sessões Restantes"
+  },
+
+  "days": {
+    "sunday": "Domingo",
+    "monday": "Segunda",
+    "tuesday": "Terça",
+    "wednesday": "Quarta",
+    "thursday": "Quinta",
+    "friday": "Sexta",
+    "saturday": "Sábado"
   }
 }

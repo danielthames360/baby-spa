@@ -79,25 +79,26 @@ DOMINGO: Cerrado
 - 1 Recepcionista
 - 3 Administradores
 
+
 ## 1.4 Paquetes y Servicios
 
-| Categoría | Paquete | Sesiones | Duración | Notas |
-|-----------|---------|----------|----------|-------|
-| Hidroterapia | Individual | 1 | 60 min | Default |
-| Hidroterapia | Mini | 4 | 60 min | - |
-| Hidroterapia | Estándar | 8 | 60 min | - |
-| Hidroterapia | Plus | 10 | 60 min | - |
-| Hidroterapia | Premium | 20 | 60 min | Casos terapéuticos |
-| Cumple Mes | Individual | 1 | 90 min | Incluye decoración |
-| Vacunas | Individual | 1 | 30 min | Requiere pago anticipado |
+| Categoría | Paquete | Sesiones | Duración | Pago Único | Cuotas | Precio Cuotas |
+|-----------|---------|----------|----------|------------|--------|---------------|
+| Hidroterapia | Individual | 1 | 60 min | 350 Bs | - | - |
+| Hidroterapia | Programa Inicial | 4 | 60 min | 1,360 Bs | 2 | 1,400 Bs |
+| Hidroterapia | Programa Continuidad | 8 | 60 min | 2,640 Bs | 3 | 2,700 Bs |
+| Hidroterapia | Plan Integral | 20 | 60 min | 6,200 Bs | 5 | 6,300 Bs |
+| Cumple Mes | Individual | 1 | 90 min | 250 Bs | - | Requiere anticipo |
+| Vacunas | Individual | 1 | 30 min | 180 Bs | - | Requiere anticipo |
 
 **Reglas de Paquetes:**
 - Los paquetes **NO vencen** (válidos hasta que bebé cumpla 3 años)
 - Sesiones **NO transferibles** entre bebés
-- Pueden pagarse en **cuotas** (financiamiento)
-- Algunos requieren **pago anticipado**
+- Cuotas **configuradas por paquete** (el cliente no elige cuántas)
+- Precio en cuotas puede ser **mayor** al pago único (financiamiento)
+- Se define **en qué sesiones** se paga cada cuota
+- Algunos requieren **pago anticipado** para confirmar cita
 
----
 
 # 2. STACK TECNOLÓGICO
 
@@ -206,29 +207,40 @@ El sistema usa **2 bases de datos completamente separadas** (NO tenant_id):
 ## 4.2 Modelos Clave
 
 ### Package (Catálogo de Paquetes)
+
 ```prisma
 model Package {
   id                      String    @id @default(cuid())
   name                    String
   description             String?   // Descripción detallada
-  category                String?   // HIDROTERAPIA, CUMPLE_MES, VACUNAS, etc.
+  categoryId              String?   // Relación con Category
   sessionCount            Int       // Número de sesiones
-  basePrice               Decimal   // Precio base
+  basePrice               Decimal   // Precio pago único
   duration                Int       @default(60) // Duración en minutos
   
   // Pago anticipado
   requiresAdvancePayment  Boolean   @default(false)
   advancePaymentAmount    Decimal?  // Monto del anticipo requerido
   
+  // Configuración de cuotas (NUEVO)
+  allowInstallments           Boolean   @default(false)  // ¿Permite cuotas?
+  installmentsCount           Int?      // Cantidad de cuotas
+  installmentsTotalPrice      Decimal?  // Precio total en cuotas (puede ser > basePrice)
+  installmentsPayOnSessions   String?   // En qué sesiones pagar: "1,3,5"
+  
   isActive                Boolean   @default(true)
   sortOrder               Int       @default(0)
   
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+  
+  // Relaciones
+  category                Category? @relation(fields: [categoryId], references: [id])
 }
 ```
 
 ### PackagePurchase (Compra de Paquete)
+
 ```prisma
 model PackagePurchase {
   id                String    @id @default(cuid())
@@ -239,18 +251,25 @@ model PackagePurchase {
   basePrice         Decimal
   discountAmount    Decimal   @default(0)
   discountReason    String?
-  finalPrice        Decimal
+  finalPrice        Decimal   // Precio sin financiamiento
   
-  // Financiamiento
-  installments      Int       @default(1)  // Número de cuotas
-  installmentAmount Decimal?  // Monto por cuota
-  paidAmount        Decimal   @default(0)  // Total pagado
-  pendingAmount     Decimal   // Saldo pendiente (calculado)
+  // Plan de pago
+  paymentPlan               String    @default("SINGLE")  // SINGLE | INSTALLMENTS
+  installmentsCount         Int       @default(1)
+  totalPrice                Decimal   // Precio final a pagar (único o con financiamiento)
+  installmentAmount         Decimal?  // Monto por cuota (calculado: totalPrice / installmentsCount)
+  paidAmount                Decimal   @default(0)
+  installmentsPayOnSessions String?   // Copiado del Package: "1,3,5"
+  // pendingAmount = totalPrice - paidAmount (calculado)
+
+   // Preferencia de horario del padre (para auto-agendado)
+  // Formato JSON: [{"dayOfWeek": 1, "time": "09:00"}, {"dayOfWeek": 4, "time": "15:00"}]
+  schedulePreferences       String?   @db.Text
   
   // Sesiones
   totalSessions     Int
   usedSessions      Int       @default(0)
-  remainingSessions Int
+  remainingSessions Int       // Calculado: totalSessions - usedSessions
   
   isActive          Boolean   @default(true)
   purchaseDate      DateTime  @default(now())
@@ -745,6 +764,51 @@ El staff puede generar múltiples citas desde **3 lugares diferentes**:
 - Bebés deben estar registrados en sistema
 - Pagos son individuales por participante
 
+## 6.8 Reglas de Cuotas (Financiamiento)
+
+### Configuración por Paquete
+
+Las cuotas se configuran en el catálogo de paquetes, NO las elige el cliente:
+```
+Paquete "Programa Continuidad":
+├── Precio pago único: 2,640 Bs
+├── Permite cuotas: SÍ
+├── Cantidad de cuotas: 3
+├── Precio en cuotas: 2,700 Bs (+60 Bs financiamiento)
+├── Monto por cuota: 900 Bs (calculado)
+└── Pagar en sesiones: 1, 3, 5
+```
+
+
+### Flujo de Venta
+
+1. Staff selecciona paquete
+2. Elige: Pago único (2,640 Bs) o Cuotas (3 x 900 Bs = 2,700 Bs)
+3. Si elige cuotas, el sistema muestra: "Se cobra en sesión 1, 3 y 5"
+4. Staff registra primera cuota
+5. Se crea PackagePurchase con plan de cuotas
+
+### Sistema de Alertas (NO Bloqueo)
+
+```typescript
+// Paquete 8 sesiones, cuotas en sesiones [1, 3, 5]
+
+Sesión 1: Debe haber pagado 900 Bs (cuota 1)
+Sesión 3: Debe haber pagado 1,800 Bs (cuotas 1-2)
+Sesión 5: Debe haber pagado 2,700 Bs (cuotas 1-3)
+
+// Si usa sesión 4 habiendo pagado solo 900 Bs:
+→ ALERTA: "Cuota 2 pendiente (900 Bs)"
+→ Staff puede: [Registrar Pago] o [Continuar sin Pagar]
+```
+
+### Pagos Flexibles
+
+- Puede pagar **más** de una cuota a la vez
+- Puede pagar **menos** de una cuota (pago parcial)
+- Puede pagar **todo el saldo** en cualquier momento
+- El sistema siempre calcula: pendingAmount = totalPrice - paidAmount
+```
 ---
 
 # 7. MÓDULOS IMPLEMENTADOS
@@ -825,14 +889,25 @@ El staff puede generar múltiples citas desde **3 lugares diferentes**:
 
 ### Módulo 3.3: Paquetes en Cuotas
 ```
-□ Campos en PackagePurchase:
-  - installments, installmentAmount
-  - paidAmount, pendingAmount
-□ Modelo PackagePayment (pagos por paquete)
-□ Lógica de tramos (cuota X habilita sesiones Y-Z)
-□ UI: Venta con cuotas (seleccionar cantidad)
-□ UI: Historial de pagos del paquete
-□ UI: En checkout, ver si hay pago pendiente
+□ Campos de cuotas en Package:
+  - allowInstallments, installmentsCount
+  - installmentsTotalPrice, installmentsPayOnSessions
+□ Actualizar PackagePurchase con campos de plan de pago
+□ Modelo PackagePayment
+□ Migración de base de datos
+□ Componente SessionPaymentSelector (admin)
+□ UI: Configurar cuotas en package-form-dialog
+□ UI: Venta con selector único/cuotas
+□ UI: Mostrar "se cobra en sesión X"
+□ UI: Card de paquete con estado de cuotas
+□ UI: Modal registrar pago flexible
+□ Función getPaymentStatus() (alertas)
+□ Alertas en start-session-dialog (NO bloqueo)
+□ Alertas en complete-session-dialog
+□ APIs de pagos
+□ Seed con paquetes reales del negocio
+□ Traducciones
+□ Probar: pagos normales, adelantados, atrasados, parciales
 ```
 
 ### Módulo 3.4: Alertas de Deuda
@@ -847,16 +922,45 @@ El staff puede generar múltiples citas desde **3 lugares diferentes**:
 
 ### Módulo 3.5: Auto-Agendado Masivo
 ```
-□ Componente BulkSchedulingDialog
-□ Función generateBulkSchedule
-□ API POST /api/appointments/bulk
-□ API GET /api/appointments/check-conflicts
-□ Integrar en SellPackageDialog (perfil bebé)
-□ Integrar en CompleteSessionDialog (checkout)
-□ Botón "Agendar Sesiones" en card de paquete existente
-□ Verificar conflictos en tiempo real
+MODELO:
+□ Campo schedulePreferences en PackagePurchase (JSON)
+□ Migración de base de datos
+
+COMPONENTES:
+□ SchedulePreferenceSelector (selector de horarios reutilizable)
+□ BulkSchedulingDialog (generar citas masivas)
+
+PORTAL PADRES:
+□ Paso en wizard: "¿Cómo quieres agendar tus sesiones?"
+□ Opción 1: Cita única (decide después)
+□ Opción 2: Definir horario fijo (1 o más horarios)
+□ Guardar preferencia en la cita/paquete (NO genera citas)
+
+STAFF:
+□ Ver preferencia del padre en detalle de cita
+□ Ver preferencia del padre en checkout
+□ Opción: usar preferencia o definir horario diferente
+□ BulkSchedulingDialog con preferencia pre-cargada
+
+PUNTOS DE ACCESO:
+□ Checkout (después de confirmar pago)
+□ Venta de paquete (perfil del bebé)
+□ Paquete existente (botón "Agendar Sesiones")
+
+UTILIDADES:
+□ lib/utils/bulk-scheduling.ts
+□ Función generateBulkSchedule (alterna entre múltiples horarios)
+□ Verificación de horarios de trabajo
 □ Saltar domingos y días cerrados
-□ Soportar múltiples días (ej: Lunes y Jueves)
+
+APIS:
+□ POST /api/appointments/bulk
+□ GET /api/appointments/check-conflicts
+□ PUT /api/package-purchases/[id]/preferences
+
+TRADUCCIONES:
+□ Claves para ES y PT-BR
+```
 ```
 
 ## Fase 4: Eventos y Portal (5-7 días)
@@ -875,13 +979,6 @@ El staff puede generar múltiples citas desde **3 lugares diferentes**:
 □ UI: Card de evento en calendario del staff
 ```
 
-### Módulo 4.2: Preferencias de Horario (Padres)
-```
-□ Campo preferredSchedule en Baby o Parent
-□ UI: En portal, guardar preferencia de día/hora
-□ UI: En staff, ver preferencia como sugerencia
-□ Lógica: Usar preferencia para auto-agenda
-```
 
 ## Fase 5: Portal Padres + Configuración (4-5 días)
 
@@ -893,7 +990,7 @@ El staff puede generar múltiples citas desde **3 lugares diferentes**:
 □ Agendar cita:
   - Mostrar paquetes existentes
   - Opción "Seleccionar otro paquete"
-  - Guardar preferencia de horario (opcional)
+  - Definir preferencia de horario al agendar paquetes múltiples
   - Mostrar QR si requiere pago anticipado
 □ Ver citas (con estado de pago)
 □ Historial de sesiones (notas externas)
@@ -967,8 +1064,13 @@ Al iniciar cada sesión, Claude Code debe entender:
 2. PAGOS:
    - Algunos paquetes requieren pago anticipado
    - Citas PENDING_PAYMENT no bloquean slot
-   - Paquetes pueden pagarse en cuotas
-   - Alertas según tramo de sesiones
+   
+   CUOTAS:
+   - Configuradas POR PAQUETE (cliente no elige cantidad)
+   - Precio en cuotas puede ser MAYOR al pago único
+   - Se define EN QUÉ SESIONES se paga cada cuota
+   - Sistema ALERTA pero NO BLOQUEA por pagos atrasados
+   - Pagos flexibles (cualquier monto en cualquier momento)
 
 3. EVALUACIONES:
    - Solo terapeuta evalúa
