@@ -194,6 +194,17 @@ export const appointmentService = {
         packagePurchase: {
           select: {
             id: true,
+            totalSessions: true,
+            usedSessions: true,
+            remainingSessions: true,
+            // Installment fields
+            paymentPlan: true,
+            installments: true,
+            installmentAmount: true,
+            totalPrice: true,
+            finalPrice: true,
+            paidAmount: true,
+            installmentsPayOnSessions: true,
             package: {
               select: {
                 id: true,
@@ -262,6 +273,17 @@ export const appointmentService = {
         packagePurchase: {
           select: {
             id: true,
+            totalSessions: true,
+            usedSessions: true,
+            remainingSessions: true,
+            // Installment fields
+            paymentPlan: true,
+            installments: true,
+            installmentAmount: true,
+            totalPrice: true,
+            finalPrice: true,
+            paidAmount: true,
+            installmentsPayOnSessions: true,
             package: {
               select: {
                 id: true,

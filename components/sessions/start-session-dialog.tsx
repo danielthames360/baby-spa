@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Loader2,
   AlertCircle,
@@ -24,12 +26,21 @@ import {
   Baby,
   User,
   Package,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import {
   PackageSelector,
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
+import { canUseNextSession, type PaymentStatus } from "@/lib/utils/installments";
+
+// Dynamic import for payment dialog
+const RegisterInstallmentPaymentDialog = dynamic(
+  () => import("@/components/packages/register-installment-payment-dialog").then(mod => mod.RegisterInstallmentPaymentDialog),
+  { ssr: false }
+);
 
 interface StartSessionDialogProps {
   open: boolean;
@@ -53,6 +64,14 @@ interface PackagePurchase {
   remainingSessions: number;
   totalSessions: number;
   usedSessions: number;
+  // Installment fields
+  paymentPlan?: string;
+  installments?: number;
+  installmentAmount?: string | number | null;
+  totalPrice?: string | number | null;
+  finalPrice?: string | number;
+  paidAmount?: string | number;
+  installmentsPayOnSessions?: string | null;
   package: {
     id: string;
     name: string;
@@ -86,6 +105,11 @@ export function StartSessionDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Payment alert state
+  const [paymentWarning, setPaymentWarning] = useState<PaymentStatus | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedPurchaseForPayment, setSelectedPurchaseForPayment] = useState<PackagePurchase | null>(null);
+
   // Ref for scrollable content
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -111,7 +135,17 @@ export function StartSessionDialog({
       const response = await fetch(`/api/babies/${babyId}/packages`);
       const data = await response.json();
       if (response.ok) {
-        const availablePackages = data.packages || [];
+        // Map packages to include installment fields
+        const availablePackages = (data.packages || []).map((pkg: PackagePurchase) => ({
+          ...pkg,
+          paymentPlan: pkg.paymentPlan || "SINGLE",
+          installments: pkg.installments || 1,
+          installmentAmount: pkg.installmentAmount,
+          totalPrice: pkg.totalPrice,
+          finalPrice: pkg.finalPrice,
+          paidAmount: pkg.paidAmount || 0,
+          installmentsPayOnSessions: pkg.installmentsPayOnSessions,
+        }));
         setPackages(availablePackages);
 
         // Auto-select logic:
@@ -173,6 +207,9 @@ export function StartSessionDialog({
       setSelectedPackageId(null);
       setSelectedPurchaseId(null);
       setError(null);
+      setPaymentWarning(null);
+      setShowPaymentDialog(false);
+      setSelectedPurchaseForPayment(null);
       fetchTherapists();
       fetchPackages();
       fetchCatalog();
@@ -198,6 +235,49 @@ export function StartSessionDialog({
       }, 150);
     }
   }, [preselectedCatalogPackageId, isLoadingPackages, isLoadingCatalog]);
+
+  // Check payment status when a purchase is selected
+  useEffect(() => {
+    if (!selectedPurchaseId) {
+      setPaymentWarning(null);
+      setSelectedPurchaseForPayment(null);
+      return;
+    }
+
+    const selectedPurchase = packages.find(p => p.id === selectedPurchaseId);
+    if (!selectedPurchase) {
+      setPaymentWarning(null);
+      setSelectedPurchaseForPayment(null);
+      return;
+    }
+
+    // Check if it's an installment plan
+    if (selectedPurchase.paymentPlan === "INSTALLMENTS" && (selectedPurchase.installments || 1) > 1) {
+      const result = canUseNextSession({
+        usedSessions: selectedPurchase.usedSessions,
+        totalSessions: selectedPurchase.totalSessions,
+        remainingSessions: selectedPurchase.remainingSessions,
+        paymentPlan: selectedPurchase.paymentPlan || "SINGLE",
+        installments: selectedPurchase.installments || 1,
+        installmentAmount: selectedPurchase.installmentAmount || null,
+        totalPrice: selectedPurchase.totalPrice || null,
+        finalPrice: selectedPurchase.finalPrice || 0,
+        paidAmount: selectedPurchase.paidAmount || 0,
+        installmentsPayOnSessions: selectedPurchase.installmentsPayOnSessions || null,
+      });
+
+      if (result.hasWarning) {
+        setPaymentWarning(result.paymentStatus);
+        setSelectedPurchaseForPayment(selectedPurchase);
+      } else {
+        setPaymentWarning(null);
+        setSelectedPurchaseForPayment(null);
+      }
+    } else {
+      setPaymentWarning(null);
+      setSelectedPurchaseForPayment(null);
+    }
+  }, [selectedPurchaseId, packages]);
 
   // Handle package selection from PackageSelector
   const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
@@ -352,6 +432,41 @@ export function StartSessionDialog({
             </div>
           )}
 
+          {/* Payment warning alert - NEVER blocks, just informs */}
+          {paymentWarning && paymentWarning.overdueAmount > 0 && (
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="ml-2">
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-amber-800">
+                    {paymentWarning.overdueInstallments.length === 1
+                      ? t("packages.installments.alerts.installmentOverdue", {
+                          number: paymentWarning.overdueInstallments[0],
+                          amount: paymentWarning.overdueAmount.toFixed(2),
+                        })
+                      : t("packages.installments.alerts.installmentsOverdue", {
+                          count: paymentWarning.overdueInstallments.length,
+                          amount: paymentWarning.overdueAmount.toFixed(2),
+                        })}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => setShowPaymentDialog(true)}
+                      className="h-8 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-xs font-medium text-white shadow-sm hover:from-amber-600 hover:to-orange-600"
+                    >
+                      <CreditCard className="mr-1.5 h-3.5 w-3.5" />
+                      {t("packages.installments.registerPayment")}
+                    </Button>
+                    <span className="flex items-center text-xs text-amber-600">
+                      {t("packages.installments.alerts.continueWithWarning")}
+                    </span>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Error message */}
           {error && (
             <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
@@ -396,6 +511,32 @@ export function StartSessionDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Payment Dialog */}
+      {selectedPurchaseForPayment && (
+        <RegisterInstallmentPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          purchase={{
+            id: selectedPurchaseForPayment.id,
+            totalSessions: selectedPurchaseForPayment.totalSessions,
+            usedSessions: selectedPurchaseForPayment.usedSessions,
+            remainingSessions: selectedPurchaseForPayment.remainingSessions,
+            installments: selectedPurchaseForPayment.installments || 1,
+            installmentAmount: selectedPurchaseForPayment.installmentAmount as number | null,
+            paidAmount: selectedPurchaseForPayment.paidAmount as number,
+            finalPrice: selectedPurchaseForPayment.finalPrice as number,
+            totalPrice: selectedPurchaseForPayment.totalPrice as number | null,
+            paymentPlan: selectedPurchaseForPayment.paymentPlan || "SINGLE",
+            installmentsPayOnSessions: selectedPurchaseForPayment.installmentsPayOnSessions || null,
+            package: selectedPurchaseForPayment.package,
+          }}
+          onSuccess={() => {
+            setShowPaymentDialog(false);
+            fetchPackages(); // Refresh to get updated payment status
+          }}
+        />
+      )}
     </Dialog>
   );
 }

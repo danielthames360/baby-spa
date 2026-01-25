@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Loader2,
   AlertCircle,
@@ -34,6 +36,7 @@ import {
   MoreHorizontal,
   Percent,
   Search,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +44,13 @@ import {
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
+import { getPaymentStatus, getRemainingBalance, type PaymentStatus } from "@/lib/utils/installments";
+
+// Dynamic import for payment dialog
+const RegisterInstallmentPaymentDialog = dynamic(
+  () => import("@/components/packages/register-installment-payment-dialog").then(mod => mod.RegisterInstallmentPaymentDialog),
+  { ssr: false }
+);
 
 interface CompleteSessionDialogProps {
   open: boolean;
@@ -68,6 +78,16 @@ interface SessionData {
   packagePurchase: {
     id: string;
     remainingSessions: number;
+    totalSessions: number;
+    usedSessions: number;
+    // Installment fields
+    paymentPlan?: string;
+    installments?: number;
+    installmentAmount?: string | number | null;
+    totalPrice?: string | number | null;
+    finalPrice?: string | number;
+    paidAmount?: string | number;
+    installmentsPayOnSessions?: string | null;
     package: {
       id: string;
       name: string;
@@ -146,6 +166,10 @@ export function CompleteSessionDialog({
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState<string>("");
+
+  // Installment payment alert state
+  const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] = useState(false);
+  const [installmentPaymentStatus, setInstallmentPaymentStatus] = useState<PaymentStatus | null>(null);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -276,6 +300,39 @@ export function CompleteSessionDialog({
 
     initializePackageSelection();
   }, [session, packages, fetchBabyPackages]);
+
+  // Calculate installment payment status when session has a linked package with installments
+  useEffect(() => {
+    if (!session?.packagePurchase) {
+      setInstallmentPaymentStatus(null);
+      return;
+    }
+
+    const purchase = session.packagePurchase;
+    if (purchase.paymentPlan === "INSTALLMENTS" && (purchase.installments || 1) > 1) {
+      const status = getPaymentStatus({
+        usedSessions: purchase.usedSessions,
+        totalSessions: purchase.totalSessions,
+        remainingSessions: purchase.remainingSessions,
+        paymentPlan: purchase.paymentPlan || "SINGLE",
+        installments: purchase.installments || 1,
+        installmentAmount: purchase.installmentAmount || null,
+        totalPrice: purchase.totalPrice || null,
+        finalPrice: purchase.finalPrice || 0,
+        paidAmount: purchase.paidAmount || 0,
+        installmentsPayOnSessions: purchase.installmentsPayOnSessions || null,
+      });
+
+      // Show alert if there's any remaining balance (not just overdue)
+      if (!status.isPaidInFull) {
+        setInstallmentPaymentStatus(status);
+      } else {
+        setInstallmentPaymentStatus(null);
+      }
+    } else {
+      setInstallmentPaymentStatus(null);
+    }
+  }, [session]);
 
   const handleAddProduct = async () => {
     if (!selectedProduct || productQuantity < 1) return;
@@ -469,6 +526,46 @@ export function CompleteSessionDialog({
               )}
             </div>
 
+            {/* Installment payment alert - NEVER blocks, just informs */}
+            {installmentPaymentStatus && !installmentPaymentStatus.isPaidInFull && (
+              <Alert className={installmentPaymentStatus.overdueAmount > 0 ? "border-amber-200 bg-amber-50" : "border-blue-200 bg-blue-50"}>
+                <AlertTriangle className={`h-4 w-4 ${installmentPaymentStatus.overdueAmount > 0 ? "text-amber-600" : "text-blue-600"}`} />
+                <AlertDescription className="ml-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className={`text-sm ${installmentPaymentStatus.overdueAmount > 0 ? "text-amber-800" : "text-blue-800"}`}>
+                      {installmentPaymentStatus.overdueAmount > 0 ? (
+                        installmentPaymentStatus.overdueInstallments.length === 1
+                          ? t("packages.installments.alerts.installmentOverdue", {
+                              number: installmentPaymentStatus.overdueInstallments[0],
+                              amount: installmentPaymentStatus.overdueAmount.toFixed(2),
+                            })
+                          : t("packages.installments.alerts.installmentsOverdue", {
+                              count: installmentPaymentStatus.overdueInstallments.length,
+                              amount: installmentPaymentStatus.overdueAmount.toFixed(2),
+                            })
+                      ) : (
+                        t("packages.installments.remainingBalance") + ": " + installmentPaymentStatus.pendingAmount.toFixed(2)
+                      )}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowInstallmentPaymentDialog(true)}
+                        className={cn(
+                          "h-8 rounded-lg px-3 text-xs font-medium text-white shadow-sm",
+                          installmentPaymentStatus.overdueAmount > 0
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                            : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                        )}
+                      >
+                        <CreditCard className="mr-1.5 h-3.5 w-3.5" />
+                        {t("packages.installments.registerPayment")}
+                      </Button>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Two column layout for desktop */}
             <div className="grid gap-6 lg:grid-cols-2">
@@ -921,6 +1018,32 @@ export function CompleteSessionDialog({
           </div>
         )}
       </DialogContent>
+
+      {/* Installment Payment Dialog */}
+      {session?.packagePurchase && installmentPaymentStatus && (
+        <RegisterInstallmentPaymentDialog
+          open={showInstallmentPaymentDialog}
+          onOpenChange={setShowInstallmentPaymentDialog}
+          purchase={{
+            id: session.packagePurchase.id,
+            totalSessions: session.packagePurchase.totalSessions,
+            usedSessions: session.packagePurchase.usedSessions,
+            remainingSessions: session.packagePurchase.remainingSessions,
+            installments: session.packagePurchase.installments || 1,
+            installmentAmount: session.packagePurchase.installmentAmount as number | null,
+            paidAmount: session.packagePurchase.paidAmount as number,
+            finalPrice: session.packagePurchase.finalPrice as number,
+            totalPrice: session.packagePurchase.totalPrice as number | null,
+            paymentPlan: session.packagePurchase.paymentPlan || "SINGLE",
+            installmentsPayOnSessions: session.packagePurchase.installmentsPayOnSessions || null,
+            package: session.packagePurchase.package,
+          }}
+          onSuccess={() => {
+            setShowInstallmentPaymentDialog(false);
+            fetchSession(); // Refresh to get updated payment status
+          }}
+        />
+      )}
     </Dialog>
   );
 }

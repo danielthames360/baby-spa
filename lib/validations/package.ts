@@ -38,6 +38,27 @@ export const packageSchema = z.object({
     .min(0)
     .optional()
     .nullable(),
+  // Installment configuration (per package)
+  allowInstallments: z
+    .boolean()
+    .optional(),
+  installmentsCount: z
+    .number()
+    .int()
+    .min(2, "INSTALLMENTS_COUNT_MIN")
+    .max(12, "INSTALLMENTS_COUNT_MAX")
+    .optional()
+    .nullable(),
+  installmentsTotalPrice: z
+    .number()
+    .min(0, "INSTALLMENTS_PRICE_INVALID")
+    .optional()
+    .nullable(),
+  installmentsPayOnSessions: z
+    .string()
+    .max(100, "INSTALLMENTS_SESSIONS_TOO_LONG")
+    .optional()
+    .nullable(),
   isActive: z.boolean(),
   sortOrder: z.number().int(),
 });
@@ -54,6 +75,10 @@ export type PackageFormInput = {
   duration?: number;
   requiresAdvancePayment?: boolean;
   advancePaymentAmount?: number | null;
+  allowInstallments?: boolean;
+  installmentsCount?: number | null;
+  installmentsTotalPrice?: number | null;
+  installmentsPayOnSessions?: string | null;
   isActive?: boolean;
   sortOrder?: number;
 };
@@ -83,6 +108,47 @@ export const sellPackageSchema = z.object({
     .max(500, "NOTES_TOO_LONG")
     .optional()
     .or(z.literal("")),
+  // Payment plan: SINGLE (full payment) or INSTALLMENTS (use package config)
+  paymentPlan: z.enum(["SINGLE", "INSTALLMENTS"], {
+    message: "PAYMENT_PLAN_REQUIRED",
+  }).optional(),
+  // Legacy field - still accepted but paymentPlan is preferred
+  installments: z
+    .number()
+    .int()
+    .min(1, "INSTALLMENTS_MIN")
+    .max(12, "INSTALLMENTS_MAX")
+    .optional(),
+  createdById: z
+    .string()
+    .optional(),
 });
 
 export type SellPackageFormData = z.infer<typeof sellPackageSchema>;
+
+// Register installment payment validation schema
+export const registerInstallmentPaymentSchema = z.object({
+  packagePurchaseId: z.string().min(1, "PACKAGE_PURCHASE_REQUIRED"),
+  installmentNumber: z
+    .number()
+    .int()
+    .min(1, "INSTALLMENT_NUMBER_MIN"),
+  amount: z
+    .number()
+    .min(0.01, "AMOUNT_MIN"),
+  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
+    message: "PAYMENT_METHOD_REQUIRED",
+  }),
+  reference: z
+    .string()
+    .max(100, "REFERENCE_TOO_LONG")
+    .optional()
+    .or(z.literal("")),
+  notes: z
+    .string()
+    .max(500, "NOTES_TOO_LONG")
+    .optional()
+    .or(z.literal("")),
+});
+
+export type RegisterInstallmentPaymentData = z.infer<typeof registerInstallmentPaymentSchema>;

@@ -27,7 +27,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const purchase = await packageService.sellPackage(validation.data);
+    // Add createdById from session for installment tracking
+    const purchase = await packageService.sellPackage({
+      ...validation.data,
+      createdById: session.user.id,
+    });
 
     return NextResponse.json({ purchase }, { status: 201 });
   } catch (error) {

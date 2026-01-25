@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -30,10 +31,17 @@ import {
   AlertDialogCancel,
   AlertDialogDestructiveAction,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StartSessionDialog } from "@/components/sessions/start-session-dialog";
 import { CompleteSessionDialog } from "@/components/sessions/complete-session-dialog";
 import { ViewBabyDialog } from "@/components/sessions/view-baby-dialog";
 import { RegisterPaymentDialog } from "@/components/appointments/register-payment-dialog";
+
+// Dynamic import for installment payment dialog
+const RegisterInstallmentPaymentDialog = dynamic(
+  () => import("@/components/packages/register-installment-payment-dialog").then(mod => mod.RegisterInstallmentPaymentDialog),
+  { ssr: false }
+);
 import {
   PackageSelector,
   type PackageData,
@@ -57,9 +65,11 @@ import {
   Package,
   Pencil,
   CreditCard,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
+import { getPaymentStatus, type PaymentStatus } from "@/lib/utils/installments";
 
 interface AppointmentDetailsProps {
   open: boolean;
@@ -91,6 +101,17 @@ interface AppointmentDetailsProps {
     };
     packagePurchase?: {
       id: string;
+      totalSessions?: number;
+      usedSessions?: number;
+      remainingSessions?: number;
+      // Installment fields
+      paymentPlan?: string;
+      installments?: number;
+      installmentAmount?: string | number | null;
+      totalPrice?: string | number | null;
+      finalPrice?: string | number;
+      paidAmount?: string | number;
+      installmentsPayOnSessions?: string | null;
       package: {
         id: string;
         name: string;
@@ -203,6 +224,10 @@ export function AppointmentDetails({
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
   const [packageError, setPackageError] = useState<string | null>(null);
 
+  // Installment payment status
+  const [installmentPaymentStatus, setInstallmentPaymentStatus] = useState<PaymentStatus | null>(null);
+  const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] = useState(false);
+
   // Reset package editing state when modal closes or appointment changes
   useEffect(() => {
     if (!open) {
@@ -227,6 +252,39 @@ export function AppointmentDetails({
     setSelectedPurchaseId(null);
     setPackageError(null);
   }, [appointment?.id]);
+
+  // Calculate installment payment status when appointment has a package with installments
+  useEffect(() => {
+    if (!appointment?.packagePurchase) {
+      setInstallmentPaymentStatus(null);
+      return;
+    }
+
+    const purchase = appointment.packagePurchase;
+    if (purchase.paymentPlan === "INSTALLMENTS" && (purchase.installments || 1) > 1) {
+      const status = getPaymentStatus({
+        usedSessions: purchase.usedSessions || 0,
+        totalSessions: purchase.totalSessions || 0,
+        remainingSessions: purchase.remainingSessions || 0,
+        paymentPlan: purchase.paymentPlan || "SINGLE",
+        installments: purchase.installments || 1,
+        installmentAmount: purchase.installmentAmount || null,
+        totalPrice: purchase.totalPrice || null,
+        finalPrice: purchase.finalPrice || 0,
+        paidAmount: purchase.paidAmount || 0,
+        installmentsPayOnSessions: purchase.installmentsPayOnSessions || null,
+      });
+
+      // Show status if there are overdue payments
+      if (status.overdueAmount > 0) {
+        setInstallmentPaymentStatus(status);
+      } else {
+        setInstallmentPaymentStatus(null);
+      }
+    } else {
+      setInstallmentPaymentStatus(null);
+    }
+  }, [appointment]);
 
   // Generate dates for next 30 days (excluding closed days)
   const availableDates = useMemo(() => {
@@ -558,18 +616,29 @@ export function AppointmentDetails({
                       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                         {t("calendar.package")}
                       </p>
-                      <p className={cn(
-                        "text-sm font-semibold",
-                        appointment.packagePurchase || appointment.selectedPackage
-                          ? "text-teal-700"
-                          : "text-amber-700"
-                      )}>
-                        {appointment.packagePurchase
-                          ? appointment.packagePurchase.package.name
-                          : appointment.selectedPackage
-                            ? appointment.selectedPackage.name
-                            : t("calendar.sessionToDefine")}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={cn(
+                          "text-sm font-semibold",
+                          appointment.packagePurchase || appointment.selectedPackage
+                            ? "text-teal-700"
+                            : "text-amber-700"
+                        )}>
+                          {appointment.packagePurchase
+                            ? appointment.packagePurchase.package.name
+                            : appointment.selectedPackage
+                              ? appointment.selectedPackage.name
+                              : t("calendar.sessionToDefine")}
+                        </p>
+                        {/* Installment payment overdue badge */}
+                        {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && (
+                          <Badge className="flex items-center gap-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-300 px-1.5 py-0">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span className="text-[10px] font-medium">
+                              {t("packages.installments.alerts.paymentWarning")}
+                            </span>
+                          </Badge>
+                        )}
+                      </div>
                       {/* Advance payment amount for PENDING_PAYMENT */}
                       {appointment.status === "PENDING_PAYMENT" && appointment.selectedPackage?.advancePaymentAmount && (
                         <p className="mt-1 text-sm font-bold text-orange-600">
@@ -648,6 +717,36 @@ export function AppointmentDetails({
                 </div>
               )}
             </div>
+
+            {/* Installment payment alert - shows when package has overdue payments */}
+            {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && appointment.packagePurchase && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="ml-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-amber-800">
+                      {installmentPaymentStatus.overdueInstallments.length === 1
+                        ? t("packages.installments.alerts.installmentOverdue", {
+                            number: installmentPaymentStatus.overdueInstallments[0],
+                            amount: installmentPaymentStatus.overdueAmount.toFixed(2),
+                          })
+                        : t("packages.installments.alerts.installmentsOverdue", {
+                            count: installmentPaymentStatus.overdueInstallments.length,
+                            amount: installmentPaymentStatus.overdueAmount.toFixed(2),
+                          })}
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowInstallmentPaymentDialog(true)}
+                      className="h-8 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-xs font-medium text-white shadow-sm hover:from-amber-600 hover:to-orange-600"
+                    >
+                      <CreditCard className="mr-1.5 h-3.5 w-3.5" />
+                      {t("packages.installments.registerPayment")}
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Baby info */}
             <div className="rounded-xl border-2 border-teal-100 bg-white p-4">
@@ -1039,6 +1138,32 @@ export function AppointmentDetails({
           onPaymentRegistered={() => {
             onUpdate?.();
             onOpenChange(false);
+          }}
+        />
+      )}
+
+      {/* Register installment payment dialog */}
+      {appointment?.packagePurchase && installmentPaymentStatus && (
+        <RegisterInstallmentPaymentDialog
+          open={showInstallmentPaymentDialog}
+          onOpenChange={setShowInstallmentPaymentDialog}
+          purchase={{
+            id: appointment.packagePurchase.id,
+            totalSessions: appointment.packagePurchase.totalSessions || 0,
+            usedSessions: appointment.packagePurchase.usedSessions || 0,
+            remainingSessions: appointment.packagePurchase.remainingSessions || 0,
+            installments: appointment.packagePurchase.installments || 1,
+            installmentAmount: appointment.packagePurchase.installmentAmount ?? null,
+            paidAmount: appointment.packagePurchase.paidAmount ?? 0,
+            finalPrice: appointment.packagePurchase.finalPrice ?? 0,
+            totalPrice: appointment.packagePurchase.totalPrice ?? null,
+            paymentPlan: appointment.packagePurchase.paymentPlan || "SINGLE",
+            installmentsPayOnSessions: appointment.packagePurchase.installmentsPayOnSessions ?? null,
+            package: appointment.packagePurchase.package,
+          }}
+          onSuccess={() => {
+            setShowInstallmentPaymentDialog(false);
+            onUpdate?.();
           }}
         />
       )}

@@ -55,10 +55,25 @@ export interface BabyWithRelations {
     usedSessions: number;
     remainingSessions: number;
     isActive: boolean;
+    // Payment plan fields
+    paymentPlan: string;
+    installments: number;
+    installmentAmount: Prisma.Decimal | null;
+    paidAmount: Prisma.Decimal;
+    finalPrice: Prisma.Decimal;
+    totalPrice: Prisma.Decimal | null;
+    installmentsPayOnSessions: string | null;
     package: {
       id: string;
       name: string;
     };
+    installmentPayments?: {
+      id: string;
+      installmentNumber: number;
+      amount: Prisma.Decimal;
+      paymentMethod: string;
+      paidAt: Date;
+    }[];
   }[];
   _count?: {
     sessions: number;
@@ -284,6 +299,16 @@ export const babyService = {
                 id: true,
                 name: true,
               },
+            },
+            installmentPayments: {
+              select: {
+                id: true,
+                installmentNumber: true,
+                amount: true,
+                paymentMethod: true,
+                paidAt: true,
+              },
+              orderBy: { installmentNumber: "asc" },
             },
           },
           orderBy: { createdAt: "desc" },

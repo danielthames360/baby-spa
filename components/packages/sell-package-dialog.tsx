@@ -15,6 +15,7 @@ import {
   Check,
   Sparkles,
   Percent,
+  Calendar,
 } from "lucide-react";
 import {
   Dialog,
@@ -58,6 +59,11 @@ interface PackageOption {
   } | null;
   sessionCount: number;
   basePrice: number | string;
+  // New installment config fields
+  allowInstallments?: boolean;
+  installmentsCount?: number | null;
+  installmentsTotalPrice?: number | string | null;
+  installmentsPayOnSessions?: string | null;
 }
 
 interface SellPackageDialogProps {
@@ -73,6 +79,12 @@ const paymentMethods = [
   { value: "TRANSFER", icon: Building, color: "blue" },
   { value: "CARD", icon: CreditCard, color: "violet" },
   { value: "OTHER", icon: MoreHorizontal, color: "gray" },
+] as const;
+
+// Payment plan options (SINGLE = full payment, INSTALLMENTS = use package config)
+const paymentPlanOptions = [
+  { value: "SINGLE", labelKey: "packages.installments.fullPayment" },
+  { value: "INSTALLMENTS", labelKey: "packages.installments.title" },
 ] as const;
 
 export function SellPackageDialog({
@@ -111,6 +123,7 @@ export function SellPackageDialog({
       discountReason: "",
       paymentMethod: "CASH",
       paymentNotes: "",
+      paymentPlan: "SINGLE",
     },
   });
 
@@ -123,6 +136,7 @@ export function SellPackageDialog({
         discountReason: "",
         paymentMethod: "CASH",
         paymentNotes: "",
+        paymentPlan: "SINGLE",
       });
       setSelectedPackageId(null);
       setShowDiscount(false);
@@ -162,8 +176,21 @@ export function SellPackageDialog({
 
   const selectedPackage = packages.find((p) => p.id === selectedPackageId);
   const discountAmount = form.watch("discountAmount") || 0;
+  const paymentPlan = form.watch("paymentPlan") || "SINGLE";
   const basePrice = selectedPackage ? Number(selectedPackage.basePrice) : 0;
-  const finalPrice = Math.max(0, basePrice - discountAmount);
+
+  // Calculate prices based on payment plan
+  const packageAllowsInstallments = selectedPackage?.allowInstallments && selectedPackage?.installmentsCount;
+  const installmentsCount = packageAllowsInstallments ? (selectedPackage.installmentsCount || 1) : 1;
+  const installmentsTotalPrice = packageAllowsInstallments && selectedPackage.installmentsTotalPrice
+    ? Number(selectedPackage.installmentsTotalPrice)
+    : basePrice;
+
+  // Final price depends on payment plan
+  const isInstallments = paymentPlan === "INSTALLMENTS" && packageAllowsInstallments;
+  const priceBeforeDiscount = isInstallments ? installmentsTotalPrice : basePrice;
+  const finalPrice = Math.max(0, priceBeforeDiscount - discountAmount);
+  const installmentAmount = isInstallments ? finalPrice / installmentsCount : finalPrice;
 
   const getPackageName = (pkg: PackageOption) => {
     return pkg.name;
@@ -405,6 +432,84 @@ export function SellPackageDialog({
               </div>
             </div>
 
+            {/* Payment Plan Selector - Only show if package allows installments */}
+            {selectedPackage && packageAllowsInstallments && (
+              <div>
+                <FormLabel className="text-gray-700 mb-3 block">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-teal-500" />
+                    {t("packages.installments.paymentPlan")}
+                  </div>
+                </FormLabel>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Single Payment Option */}
+                  <button
+                    type="button"
+                    onClick={() => form.setValue("paymentPlan", "SINGLE")}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                      paymentPlan === "SINGLE"
+                        ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`text-lg font-bold ${
+                        paymentPlan === "SINGLE" ? "text-teal-600" : "text-gray-700"
+                      }`}
+                    >
+                      {t("packages.installments.fullPayment")}
+                    </span>
+                    <span
+                      className={`text-xl font-bold ${
+                        paymentPlan === "SINGLE" ? "text-teal-700" : "text-gray-800"
+                      }`}
+                    >
+                      {formatPrice(basePrice - discountAmount)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {t("packages.payNow")}
+                    </span>
+                  </button>
+
+                  {/* Installments Option */}
+                  <button
+                    type="button"
+                    onClick={() => form.setValue("paymentPlan", "INSTALLMENTS")}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                      paymentPlan === "INSTALLMENTS"
+                        ? "border-cyan-500 bg-cyan-50 ring-2 ring-cyan-500"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`text-lg font-bold ${
+                        paymentPlan === "INSTALLMENTS" ? "text-cyan-600" : "text-gray-700"
+                      }`}
+                    >
+                      {t("packages.installments.count", { count: installmentsCount })}
+                    </span>
+                    <span
+                      className={`text-xl font-bold ${
+                        paymentPlan === "INSTALLMENTS" ? "text-cyan-700" : "text-gray-800"
+                      }`}
+                    >
+                      {formatPrice((installmentsTotalPrice - discountAmount) / installmentsCount)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {t("packages.installments.each")} • Total: {formatPrice(installmentsTotalPrice - discountAmount)}
+                    </span>
+                  </button>
+                </div>
+                {isInstallments && (
+                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                    {t("packages.installments.firstPaymentNote", {
+                      amount: formatPrice(installmentAmount),
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Discount Toggle */}
             {selectedPackage && (
               <div>
@@ -506,10 +611,12 @@ export function SellPackageDialog({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">
-                      {t("packages.basePrice")}
+                      {isInstallments
+                        ? t("packages.installments.installmentsTotalPrice")
+                        : t("packages.basePrice")}
                     </span>
                     <span className="text-gray-800">
-                      {formatPrice(basePrice)}
+                      {formatPrice(priceBeforeDiscount)}
                     </span>
                   </div>
                   {discountAmount > 0 && (
@@ -530,6 +637,34 @@ export function SellPackageDialog({
                       {formatPrice(finalPrice)}
                     </span>
                   </div>
+                  {isInstallments && (
+                    <>
+                      <div className="flex justify-between text-sm pt-2 border-t border-teal-200">
+                        <span className="text-gray-600">
+                          {t("packages.installments.paymentPlan")}
+                        </span>
+                        <span className="text-gray-800">
+                          {t("packages.installments.countDetail", { count: installmentsCount })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          {t("packages.installments.amountPerInstallment")}
+                        </span>
+                        <span className="text-gray-800">
+                          {formatPrice(installmentAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between bg-amber-100 rounded-lg px-3 py-2 -mx-1">
+                        <span className="font-medium text-amber-700">
+                          {t("packages.installments.payToday")}
+                        </span>
+                        <span className="text-lg font-bold text-amber-700">
+                          {formatPrice(installmentAmount)}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

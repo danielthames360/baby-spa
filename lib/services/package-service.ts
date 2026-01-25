@@ -35,6 +35,11 @@ export interface PackageCreateInput {
   duration?: number;
   requiresAdvancePayment?: boolean;
   advancePaymentAmount?: number | null;
+  // Installment configuration
+  allowInstallments?: boolean;
+  installmentsCount?: number | null;
+  installmentsTotalPrice?: number | null;
+  installmentsPayOnSessions?: string | null;
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -53,6 +58,13 @@ export interface PackagePurchaseWithDetails {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // Payment plan fields
+  paymentPlan: string;
+  totalPrice: Prisma.Decimal | null;
+  installments: number;
+  installmentAmount: Prisma.Decimal | null;
+  installmentsPayOnSessions: string | null;
+  paidAmount: Prisma.Decimal;
   package: {
     id: string;
     name: string;
@@ -70,6 +82,13 @@ export interface PackagePurchaseWithDetails {
     notes: string | null;
     createdAt: Date;
   } | null;
+  installmentPayments?: Array<{
+    id: string;
+    installmentNumber: number;
+    amount: Prisma.Decimal;
+    paymentMethod: string;
+    paidAt: Date;
+  }>;
 }
 
 export interface SellPackageInput {
@@ -79,6 +98,10 @@ export interface SellPackageInput {
   discountReason?: string;
   paymentMethod: "CASH" | "TRANSFER" | "CARD" | "OTHER";
   paymentNotes?: string;
+  // Payment plan options
+  paymentPlan?: "SINGLE" | "INSTALLMENTS"; // SINGLE = full payment, INSTALLMENTS = use package config
+  installments?: number; // Legacy field - ignored if paymentPlan is set
+  createdById?: string; // User who created the sale (for installment tracking)
 }
 
 // Package Service
@@ -141,6 +164,11 @@ export const packageService = {
         duration: data.duration ?? 60,
         requiresAdvancePayment: data.requiresAdvancePayment ?? false,
         advancePaymentAmount: data.advancePaymentAmount,
+        // Installment configuration
+        allowInstallments: data.allowInstallments ?? false,
+        installmentsCount: data.installmentsCount,
+        installmentsTotalPrice: data.installmentsTotalPrice,
+        installmentsPayOnSessions: data.installmentsPayOnSessions,
         isActive: data.isActive ?? true,
         sortOrder: data.sortOrder ?? 0,
       },
@@ -177,6 +205,11 @@ export const packageService = {
         ...(data.duration !== undefined && { duration: data.duration }),
         ...(data.requiresAdvancePayment !== undefined && { requiresAdvancePayment: data.requiresAdvancePayment }),
         ...(data.advancePaymentAmount !== undefined && { advancePaymentAmount: data.advancePaymentAmount }),
+        // Installment configuration
+        ...(data.allowInstallments !== undefined && { allowInstallments: data.allowInstallments }),
+        ...(data.installmentsCount !== undefined && { installmentsCount: data.installmentsCount }),
+        ...(data.installmentsTotalPrice !== undefined && { installmentsTotalPrice: data.installmentsTotalPrice }),
+        ...(data.installmentsPayOnSessions !== undefined && { installmentsPayOnSessions: data.installmentsPayOnSessions }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
       },
@@ -237,27 +270,48 @@ export const packageService = {
     // NOTE: We no longer deactivate previous packages
     // Multiple packages can now be active simultaneously
 
-    // Calculate final price
+    // Determine payment plan and calculate prices
     const basePrice = Number(pkg.basePrice);
     const discountAmount = data.discountAmount || 0;
-    const finalPrice = basePrice - discountAmount;
+
+    // New payment plan logic: SINGLE = full payment at base price, INSTALLMENTS = use package config
+    const isInstallments = data.paymentPlan === "INSTALLMENTS" &&
+      pkg.allowInstallments &&
+      pkg.installmentsCount &&
+      pkg.installmentsCount > 1;
+
+    // For INSTALLMENTS, use package's installment total price (can be higher than base price)
+    const totalPrice = isInstallments && pkg.installmentsTotalPrice
+      ? Number(pkg.installmentsTotalPrice) - discountAmount
+      : basePrice - discountAmount;
+
+    // Final price is what client will pay (same as totalPrice for single, or installmentsTotalPrice for installments)
+    const finalPrice = isInstallments && pkg.installmentsTotalPrice
+      ? Number(pkg.installmentsTotalPrice) - discountAmount
+      : basePrice - discountAmount;
 
     if (finalPrice < 0) {
       throw new Error("INVALID_DISCOUNT");
     }
 
+    // Installment configuration from package
+    const installments = isInstallments ? pkg.installmentsCount! : 1;
+    const installmentAmount = isInstallments ? finalPrice / installments : finalPrice;
+    const paymentPlan = isInstallments ? "INSTALLMENTS" : "SINGLE";
+    const installmentsPayOnSessions = isInstallments ? pkg.installmentsPayOnSessions : null;
+
     // Create purchase with payment in a transaction
     const purchase = await prisma.$transaction(async (tx) => {
-      // Create payment first
+      // Create initial payment (first installment or full payment)
       const payment = await tx.payment.create({
         data: {
-          amount: finalPrice,
+          amount: installmentAmount,
           method: data.paymentMethod,
           notes: data.paymentNotes,
         },
       });
 
-      // Create package purchase
+      // Create package purchase with installment info
       const newPurchase = await tx.packagePurchase.create({
         data: {
           babyId: data.babyId,
@@ -265,12 +319,19 @@ export const packageService = {
           basePrice: basePrice,
           discountAmount: discountAmount,
           discountReason: data.discountReason,
-          finalPrice: finalPrice,
+          finalPrice: isInstallments ? basePrice - discountAmount : finalPrice, // finalPrice = single payment price
           totalSessions: pkg.sessionCount,
           usedSessions: 0,
           remainingSessions: pkg.sessionCount,
           isActive: true,
           paymentId: payment.id,
+          // Payment plan fields
+          paymentPlan: paymentPlan,
+          totalPrice: totalPrice, // Total price client will pay (can differ from finalPrice for installments)
+          installments: installments,
+          installmentAmount: installments > 1 ? installmentAmount : null,
+          installmentsPayOnSessions: installmentsPayOnSessions,
+          paidAmount: installmentAmount, // First installment paid
         },
         include: {
           package: {
@@ -282,6 +343,20 @@ export const packageService = {
           payment: true,
         },
       });
+
+      // If installments > 1, record the first installment payment
+      if (installments > 1 && data.createdById) {
+        await tx.packagePayment.create({
+          data: {
+            packagePurchaseId: newPurchase.id,
+            installmentNumber: 1,
+            amount: installmentAmount,
+            paymentMethod: data.paymentMethod,
+            notes: data.paymentNotes,
+            createdById: data.createdById,
+          },
+        });
+      }
 
       return newPurchase;
     });

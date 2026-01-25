@@ -468,6 +468,7 @@
     "basePrice": "Preço base",
     "discount": "Desconto",
     "total": "Total a pagar",
+    "payNow": "Pagamento único hoje",
     "confirmSale": "Confirmar Venda",
     "form": {
       "name": "Nome",
@@ -485,6 +486,17 @@
       "requiresAdvancePayment": "Requer adiantamento",
       "requiresAdvancePaymentDescription": "Os clientes precisarão pagar um adiantamento para reservar",
       "advancePaymentAmount": "Valor do adiantamento",
+      "allowInstallments": "Permite parcelamento",
+      "allowInstallmentsDescription": "Os clientes poderão escolher pagar parcelado",
+      "installmentsCount": "Número de parcelas",
+      "installmentsTotalPrice": "Preço total parcelado",
+      "installmentsTotalPriceHelp": "Pode ser maior que o preço à vista",
+      "installmentsPayOnSessions": "Sessões de pagamento",
+      "installmentsPayOnSessionsHelp": "Selecione {count} sessões. Selecionadas: {selected}",
+      "suggestSessions": "Sugerir",
+      "paymentSchedule": "Calendário de pagamentos",
+      "installmentOnSession": "Parcela {installment} na sessão {session}",
+      "installmentAmountEach": "Cada parcela",
       "isActive": "Pacote ativo",
       "isActiveDescription": "Pacotes inativos não são exibidos para venda"
     },
@@ -526,6 +538,37 @@
       "REASON_TOO_LONG": "O motivo é muito longo",
       "PAYMENT_METHOD_REQUIRED": "A forma de pagamento é obrigatória",
       "NOTES_TOO_LONG": "As observações são muito longas"
+    },
+    "installments": {
+      "title": "Parcelamento",
+      "fullPayment": "À vista",
+      "count": "{count}x",
+      "countDetail": "{count} parcelas",
+      "each": "cada",
+      "firstPaymentNote": "Hoje será cobrada a primeira parcela de {amount}",
+      "paymentPlan": "Plano de pagamento",
+      "amountPerInstallment": "Valor por parcela",
+      "installmentsTotalPrice": "Preço total parcelado",
+      "payToday": "Pagar hoje",
+      "paidInstallments": "{paid} de {total} parcelas pagas",
+      "nextInstallment": "Próxima parcela",
+      "installmentNumber": "Parcela #{number}",
+      "enablesSessions": "Habilita sessões {from}-{to}",
+      "payOnSession": "Pagar na sessão {session}",
+      "paid": "Paga",
+      "pending": "Pendente",
+      "overdue": "Vencida",
+      "registerPayment": "Registrar Pagamento",
+      "paymentHistory": "Histórico de Pagamentos",
+      "noPayments": "Sem pagamentos registrados",
+      "remainingBalance": "Saldo pendente",
+      "fullyPaid": "Pago completamente",
+      "alerts": {
+        "installmentOverdue": "Parcela #{number} vencida: {amount} pendente",
+        "installmentsOverdue": "{count} parcelas vencidas: {amount} pendente",
+        "paymentWarning": "Há pagamentos pendentes",
+        "continueWithWarning": "Continuar mesmo assim"
+      }
     }
   },
 

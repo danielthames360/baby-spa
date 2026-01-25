@@ -468,6 +468,7 @@
     "basePrice": "Precio base",
     "discount": "Descuento",
     "total": "Total a pagar",
+    "payNow": "Pago único hoy",
     "confirmSale": "Confirmar Venta",
     "form": {
       "name": "Nombre",
@@ -485,6 +486,17 @@
       "requiresAdvancePayment": "Requiere anticipo",
       "requiresAdvancePaymentDescription": "Los clientes deberán pagar un anticipo para reservar",
       "advancePaymentAmount": "Monto del anticipo",
+      "allowInstallments": "Permite pago en cuotas",
+      "allowInstallmentsDescription": "Los clientes podrán elegir pagar en cuotas",
+      "installmentsCount": "Número de cuotas",
+      "installmentsTotalPrice": "Precio total en cuotas",
+      "installmentsTotalPriceHelp": "Puede ser mayor al precio de contado",
+      "installmentsPayOnSessions": "Sesiones de pago",
+      "installmentsPayOnSessionsHelp": "Selecciona {count} sesiones. Seleccionadas: {selected}",
+      "suggestSessions": "Sugerir",
+      "paymentSchedule": "Calendario de pagos",
+      "installmentOnSession": "Cuota {installment} en sesión {session}",
+      "installmentAmountEach": "Cada cuota",
       "isActive": "Paquete activo",
       "isActiveDescription": "Los paquetes inactivos no se muestran para la venta"
     },
@@ -526,6 +538,37 @@
       "REASON_TOO_LONG": "La razón es demasiado larga",
       "PAYMENT_METHOD_REQUIRED": "El método de pago es requerido",
       "NOTES_TOO_LONG": "Las notas son demasiado largas"
+    },
+    "installments": {
+      "title": "Pago en Cuotas",
+      "fullPayment": "Pago único",
+      "count": "{count} cuotas",
+      "countDetail": "{count} cuotas",
+      "each": "c/u",
+      "firstPaymentNote": "Hoy se cobrará la primera cuota de {amount}",
+      "paymentPlan": "Plan de pago",
+      "amountPerInstallment": "Monto por cuota",
+      "installmentsTotalPrice": "Precio total en cuotas",
+      "payToday": "Pagar hoy",
+      "paidInstallments": "{paid} de {total} cuotas pagadas",
+      "nextInstallment": "Próxima cuota",
+      "installmentNumber": "Cuota #{number}",
+      "enablesSessions": "Habilita sesiones {from}-{to}",
+      "payOnSession": "Se paga en sesión {session}",
+      "paid": "Pagada",
+      "pending": "Pendiente",
+      "overdue": "Vencida",
+      "registerPayment": "Registrar Pago",
+      "paymentHistory": "Historial de Pagos",
+      "noPayments": "Sin pagos registrados",
+      "remainingBalance": "Saldo pendiente",
+      "fullyPaid": "Pagado completamente",
+      "alerts": {
+        "installmentOverdue": "Cuota #{number} vencida: {amount} pendiente",
+        "installmentsOverdue": "{count} cuotas vencidas: {amount} pendiente",
+        "paymentWarning": "Hay pagos pendientes",
+        "continueWithWarning": "Continuar de todos modos"
+      }
     }
   },
 

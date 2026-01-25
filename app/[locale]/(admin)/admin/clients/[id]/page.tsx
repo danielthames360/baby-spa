@@ -50,6 +50,8 @@ import dynamic from "next/dynamic";
 import { calculateExactAge, formatAge } from "@/lib/utils/age";
 import { AddParentDialog } from "@/components/babies/add-parent-dialog";
 import { SessionHistoryCard } from "@/components/sessions/session-history-card";
+import { PackageInstallmentsCard } from "@/components/packages/package-installments-card";
+import { Prisma } from "@prisma/client";
 
 // Dynamic imports for heavy dialog components (reduces initial bundle size)
 const SellPackageDialog = dynamic(
@@ -58,6 +60,10 @@ const SellPackageDialog = dynamic(
 );
 const ScheduleAppointmentDialog = dynamic(
   () => import("@/components/appointments/schedule-appointment-dialog").then((mod) => mod.ScheduleAppointmentDialog),
+  { ssr: false }
+);
+const RegisterInstallmentPaymentDialog = dynamic(
+  () => import("@/components/packages/register-installment-payment-dialog").then((mod) => mod.RegisterInstallmentPaymentDialog),
   { ssr: false }
 );
 
@@ -107,10 +113,25 @@ interface BabyWithRelations {
     usedSessions: number;
     remainingSessions: number;
     isActive: boolean;
+    // Payment plan fields
+    paymentPlan: string;
+    installments: number;
+    installmentAmount: Prisma.Decimal | null;
+    paidAmount: Prisma.Decimal;
+    finalPrice: Prisma.Decimal;
+    totalPrice: Prisma.Decimal | null;
+    installmentsPayOnSessions: string | null;
     package: {
       id: string;
       name: string;
     };
+    installmentPayments?: {
+      id: string;
+      installmentNumber: number;
+      amount: Prisma.Decimal;
+      paymentMethod: string;
+      paidAt: Date;
+    }[];
   }[];
   _count?: {
     sessions: number;
@@ -216,6 +237,8 @@ export default function BabyProfilePage() {
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
   const [sessions, setSessions] = useState<SessionHistory[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  // State for installment payment dialog
+  const [paymentDialogPurchase, setPaymentDialogPurchase] = useState<BabyWithRelations["packagePurchases"][0] | null>(null);
 
   const fetchBaby = useCallback(async () => {
     try {
@@ -989,71 +1012,81 @@ export default function BabyProfilePage() {
             {baby.packagePurchases.length > 0 ? (
               <div className="space-y-3">
                 {baby.packagePurchases.map((purchase) => (
-                  <div
-                    key={purchase.id}
-                    className={`flex items-center justify-between rounded-xl border p-4 ${
-                      purchase.isActive && purchase.remainingSessions > 0
-                        ? "border-emerald-200 bg-emerald-50/50"
-                        : "border-gray-200 bg-gray-50/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                          purchase.isActive && purchase.remainingSessions > 0
-                            ? "bg-emerald-100"
-                            : "bg-gray-100"
-                        }`}
-                      >
-                        <Package
-                          className={`h-5 w-5 ${
+                  <div key={purchase.id} className="space-y-3">
+                    {/* Package Info Card */}
+                    <div
+                      className={`flex items-center justify-between rounded-xl border p-4 ${
+                        purchase.isActive && purchase.remainingSessions > 0
+                          ? "border-emerald-200 bg-emerald-50/50"
+                          : "border-gray-200 bg-gray-50/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
                             purchase.isActive && purchase.remainingSessions > 0
-                              ? "text-emerald-600"
-                              : "text-gray-400"
+                              ? "bg-emerald-100"
+                              : "bg-gray-100"
                           }`}
-                        />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800">
-                          {purchase.package.name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {purchase.usedSessions} / {purchase.totalSessions}{" "}
-                          {t("common.sessionsUnit")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Cancel button - only show when no sessions have been used */}
-                      {purchase.usedSessions === 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setCancelPackageDialog({
-                              open: true,
-                              purchaseId: purchase.id,
-                              packageName: purchase.package.name,
-                            })
-                          }
-                          disabled={isCancellingPackage}
-                          className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                          title={t("babyProfile.packages.cancelPackage")}
                         >
-                          <XCircle className="mr-1 h-4 w-4" />
-                          {t("babyProfile.packages.cancel")}
-                        </Button>
-                      )}
-                      {purchase.isActive && purchase.remainingSessions > 0 ? (
-                        <Badge className="rounded-full bg-emerald-100 text-emerald-700">
-                          {t("packages.active")}
-                        </Badge>
-                      ) : (
-                        <Badge className="rounded-full bg-gray-100 text-gray-600">
-                          {t("packages.completed")}
-                        </Badge>
-                      )}
+                          <Package
+                            className={`h-5 w-5 ${
+                              purchase.isActive && purchase.remainingSessions > 0
+                                ? "text-emerald-600"
+                                : "text-gray-400"
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {purchase.package.name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {purchase.usedSessions} / {purchase.totalSessions}{" "}
+                            {t("common.sessionsUnit")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Cancel button - only show when no sessions have been used */}
+                        {purchase.usedSessions === 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setCancelPackageDialog({
+                                open: true,
+                                purchaseId: purchase.id,
+                                packageName: purchase.package.name,
+                              })
+                            }
+                            disabled={isCancellingPackage}
+                            className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                            title={t("babyProfile.packages.cancelPackage")}
+                          >
+                            <XCircle className="mr-1 h-4 w-4" />
+                            {t("babyProfile.packages.cancel")}
+                          </Button>
+                        )}
+                        {purchase.isActive && purchase.remainingSessions > 0 ? (
+                          <Badge className="rounded-full bg-emerald-100 text-emerald-700">
+                            {t("packages.active")}
+                          </Badge>
+                        ) : (
+                          <Badge className="rounded-full bg-gray-100 text-gray-600">
+                            {t("packages.completed")}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Installments Card - Only show if purchase has installments > 1 */}
+                    {purchase.installments > 1 && (
+                      <PackageInstallmentsCard
+                        purchase={purchase}
+                        onRegisterPayment={() => setPaymentDialogPurchase(purchase)}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -1409,6 +1442,22 @@ export default function BabyProfilePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Register Installment Payment Dialog */}
+      {paymentDialogPurchase && (
+        <RegisterInstallmentPaymentDialog
+          open={!!paymentDialogPurchase}
+          onOpenChange={(open) => !open && setPaymentDialogPurchase(null)}
+          purchase={{
+            ...paymentDialogPurchase,
+            baby: { id: baby.id, name: baby.name },
+          }}
+          onSuccess={() => {
+            fetchBaby();
+            setPaymentDialogPurchase(null);
+          }}
+        />
+      )}
     </div>
   );
 }

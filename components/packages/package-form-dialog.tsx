@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { packageSchema, type PackageFormData } from "@/lib/validations/package";
+import { SessionPaymentSelector } from "./session-payment-selector";
 
 interface Category {
   id: string;
@@ -50,6 +51,10 @@ interface PackageData {
   duration?: number;
   requiresAdvancePayment?: boolean;
   advancePaymentAmount?: number | string | null;
+  allowInstallments?: boolean;
+  installmentsCount?: number | null;
+  installmentsTotalPrice?: number | string | null;
+  installmentsPayOnSessions?: string | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -82,12 +87,20 @@ export function PackageFormDialog({
       duration: 60,
       requiresAdvancePayment: false,
       advancePaymentAmount: null,
+      allowInstallments: false,
+      installmentsCount: null,
+      installmentsTotalPrice: null,
+      installmentsPayOnSessions: null,
       isActive: true,
       sortOrder: 0,
     },
   });
 
   const requiresAdvancePayment = form.watch("requiresAdvancePayment");
+  const allowInstallments = form.watch("allowInstallments");
+  const sessionCount = form.watch("sessionCount");
+  const installmentsCount = form.watch("installmentsCount");
+  const installmentsTotalPrice = form.watch("installmentsTotalPrice");
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -114,6 +127,12 @@ export function PackageFormDialog({
           advancePaymentAmount: packageData.advancePaymentAmount
             ? Number(packageData.advancePaymentAmount)
             : null,
+          allowInstallments: packageData.allowInstallments ?? false,
+          installmentsCount: packageData.installmentsCount ?? null,
+          installmentsTotalPrice: packageData.installmentsTotalPrice
+            ? Number(packageData.installmentsTotalPrice)
+            : null,
+          installmentsPayOnSessions: packageData.installmentsPayOnSessions ?? null,
           isActive: packageData.isActive,
           sortOrder: packageData.sortOrder,
         });
@@ -127,6 +146,10 @@ export function PackageFormDialog({
           duration: 60,
           requiresAdvancePayment: false,
           advancePaymentAmount: null,
+          allowInstallments: false,
+          installmentsCount: null,
+          installmentsTotalPrice: null,
+          installmentsPayOnSessions: null,
           isActive: true,
           sortOrder: 0,
         });
@@ -157,6 +180,15 @@ export function PackageFormDialog({
           ...data,
           advancePaymentAmount: data.requiresAdvancePayment
             ? data.advancePaymentAmount
+            : null,
+          installmentsCount: data.allowInstallments
+            ? data.installmentsCount
+            : null,
+          installmentsTotalPrice: data.allowInstallments
+            ? data.installmentsTotalPrice
+            : null,
+          installmentsPayOnSessions: data.allowInstallments
+            ? data.installmentsPayOnSessions
             : null,
         }),
       });
@@ -425,6 +457,127 @@ export function PackageFormDialog({
                   </FormItem>
                 )}
               />
+            )}
+
+            {/* Installments Configuration */}
+            <FormField
+              control={form.control}
+              name="allowInstallments"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-xl bg-cyan-50 p-4">
+                  <div>
+                    <FormLabel className="text-gray-700">
+                      {t("packages.form.allowInstallments")}
+                    </FormLabel>
+                    <p className="text-sm text-gray-500">
+                      {t("packages.form.allowInstallmentsDescription")}
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {allowInstallments && (
+              <div className="space-y-4 rounded-xl border-2 border-cyan-100 bg-cyan-50/50 p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="installmentsCount"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">
+                          {t("packages.form.installmentsCount")}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={2}
+                            max={12}
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value ? Number(e.target.value) : null
+                              )
+                            }
+                            className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                          />
+                        </FormControl>
+                        <FormMessage>
+                          {translateZodError(fieldState.error?.message)}
+                        </FormMessage>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="installmentsTotalPrice"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">
+                          {t("packages.form.installmentsTotalPrice")}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value ? Number(e.target.value) : null
+                              )
+                            }
+                            className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          {t("packages.form.installmentsTotalPriceHelp")}
+                        </FormDescription>
+                        <FormMessage>
+                          {translateZodError(fieldState.error?.message)}
+                        </FormMessage>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {installmentsCount && installmentsTotalPrice && (
+                  <div className="rounded-lg bg-white p-3 text-sm">
+                    <span className="font-medium text-gray-700">
+                      {t("packages.form.installmentAmountEach")}:{" "}
+                    </span>
+                    <span className="text-teal-700 font-semibold">
+                      {(installmentsTotalPrice / installmentsCount).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                {sessionCount > 1 && installmentsCount && installmentsCount > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="installmentsPayOnSessions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <SessionPaymentSelector
+                          totalSessions={sessionCount}
+                          installmentsCount={installmentsCount}
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                        />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
             )}
 
             <FormField
