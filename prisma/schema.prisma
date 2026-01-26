@@ -70,6 +70,12 @@ enum MovementType {
   ADJUSTMENT
 }
 
+// Tipo de servicio (para paquetes)
+enum ServiceType {
+  BABY      // Servicio para bebés (hidroterapia, vacunas, etc.)
+  PARENT    // Servicio para padres (masaje prenatal, postparto, etc.)
+}
+
 // ============================================================
 // ENUMS PARA EVENTOS GRUPALES
 // ============================================================
@@ -193,6 +199,10 @@ model Parent {
   babies                BabyParent[]
   waitlistItems         Waitlist[]
   eventParticipations   EventParticipant[]
+
+  // Servicios para el padre (masaje prenatal, postparto, etc.)
+  appointments          Appointment[]
+  packagePurchases      PackagePurchase[]
 
   @@map("parents")
 }
@@ -353,6 +363,9 @@ model Package {
   name        String
   description String?
 
+  // Tipo de servicio: para bebés o para padres
+  serviceType ServiceType @default(BABY)
+
   // Relación con categoría
   categoryId  String?
   categoryRef Category? @relation(fields: [categoryId], references: [id])
@@ -389,8 +402,13 @@ model Package {
 
 model PackagePurchase {
   id        String  @id @default(cuid())
-  babyId    String
-  baby      Baby    @relation(fields: [babyId], references: [id])
+
+  // Cliente: bebé O padre (según serviceType del paquete)
+  babyId    String?
+  baby      Baby?   @relation(fields: [babyId], references: [id])
+  parentId  String?
+  parent    Parent? @relation(fields: [parentId], references: [id])
+
   packageId String
   package   Package @relation(fields: [packageId], references: [id])
 
@@ -441,8 +459,12 @@ model PackagePurchase {
 
 model Appointment {
   id     String @id @default(cuid())
-  babyId String
-  baby   Baby   @relation(fields: [babyId], references: [id])
+
+  // Cliente: bebé O padre (según serviceType del paquete)
+  babyId   String?
+  baby     Baby?   @relation(fields: [babyId], references: [id])
+  parentId String?
+  parent   Parent? @relation(fields: [parentId], references: [id])
 
   // Paquete seleccionado (provisional hasta checkout)
   // Si el bebé tiene paquete comprado -> usa packagePurchaseId
@@ -565,8 +587,8 @@ model Session {
   id                String           @id @default(cuid())
   appointmentId     String           @unique
   appointment       Appointment      @relation(fields: [appointmentId], references: [id])
-  babyId            String
-  baby              Baby             @relation(fields: [babyId], references: [id])
+  babyId            String?          // Optional: null for parent-only appointments
+  baby              Baby?            @relation(fields: [babyId], references: [id])
   therapistId       String
   therapist         User             @relation(fields: [therapistId], references: [id])
   packagePurchaseId String?

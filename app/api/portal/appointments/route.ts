@@ -18,12 +18,33 @@ export async function GET() {
       return NextResponse.json({ error: "Parent ID not found" }, { status: 400 });
     }
 
-    // Get parent data
+    // Get parent data with their packages
     const parent = await prisma.parent.findUnique({
       where: { id: parentId },
       select: {
+        id: true,
+        name: true,
         requiresPrepayment: true,
         noShowCount: true,
+        pregnancyWeeks: true,
+        packagePurchases: {
+          where: {
+            remainingSessions: { gt: 0 },
+          },
+          include: {
+            package: {
+              include: {
+                categoryRef: {
+                  select: {
+                    id: true,
+                    name: true,
+                    color: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -61,46 +82,91 @@ export async function GET() {
     // Get all appointments (use UTC for consistent date comparison)
     const today = getStartOfDayUTC(new Date());
 
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        babyId: { in: babyIds },
-      },
-      include: {
-        baby: {
-          select: {
-            id: true,
-            name: true,
-            gender: true,
-          },
+    // Get baby appointments and parent appointments in parallel
+    const [babyAppointments, parentAppointments] = await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          babyId: { in: babyIds },
         },
-        therapist: {
-          select: {
-            name: true,
+        include: {
+          baby: {
+            select: {
+              id: true,
+              name: true,
+              gender: true,
+            },
           },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            package: {
-              select: {
-                name: true,
+          therapist: {
+            select: {
+              name: true,
+            },
+          },
+          packagePurchase: {
+            select: {
+              id: true,
+              package: {
+                select: {
+                  name: true,
+                },
               },
             },
           },
-        },
-        selectedPackage: {
-          select: {
-            id: true,
-            name: true,
-            advancePaymentAmount: true,
+          selectedPackage: {
+            select: {
+              id: true,
+              name: true,
+              advancePaymentAmount: true,
+            },
           },
         },
-      },
-      orderBy: [
-        { date: "desc" },
-        { startTime: "desc" },
-      ],
-    });
+        orderBy: [
+          { date: "desc" },
+          { startTime: "desc" },
+        ],
+      }),
+      prisma.appointment.findMany({
+        where: {
+          parentId,
+        },
+        include: {
+          parent: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          therapist: {
+            select: {
+              name: true,
+            },
+          },
+          packagePurchase: {
+            select: {
+              id: true,
+              package: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+          selectedPackage: {
+            select: {
+              id: true,
+              name: true,
+              advancePaymentAmount: true,
+            },
+          },
+        },
+        orderBy: [
+          { date: "desc" },
+          { startTime: "desc" },
+        ],
+      }),
+    ]);
+
+    // Combine appointments
+    const appointments = [...babyAppointments, ...parentAppointments];
 
     // Separate upcoming and past
     // Include both SCHEDULED and PENDING_PAYMENT in upcoming
@@ -144,12 +210,34 @@ export async function GET() {
       })),
     }));
 
+    // Transform parent packages for selection (for self-appointments)
+    const parentPackages = parent?.packagePurchases?.map((pkg) => ({
+      id: pkg.id,
+      remainingSessions: pkg.remainingSessions,
+      totalSessions: pkg.totalSessions,
+      usedSessions: pkg.usedSessions,
+      package: {
+        id: pkg.package.id,
+        name: pkg.package.name,
+        categoryId: pkg.package.categoryId,
+        duration: pkg.package.duration,
+      },
+    })) || [];
+
     return NextResponse.json({
       upcoming,
       past,
       babies,
       canSchedule: !parent?.requiresPrepayment,
       requiresPrepayment: parent?.requiresPrepayment || false,
+      // Parent info for self-appointments
+      parentInfo: {
+        id: parent?.id,
+        name: parent?.name,
+        pregnancyWeeks: parent?.pregnancyWeeks,
+        totalRemainingSessions: parentPackages.reduce((sum, pkg) => sum + pkg.remainingSessions, 0),
+        packages: parentPackages,
+      },
     });
   } catch (error) {
     console.error("Portal appointments error:", error);
@@ -187,18 +275,23 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { babyId, packagePurchaseId, packageId, date, startTime, schedulePreferences } = body;
+    const { babyId, packagePurchaseId, packageId, date, startTime, schedulePreferences, forSelf } = body;
 
-    // Verify baby belongs to parent
-    const babyParent = await prisma.babyParent.findFirst({
-      where: { parentId, babyId },
-    });
+    // Determine if this is a parent (self) appointment or baby appointment
+    const isParentAppointment = forSelf === true;
 
-    if (!babyParent) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (!isParentAppointment) {
+      // Verify baby belongs to parent
+      const babyParent = await prisma.babyParent.findFirst({
+        where: { parentId, babyId },
+      });
+
+      if (!babyParent) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      }
     }
 
-    // Verify package belongs to baby and has sessions (only if package provided)
+    // Verify package belongs to baby/parent and has sessions (only if package provided)
     let validPackagePurchaseId: string | null = null;
     let validSelectedPackageId: string | null = null;
     let sessionDuration = 60; // Default duration
@@ -208,7 +301,7 @@ export async function POST(request: Request) {
       const packagePurchase = await prisma.packagePurchase.findFirst({
         where: {
           id: packagePurchaseId,
-          babyId,
+          ...(isParentAppointment ? { parentId } : { babyId }),
           remainingSessions: { gt: 0 },
         },
         include: {
@@ -262,12 +355,12 @@ export async function POST(request: Request) {
     const endMins = totalMinutes % 60;
     const endTime = `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`;
 
-    // Check if baby already has an overlapping appointment on this date
-    const babyAppointments = await prisma.appointment.findMany({
+    // Check if baby/parent already has an overlapping appointment on this date
+    const existingClientAppointments = await prisma.appointment.findMany({
       where: {
-        babyId,
+        ...(isParentAppointment ? { parentId } : { babyId }),
         date: appointmentDate,
-        status: "SCHEDULED",
+        status: { in: ["SCHEDULED", "PENDING_PAYMENT"] },
       },
       select: { startTime: true, endTime: true },
     });
@@ -281,8 +374,8 @@ export async function POST(request: Request) {
     const requestedStartMins = toMinutes(startTime);
     const requestedEndMins = toMinutes(endTime);
 
-    // Check for overlapping appointments for this baby
-    const hasOverlap = babyAppointments.some((apt) => {
+    // Check for overlapping appointments for this baby/parent
+    const hasOverlap = existingClientAppointments.some((apt) => {
       const aptStart = toMinutes(apt.startTime);
       const aptEnd = toMinutes(apt.endTime);
       // Overlap: new appointment starts before existing ends AND ends after existing starts
@@ -291,7 +384,7 @@ export async function POST(request: Request) {
 
     if (hasOverlap) {
       return NextResponse.json(
-        { error: "Baby already has an appointment at this time" },
+        { error: isParentAppointment ? "You already have an appointment at this time" : "Baby already has an appointment at this time" },
         { status: 400 }
       );
     }
@@ -366,7 +459,7 @@ export async function POST(request: Request) {
       // They will be transferred to the new PackagePurchase at checkout
       const appointment = await tx.appointment.create({
         data: {
-          babyId,
+          ...(isParentAppointment ? { parentId } : { babyId }),
           packagePurchaseId: validPackagePurchaseId,
           selectedPackageId: validSelectedPackageId,
           date: appointmentDate,
@@ -406,6 +499,7 @@ export async function POST(request: Request) {
             packagePurchaseId: validPackagePurchaseId,
             status: requiresAdvancePayment ? "PENDING_PAYMENT" : "SCHEDULED",
             schedulePreferences: schedulePreferences || null,
+            isParentAppointment,
           },
         },
       });

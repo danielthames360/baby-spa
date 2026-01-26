@@ -6,12 +6,13 @@ import { generateTimeSlots, MAX_APPOINTMENTS_PER_HOUR } from "@/lib/constants/bu
 
 interface Appointment {
   id: string;
-  babyId: string;
+  babyId: string | null;
+  parentId?: string | null;
   date: Date;
   startTime: string; // HH:mm format
   endTime: string;   // HH:mm format
   status: "PENDING_PAYMENT" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
-  baby: {
+  baby?: {
     id: string;
     name: string;
     parents: {
@@ -22,7 +23,14 @@ interface Appointment {
         phone: string;
       };
     }[];
-  };
+  } | null;
+  parent?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    pregnancyWeeks: number | null;
+  } | null;
   packagePurchase?: {
     id: string;
     package: {
@@ -206,15 +214,27 @@ export function WeekView({
             const isToday = date.toDateString() === today.toDateString();
 
             // Transform appointments for DayColumn
-            const transformedAppointments = dayAppointments.map((apt) => ({
-              id: apt.id,
-              babyName: apt.baby.name,
-              parentName: apt.baby.parents.find((p) => p.isPrimary)?.parent.name,
-              packageName: apt.packagePurchase?.package.name || apt.selectedPackage?.name,
-              startTime: formatTime(apt.startTime),
-              endTime: formatTime(apt.endTime),
-              status: apt.status,
-            }));
+            const transformedAppointments = dayAppointments.map((apt) => {
+              // Determine if this is a parent or baby appointment
+              const isParentAppointment = !apt.babyId && apt.parentId && apt.parent;
+
+              return {
+                id: apt.id,
+                // For parent appointments, use parent name; for baby appointments, use baby name
+                babyName: isParentAppointment
+                  ? apt.parent?.name || "Unknown"
+                  : apt.baby?.name || "Unknown",
+                clientType: isParentAppointment ? "PARENT" as const : "BABY" as const,
+                // Parent name is only relevant for baby appointments (shows the accompanying parent)
+                parentName: !isParentAppointment
+                  ? apt.baby?.parents?.find((p) => p.isPrimary)?.parent.name
+                  : undefined,
+                packageName: apt.packagePurchase?.package.name || apt.selectedPackage?.name,
+                startTime: formatTime(apt.startTime),
+                endTime: formatTime(apt.endTime),
+                status: apt.status,
+              };
+            });
 
             return (
               <DayColumn

@@ -74,6 +74,10 @@ export async function POST(request: NextRequest) {
           message: "PACKAGE_NOT_FOR_THIS_BABY",
           status: 400,
         },
+        PACKAGE_NOT_FOR_THIS_PARENT: {
+          message: "PACKAGE_NOT_FOR_THIS_PARENT",
+          status: 400,
+        },
         NO_SESSIONS_REMAINING: {
           message: "NO_SESSIONS_REMAINING",
           status: 400,

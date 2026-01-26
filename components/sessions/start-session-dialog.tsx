@@ -25,6 +25,7 @@ import {
   Play,
   Baby,
   User,
+  UserRound,
   Package,
   AlertTriangle,
   CreditCard,
@@ -46,8 +47,12 @@ interface StartSessionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appointmentId: string;
-  babyId: string;
-  babyName: string;
+  // For baby appointments
+  babyId?: string;
+  babyName?: string;
+  // For parent appointments
+  parentId?: string;
+  parentName?: string;
   startTime: string;
   preselectedPurchaseId?: string; // Existing package purchase pre-selected
   preselectedCatalogPackageId?: string; // Catalog package pre-selected (new purchase)
@@ -86,12 +91,19 @@ export function StartSessionDialog({
   appointmentId,
   babyId,
   babyName,
+  parentId,
+  parentName,
   startTime,
   preselectedPurchaseId,
   preselectedCatalogPackageId,
   onSuccess,
 }: StartSessionDialogProps) {
   const t = useTranslations();
+
+  // Determine if this is a parent appointment
+  const isParentAppointment = !babyId && !!parentId;
+  const clientId = babyId || parentId || "";
+  const clientName = babyName || parentName || "";
 
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [packages, setPackages] = useState<PackagePurchase[]>([]);
@@ -129,10 +141,14 @@ export function StartSessionDialog({
   }, []);
 
   const fetchPackages = useCallback(async () => {
-    if (!babyId) return;
+    if (!clientId) return;
     setIsLoadingPackages(true);
     try {
-      const response = await fetch(`/api/babies/${babyId}/packages`);
+      // Fetch packages based on client type (baby or parent)
+      const endpoint = isParentAppointment
+        ? `/api/parents/${clientId}/packages`
+        : `/api/babies/${clientId}/packages`;
+      const response = await fetch(endpoint);
       const data = await response.json();
       if (response.ok) {
         // Map packages to include installment fields
@@ -184,12 +200,14 @@ export function StartSessionDialog({
     } finally {
       setIsLoadingPackages(false);
     }
-  }, [babyId, preselectedPurchaseId, preselectedCatalogPackageId]);
+  }, [clientId, isParentAppointment, preselectedPurchaseId, preselectedCatalogPackageId]);
 
   const fetchCatalog = useCallback(async () => {
     setIsLoadingCatalog(true);
     try {
-      const response = await fetch("/api/packages?active=true");
+      // Fetch packages based on service type (BABY or PARENT)
+      const serviceType = isParentAppointment ? "PARENT" : "BABY";
+      const response = await fetch(`/api/packages?active=true&serviceType=${serviceType}`);
       const data = await response.json();
       if (response.ok) {
         setCatalogPackages(data.packages || []);
@@ -199,7 +217,7 @@ export function StartSessionDialog({
     } finally {
       setIsLoadingCatalog(false);
     }
-  }, []);
+  }, [isParentAppointment]);
 
   useEffect(() => {
     if (open) {
@@ -367,13 +385,24 @@ export function StartSessionDialog({
 
         <div ref={scrollContainerRef} className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
           {/* Appointment info */}
-          <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500">
-              <Baby className="h-6 w-6 text-white" />
+          <div className={`flex items-center gap-3 rounded-xl p-4 ${isParentAppointment ? "bg-rose-50" : "bg-blue-50"}`}>
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${isParentAppointment ? "from-rose-400 to-pink-500" : "from-blue-500 to-cyan-500"}`}>
+              {isParentAppointment ? (
+                <UserRound className="h-6 w-6 text-white" />
+              ) : (
+                <Baby className="h-6 w-6 text-white" />
+              )}
             </div>
             <div>
-              <p className="font-semibold text-gray-800">{babyName}</p>
-              <p className="text-sm text-blue-600">{startTime}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-gray-800">{clientName}</p>
+                {isParentAppointment && (
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                    {t("calendar.clientType.parent")}
+                  </span>
+                )}
+              </div>
+              <p className={`text-sm ${isParentAppointment ? "text-rose-600" : "text-blue-600"}`}>{startTime}</p>
             </div>
           </div>
 
@@ -415,7 +444,7 @@ export function StartSessionDialog({
               </Label>
 
               <PackageSelector
-                babyId={babyId}
+                babyId={clientId}
                 packages={catalogPackages}
                 babyPackages={getBabyPackagesForSelector()}
                 selectedPackageId={selectedPackageId}

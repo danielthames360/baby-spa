@@ -139,8 +139,18 @@ export const sessionService = {
         throw new Error("PACKAGE_PURCHASE_NOT_FOUND");
       }
 
-      if (selectedPackage.babyId !== appointment.babyId) {
-        throw new Error("PACKAGE_NOT_FOR_THIS_BABY");
+      // Validate package ownership: either for baby or for parent
+      const isParentAppointment = !appointment.babyId && appointment.parentId;
+      if (isParentAppointment) {
+        // For parent appointments, check parentId matches
+        if (selectedPackage.parentId !== appointment.parentId) {
+          throw new Error("PACKAGE_NOT_FOR_THIS_PARENT");
+        }
+      } else {
+        // For baby appointments, check babyId matches
+        if (selectedPackage.babyId !== appointment.babyId) {
+          throw new Error("PACKAGE_NOT_FOR_THIS_BABY");
+        }
       }
 
       if (selectedPackage.remainingSessions <= 0) {
@@ -172,10 +182,11 @@ export const sessionService = {
 
       // Create session
       // Note: packagePurchaseId can be null initially, package is selected at checkout
+      // Note: babyId can be null for parent-only appointments (prenatal massage, etc.)
       const session = await tx.session.create({
         data: {
           appointmentId,
-          babyId: appointment.babyId,
+          babyId: appointment.babyId ?? undefined,
           therapistId,
           packagePurchaseId: selectedPackage?.id || null,
           sessionNumber,
@@ -374,7 +385,8 @@ export const sessionService = {
     }
 
     const sessionPackage = selectedPackagePurchase || session.packagePurchase;
-    const activePackage = !sessionPackage ? await packageService.getActivePackageForBaby(babyId) : null;
+    // Only look for active baby package if this is a baby appointment
+    const activePackage = !sessionPackage && babyId ? await packageService.getActivePackageForBaby(babyId) : null;
     const hasActivePackageWithSessions =
       (sessionPackage && sessionPackage.remainingSessions > 0) ||
       (activePackage && activePackage.remainingSessions > 0);
@@ -532,10 +544,16 @@ export const sessionService = {
       });
 
       // Reset parent noShowCount (they attended!)
-      const primaryParent = session.appointment.baby.parents[0];
-      if (primaryParent) {
+      // For baby appointments, find parent through baby. For parent appointments, use parentId directly.
+      let parentIdToReset: string | null = null;
+      if (session.appointment.baby?.parents?.[0]) {
+        parentIdToReset = session.appointment.baby.parents[0].parentId;
+      } else if (session.appointment.parentId) {
+        parentIdToReset = session.appointment.parentId;
+      }
+      if (parentIdToReset) {
         await tx.parent.update({
-          where: { id: primaryParent.parentId },
+          where: { id: parentIdToReset },
           data: {
             noShowCount: 0,
           },
@@ -606,6 +624,7 @@ export const sessionService = {
             },
           },
         },
+        parent: true, // Include parent for parent-only appointments
         session: true,
       },
     });
@@ -628,11 +647,18 @@ export const sessionService = {
       });
 
       // Increment parent noShowCount and check for prepayment requirement
-      const primaryParent = appointment.baby.parents[0];
-      if (primaryParent) {
-        const newNoShowCount = primaryParent.parent.noShowCount + 1;
+      // For baby appointments, find parent through baby. For parent appointments, use parentId directly.
+      let parentToUpdate: { id: string; noShowCount: number } | null = null;
+      if (appointment.baby?.parents?.[0]) {
+        const primaryParent = appointment.baby.parents[0];
+        parentToUpdate = { id: primaryParent.parentId, noShowCount: primaryParent.parent.noShowCount };
+      } else if (appointment.parentId && appointment.parent) {
+        parentToUpdate = { id: appointment.parentId, noShowCount: appointment.parent.noShowCount };
+      }
+      if (parentToUpdate) {
+        const newNoShowCount = parentToUpdate.noShowCount + 1;
         await tx.parent.update({
-          where: { id: primaryParent.parentId },
+          where: { id: parentToUpdate.id },
           data: {
             noShowCount: newNoShowCount,
             requiresPrepayment: newNoShowCount >= 3,
@@ -760,6 +786,14 @@ export const sessionService = {
             include: { parent: true },
             take: 1,
           },
+        },
+      },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          pregnancyWeeks: true,
         },
       },
       therapist: {
@@ -895,6 +929,7 @@ export const sessionService = {
                 },
               },
             },
+            parent: true, // For parent appointments (prenatal massage, etc.)
             therapist: true,
             selectedPackage: true,
           },

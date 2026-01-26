@@ -23,15 +23,16 @@ const AppointmentDetails = dynamic(
 
 interface Appointment {
   id: string;
-  babyId: string;
+  babyId: string | null;
+  parentId: string | null;
   packagePurchaseId: string | null;
   date: Date;
   startTime: string; // HH:mm format
   endTime: string;   // HH:mm format
-  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "PENDING_PAYMENT";
   notes: string | null;
   cancelReason: string | null;
-  baby: {
+  baby?: {
     id: string;
     name: string;
     birthDate: Date;
@@ -44,7 +45,14 @@ interface Appointment {
         phone: string;
       };
     }[];
-  };
+  } | null;
+  parent?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    pregnancyWeeks: number | null;
+  } | null;
   session?: {
     id: string;
   } | null;

@@ -19,10 +19,17 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const date = searchParams.get("date");
     const babyId = searchParams.get("babyId");
+    const parentId = searchParams.get("parentId");
 
     // If babyId provided, get upcoming appointments for that baby
     if (babyId) {
       const appointments = await appointmentService.getUpcomingForBaby(babyId);
+      return NextResponse.json({ appointments });
+    }
+
+    // If parentId provided, get upcoming appointments for that parent
+    if (parentId) {
+      const appointments = await appointmentService.getUpcomingForParent(parentId);
       return NextResponse.json({ appointments });
     }
 
@@ -83,7 +90,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { babyId, date, startTime, notes, packageId, packagePurchaseId, createAsPending } = validationResult.data;
+    const { babyId, parentId, date, startTime, notes, packageId, packagePurchaseId, createAsPending } = validationResult.data;
 
     // Parse date string as UTC noon (YYYY-MM-DD format)
     // Using UTC noon ensures date never shifts regardless of server timezone
@@ -91,7 +98,8 @@ export async function POST(request: NextRequest) {
     const dateObj = parseDateToUTCNoon(year, month, day);
 
     const appointment = await appointmentService.create({
-      babyId,
+      babyId: babyId || undefined,
+      parentId: parentId || undefined,
       date: dateObj,
       startTime,
       notes: notes || undefined,
@@ -109,6 +117,9 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       const errorMap: Record<string, { message: string; status: number }> = {
         BABY_NOT_FOUND: { message: "BABY_NOT_FOUND", status: 404 },
+        PARENT_NOT_FOUND: { message: "PARENT_NOT_FOUND", status: 404 },
+        CLIENT_REQUIRED: { message: "CLIENT_REQUIRED", status: 400 },
+        INVALID_CLIENT_SELECTION: { message: "INVALID_CLIENT_SELECTION", status: 400 },
         DATE_CLOSED: { message: "DATE_CLOSED", status: 400 },
         OUTSIDE_BUSINESS_HOURS: { message: "OUTSIDE_BUSINESS_HOURS", status: 400 },
         BABY_ALREADY_HAS_APPOINTMENT: { message: "BABY_ALREADY_HAS_APPOINTMENT", status: 400 },

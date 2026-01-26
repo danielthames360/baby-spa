@@ -16,6 +16,7 @@
     "close": "Fechar",
     "continue": "Continuar",
     "baby": "Bebê",
+    "client": "Cliente",
     "package": "Pacote",
     "date": "Data",
     "time": "Hora",
@@ -29,6 +30,7 @@
     "all": "Todos",
     "none": "Nenhum",
     "select": "Selecionar",
+    "selected": "Selecionado",
     "required": "Obrigatório",
     "optional": "Opcional",
     "noResults": "Sem resultados",
@@ -159,6 +161,76 @@
     "guardian": "Responsável",
     "accessCode": "Código de acesso",
     "noShowWarning": "Este responsável tem {count} faltas"
+  },
+
+  "parents": {
+    "title": "Pais",
+    "subtitle": "Gestão de pais e potenciais clientes",
+    "newParent": "Novo Pai/Mãe",
+    "editParent": "Editar",
+    "search": "Buscar por nome ou telefone...",
+    "filters": {
+      "all": "Todos",
+      "withBabies": "Com bebês",
+      "leads": "LEADS (sem bebês)"
+    },
+    "status": {
+      "active": "Cliente Ativo",
+      "lead": "LEAD - Potencial Cliente",
+      "inactive": "Inativo"
+    },
+    "fields": {
+      "name": "Nome completo",
+      "phone": "Telefone",
+      "email": "E-mail",
+      "status": "Status",
+      "pregnancyWeeks": "Semanas de gravidez",
+      "leadSource": "Como nos conheceu?",
+      "leadNotes": "Observações"
+    },
+    "weeksShort": "sem.",
+    "leadSources": {
+      "event": "Evento/Workshop",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "referral": "Indicação",
+      "walkin": "Visita direta",
+      "other": "Outro"
+    },
+    "sections": {
+      "info": "Informações",
+      "leadInfo": "Informações de LEAD",
+      "babies": "Seus Bebês",
+      "services": "Seus Serviços",
+      "history": "Histórico de Agendamentos"
+    },
+    "actions": {
+      "registerBaby": "Nasceu! Registrar Bebê",
+      "sellService": "Vender Serviço",
+      "viewProfile": "Ver perfil"
+    },
+    "babies": {
+      "count": "{count} bebê(s)",
+      "none": "Sem bebês registrados"
+    },
+    "messages": {
+      "created": "Pai/Mãe registrado com sucesso",
+      "updated": "Informações atualizadas",
+      "deleted": "Registro excluído",
+      "cannotDelete": "Não é possível excluir",
+      "cannotBeLeadWithBabies": "Um pai com bebês registrados não pode ser Lead"
+    },
+    "errors": {
+      "PARENT_NOT_FOUND": "Pai/Mãe não encontrado",
+      "PARENT_HAS_BABIES": "Não é possível excluir porque tem bebês registrados",
+      "PARENT_HAS_APPOINTMENTS": "Não é possível excluir porque tem agendamentos",
+      "PARENT_HAS_PURCHASES": "Não é possível excluir porque tem pacotes"
+    },
+    "tabs": {
+      "searchParent": "Buscar pai/mãe...",
+      "registerNew": "Registrar Novo Lead"
+    },
+    "selectParent": "Selecionar pai/mãe"
   },
 
   "appointment": {
@@ -396,6 +468,7 @@
       "INSUFFICIENT_STOCK": "Estoque insuficiente",
       "PACKAGE_PURCHASE_NOT_FOUND": "Pacote não encontrado",
       "PACKAGE_NOT_FOR_THIS_BABY": "Este pacote não pertence a este bebê",
+      "PACKAGE_NOT_FOR_THIS_PARENT": "Este pacote não pertence a este pai/mãe",
       "NO_SESSIONS_REMAINING": "Não há sessões restantes neste pacote",
       "UNKNOWN_ERROR": "Erro desconhecido"
     }
@@ -502,7 +575,13 @@
       "installmentOnSession": "Parcela {installment} na sessão {session}",
       "installmentAmountEach": "Cada parcela",
       "isActive": "Pacote ativo",
-      "isActiveDescription": "Pacotes inativos não são exibidos para venda"
+      "isActiveDescription": "Pacotes inativos não são exibidos para venda",
+      "serviceType": "Tipo de serviço",
+      "serviceTypeHelp": "Define se este pacote é para bebês ou para pais/mães",
+      "serviceTypeBaby": "Bebês",
+      "serviceTypeBabyDesc": "Hidroterapia, estimulação, vacinas",
+      "serviceTypeParent": "Pais/Mães",
+      "serviceTypeParentDesc": "Massagem pré-natal, pós-parto, etc."
     },
     "session": "1 sessão",
     "sessions": "{count} sessões",
@@ -700,6 +779,13 @@
     "appointmentDetails": "Detalhes do Agendamento",
     "searchBaby": "Buscar bebê",
     "searchBabyPlaceholder": "Digite o nome do bebê...",
+    "searchParent": "Buscar pai/mãe",
+    "searchParentPlaceholder": "Digite o nome do pai/mãe...",
+    "selectClientType": "Tipo de cliente",
+    "clientType": {
+      "baby": "Bebê",
+      "parent": "Pai/Mãe"
+    },
     "noPackage": "Sem pacote",
     "noActivePackage": "Sem pacote ativo",
     "sessionToDefine": "A definir",
@@ -751,6 +837,9 @@
     },
     "errors": {
       "BABY_NOT_FOUND": "Bebê não encontrado",
+      "PARENT_NOT_FOUND": "Pai/Mãe não encontrado",
+      "CLIENT_REQUIRED": "Deve selecionar um bebê ou pai/mãe",
+      "INVALID_CLIENT_SELECTION": "Seleção de cliente inválida",
       "DATE_CLOSED": "Esta data está fechada",
       "OUTSIDE_BUSINESS_HOURS": "Fora do horário de atendimento",
       "BABY_ALREADY_HAS_APPOINTMENT": "O bebê já tem um agendamento neste dia",
@@ -1285,6 +1374,12 @@
         "step": "Passo",
         "of": "de",
         "selectDateTime": "Data e Hora",
+        "selectClientType": "Para quem é a consulta?",
+        "selectClientTypeDescription": "Selecione se a consulta é para seu bebê ou para você",
+        "forMyBaby": "Para meu bebê",
+        "forMyBabyDesc": "{count, plural, =1 {Agendar consulta para meu bebê} other {Selecionar bebê}}",
+        "forMyself": "Para mim",
+        "forMyselfDesc": "Massagem pré-natal, pós-natal ou outros serviços",
         "selectBabyDescription": "Para qual bebê você quer agendar?",
         "noSessions": "Sem sessões disponíveis",
         "successMessage": "Esperamos você no Baby Spa",

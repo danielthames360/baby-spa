@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Search, User, Phone, Loader2, Plus, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,10 @@ export function ParentSearch({
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Use ref to avoid recreating callback on every render
+  const excludeIdsRef = useRef(excludeIds);
+  excludeIdsRef.current = excludeIds;
+
   const searchParents = useCallback(async (searchQuery: string) => {
     if (searchQuery.length < 2) {
       setResults([]);
@@ -55,9 +59,9 @@ export function ParentSearch({
         `/api/parents/search?query=${encodeURIComponent(searchQuery)}`
       );
       const data = await response.json();
-      // Filter out excluded parents
+      // Filter out excluded parents using ref to avoid dependency
       const filteredParents = (data.parents || []).filter(
-        (parent: ParentResult) => !excludeIds.includes(parent.id)
+        (parent: ParentResult) => !excludeIdsRef.current.includes(parent.id)
       );
       setResults(filteredParents);
     } catch (error) {
@@ -66,7 +70,7 @@ export function ParentSearch({
     } finally {
       setIsLoading(false);
     }
-  }, [excludeIds]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {

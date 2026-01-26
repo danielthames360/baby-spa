@@ -9,17 +9,18 @@ import {
   SLOT_DURATION_MINUTES,
   timeToMinutes,
 } from "@/lib/constants/business-hours";
-import { Baby, Clock, User, Phone, GripVertical, Package, PartyPopper, AlertTriangle } from "lucide-react";
+import { Baby, Clock, User, Phone, GripVertical, Package, PartyPopper, AlertTriangle, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Appointment {
   id: string;
-  babyId: string;
+  babyId: string | null;
+  parentId?: string | null;
   date: Date;
   startTime: string; // HH:mm format
   endTime: string;   // HH:mm format
-  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
-  baby: {
+  status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "PENDING_PAYMENT";
+  baby?: {
     id: string;
     name: string;
     parents: {
@@ -30,7 +31,14 @@ interface Appointment {
         phone: string;
       };
     }[];
-  };
+  } | null;
+  parent?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    pregnancyWeeks: number | null;
+  } | null;
   packagePurchase?: {
     id: string;
     package: {
@@ -299,9 +307,17 @@ export function DayView({
                 {slotAppointments.length > 0 ? (
                   slotAppointments.map((apt) => {
                     const status = statusConfig[apt.status];
-                    const primaryParent = apt.baby.parents.find((p) => p.isPrimary)?.parent;
+                    // Determine if this is a parent appointment
+                    const isParentAppointment = !apt.babyId && apt.parentId && apt.parent;
+                    // For baby appointments, get primary parent; for parent appointments, the parent IS the client
+                    const primaryParent = isParentAppointment ? null : apt.baby?.parents?.find((p) => p.isPrimary)?.parent;
+                    // For parent appointments, show their phone
+                    const clientPhone = isParentAppointment ? apt.parent?.phone : null;
                     const isDraggable = apt.status === "SCHEDULED";
                     const timeRange = `${formatTime(apt.startTime)} - ${formatTime(apt.endTime)}`;
+                    // Client name and icon
+                    const clientName = isParentAppointment ? apt.parent?.name : apt.baby?.name;
+                    const ClientIcon = isParentAppointment ? UserRound : Baby;
 
                     return (
                       <div
@@ -334,13 +350,25 @@ export function DayView({
                         {/* Content */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Baby className="h-4 w-4 text-teal-600" />
-                              <p className={cn("font-semibold", status.text)}>{apt.baby.name}</p>
+                            <div className={cn(
+                              "flex items-center gap-2",
+                              isParentAppointment && "text-rose-700"
+                            )}>
+                              <ClientIcon className={cn(
+                                "h-4 w-4",
+                                isParentAppointment ? "text-rose-600" : "text-teal-600"
+                              )} />
+                              <p className={cn("font-semibold", status.text)}>{clientName}</p>
+                              {isParentAppointment && (
+                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                                  {t("calendar.clientType.parent")}
+                                </span>
+                              )}
                             </div>
                             <span className="text-sm font-medium text-gray-500">{timeRange}</span>
                           </div>
 
+                          {/* For baby appointments, show primary parent */}
                           {primaryParent && (
                             <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-600">
                               <span className="flex items-center gap-1">
@@ -350,6 +378,16 @@ export function DayView({
                               <span className="flex items-center gap-1">
                                 <Phone className="h-3.5 w-3.5" />
                                 {primaryParent.phone}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* For parent appointments, show phone */}
+                          {isParentAppointment && clientPhone && (
+                            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5" />
+                                {clientPhone}
                               </span>
                             </div>
                           )}

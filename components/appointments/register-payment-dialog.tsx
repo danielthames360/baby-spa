@@ -38,10 +38,14 @@ interface RegisterPaymentDialogProps {
     id: string;
     date: Date;
     startTime: string;
-    baby: {
+    baby?: {
       id: string;
       name: string;
-    };
+    } | null;
+    parent?: {
+      id: string;
+      name: string;
+    } | null;
     selectedPackage?: {
       id: string;
       name: string;
@@ -169,8 +173,12 @@ export function RegisterPaymentDialog({
           {/* Appointment info */}
           <div className="rounded-xl bg-gray-50 p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">{t("common.baby")}:</span>
-              <span className="font-medium text-gray-800">{appointment.baby.name}</span>
+              <span className="text-gray-500">
+                {appointment.baby ? t("common.baby") : t("calendar.clientType.parent")}:
+              </span>
+              <span className="font-medium text-gray-800">
+                {appointment.baby?.name || appointment.parent?.name || "-"}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">{t("common.date")}:</span>

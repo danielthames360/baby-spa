@@ -54,6 +54,7 @@ import {
   CreditCard,
   Download,
   QrCode,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,11 +105,15 @@ interface Appointment {
   startTime: string;
   endTime: string;
   status: string;
-  baby: {
+  baby?: {
     id: string;
     name: string;
     gender: "MALE" | "FEMALE" | "OTHER";
-  };
+  } | null;
+  parent?: {
+    id: string;
+    name: string;
+  } | null;
   therapist: {
     name: string;
   } | null;
@@ -123,6 +128,15 @@ interface Appointment {
     name: string;
     advancePaymentAmount?: string | number | null;
   } | null;
+}
+
+// Parent info for self-appointments
+export interface ParentInfo {
+  id: string;
+  name: string;
+  pregnancyWeeks?: number | null;
+  totalRemainingSessions: number;
+  packages: BabyPackage[];
 }
 
 interface TimeSlot {
@@ -151,6 +165,7 @@ export function PortalAppointments() {
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [past, setPast] = useState<Appointment[]>([]);
   const [babies, setBabies] = useState<BabyData[]>([]);
+  const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
   const [canSchedule, setCanSchedule] = useState(true);
   const [requiresPrepayment, setRequiresPrepayment] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -176,6 +191,7 @@ export function PortalAppointments() {
       setUpcoming(data.upcoming);
       setPast(data.past);
       setBabies(data.babies);
+      setParentInfo(data.parentInfo);
       setCanSchedule(data.canSchedule);
       setRequiresPrepayment(data.requiresPrepayment);
     } catch (err) {
@@ -205,6 +221,9 @@ export function PortalAppointments() {
 
   // All active babies can schedule (package is selected during booking flow)
   const canScheduleBabies = babies;
+
+  // Can schedule if there are babies OR parent can schedule for themselves
+  const hasSchedulingOptions = canScheduleBabies.length > 0 || (parentInfo && parentInfo.id);
 
   // Handle viewing payment instructions
   const handleViewPaymentInstructions = async (appointment: Appointment) => {
@@ -244,7 +263,7 @@ export function PortalAppointments() {
         month: "long",
       }))
       .replace("{hora}", selectedAppointmentForPayment.startTime)
-      .replace("{bebe}", selectedAppointmentForPayment.baby.name)
+      .replace("{bebe}", selectedAppointmentForPayment.baby?.name || selectedAppointmentForPayment.parent?.name || "")
       .replace("{monto}", advanceAmount.toString());
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -309,7 +328,7 @@ export function PortalAppointments() {
           </div>
         </div>
 
-        {canSchedule && canScheduleBabies.length > 0 && (
+        {canSchedule && hasSchedulingOptions && (
           <Button
             onClick={() => setShowScheduleDialog(true)}
             className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-200 hover:from-teal-600 hover:to-cyan-600"
@@ -396,6 +415,7 @@ export function PortalAppointments() {
         open={showScheduleDialog}
         onOpenChange={setShowScheduleDialog}
         babies={canScheduleBabies}
+        parentInfo={parentInfo}
         onSuccess={() => {
           setShowScheduleDialog(false);
           fetchData();
@@ -485,8 +505,12 @@ export function PortalAppointments() {
                 {selectedAppointmentForPayment && (
                   <div className="rounded-xl bg-gray-50 p-4 space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">{t("common.baby")}:</span>
-                      <span className="font-medium text-gray-800">{selectedAppointmentForPayment.baby.name}</span>
+                      <span className="text-gray-500">
+                        {selectedAppointmentForPayment.baby ? t("common.baby") : t("common.client")}:
+                      </span>
+                      <span className="font-medium text-gray-800">
+                        {selectedAppointmentForPayment.baby?.name || selectedAppointmentForPayment.parent?.name}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">{t("common.date")}:</span>
@@ -550,6 +574,10 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onVi
     ? parseFloat(appointment.selectedPackage.advancePaymentAmount.toString())
     : null;
 
+  // Determine if this is a parent appointment
+  const isParentAppointment = !appointment.baby && !!appointment.parent;
+  const clientName = appointment.baby?.name || appointment.parent?.name || "";
+
   return (
     <div className={cn(
       "rounded-xl border p-4 transition-all",
@@ -563,14 +591,27 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onVi
         <div
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-md",
-            isPast ? "bg-gray-300" : `bg-gradient-to-br ${getGenderColor(appointment.baby.gender)}`
+            isPast
+              ? "bg-gray-300"
+              : isParentAppointment
+                ? "bg-gradient-to-br from-rose-400 to-pink-500"
+                : `bg-gradient-to-br ${getGenderColor(appointment.baby?.gender || "OTHER")}`
           )}
         >
-          {appointment.baby.name.charAt(0)}
+          {isParentAppointment ? (
+            <UserRound className="h-6 w-6" />
+          ) : (
+            clientName.charAt(0)
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-gray-800">{appointment.baby.name}</h3>
+            <h3 className="font-semibold text-gray-800">{clientName}</h3>
+            {isParentAppointment && (
+              <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                {t("calendar.clientType.parent")}
+              </span>
+            )}
             {getStatusBadge(appointment.status)}
             {/* Package badge */}
             {appointment.packagePurchase ? (
@@ -627,8 +668,11 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onVi
   );
 }
 
-// Wizard step type
-type WizardStep = 'baby' | 'package' | 'preferences' | 'datetime' | 'payment' | 'success';
+// Wizard step type - 'client' is for choosing baby vs self (parent)
+type WizardStep = 'client' | 'baby' | 'package' | 'preferences' | 'datetime' | 'payment' | 'success';
+
+// Client type for appointment
+type ClientType = 'baby' | 'self';
 
 // Payment settings interface
 interface PaymentSettings {
@@ -642,18 +686,20 @@ export interface ScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   babies: ScheduleBabyData[];
+  parentInfo?: ParentInfo | null; // Parent info for self-appointments
   onSuccess: () => void;
   preselectedBabyId?: string; // Optional: pre-select a baby (e.g., from dashboard)
 }
 
-export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselectedBabyId }: ScheduleDialogProps) {
+export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSuccess, preselectedBabyId }: ScheduleDialogProps) {
   const t = useTranslations();
 
   // Mobile viewport handling (iOS Safari compatible)
   const { height: viewportHeight, isMobile } = useMobileViewport();
 
   // Wizard state
-  const [step, setStep] = useState<WizardStep>('baby');
+  const [step, setStep] = useState<WizardStep>('client');
+  const [clientType, setClientType] = useState<ClientType | null>(null);
   const [selectedBaby, setSelectedBaby] = useState<BabyData | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
@@ -683,11 +729,11 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
   // Ref for scrollable container (auto-scroll on mobile)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch package catalog for PackageSelector
-  const fetchCatalog = useCallback(async () => {
+  // Fetch package catalog for PackageSelector - filtered by service type
+  const fetchCatalog = useCallback(async (serviceType: "BABY" | "PARENT" = "BABY") => {
     setLoadingCatalog(true);
     try {
-      const response = await fetch("/api/packages?active=true");
+      const response = await fetch(`/api/packages?active=true&serviceType=${serviceType}`);
       const data = await response.json();
       if (response.ok) {
         setCatalogPackages(data.packages || []);
@@ -701,44 +747,67 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
 
   // Initialize wizard when dialog opens
   useEffect(() => {
-    if (open && babies.length > 0) {
-      // If preselectedBabyId is provided, use that
-      if (preselectedBabyId) {
+    if (open) {
+      const hasBabies = babies.length > 0;
+      const hasParentServices = !!parentInfo?.id;
+
+      // If preselectedBabyId is provided, use that (skip client step)
+      if (preselectedBabyId && hasBabies) {
         const baby = babies.find(b => b.id === preselectedBabyId);
         if (baby) {
+          setClientType('baby');
           setSelectedBaby(baby);
           if (baby.packages.length === 1) {
             setSelectedPurchaseId(baby.packages[0].id);
             setSelectedPackageId(baby.packages[0].package.id);
           }
           setStep('package');
-          fetchCatalog();
+          fetchCatalog("BABY");
           return;
         }
       }
-      // If only 1 baby, auto-select and skip baby step
-      if (babies.length === 1) {
-        const baby = babies[0];
-        setSelectedBaby(baby);
-        if (baby.packages.length === 1) {
-          setSelectedPurchaseId(baby.packages[0].id);
-          setSelectedPackageId(baby.packages[0].package.id);
+
+      // Determine the starting step based on available options
+      if (hasBabies && hasParentServices) {
+        // Has both options - show client selection
+        setStep('client');
+      } else if (hasBabies && !hasParentServices) {
+        // Only babies - skip client step
+        setClientType('baby');
+        if (babies.length === 1) {
+          const baby = babies[0];
+          setSelectedBaby(baby);
+          if (baby.packages.length === 1) {
+            setSelectedPurchaseId(baby.packages[0].id);
+            setSelectedPackageId(baby.packages[0].package.id);
+          }
+          setStep('package');
+          fetchCatalog("BABY");
+        } else {
+          setStep('baby');
+        }
+      } else if (!hasBabies && hasParentServices) {
+        // Only parent services - skip client step, go to package
+        setClientType('self');
+        if (parentInfo?.packages && parentInfo.packages.length === 1) {
+          setSelectedPurchaseId(parentInfo.packages[0].id);
+          setSelectedPackageId(parentInfo.packages[0].package.id);
         }
         setStep('package');
-        fetchCatalog();
+        fetchCatalog("PARENT");
       } else {
-        // Multiple babies - start at baby selection
-        setStep('baby');
+        // Neither - start at client step (will show message)
+        setStep('client');
       }
     }
-  }, [open, babies, preselectedBabyId, fetchCatalog]);
+  }, [open, babies, parentInfo, preselectedBabyId, fetchCatalog]);
 
   // Fetch catalog when package step is reached
   useEffect(() => {
-    if (step === 'package' && catalogPackages.length === 0) {
-      fetchCatalog();
+    if (step === 'package' && catalogPackages.length === 0 && clientType) {
+      fetchCatalog(clientType === 'self' ? "PARENT" : "BABY");
     }
-  }, [step, fetchCatalog, catalogPackages.length]);
+  }, [step, fetchCatalog, catalogPackages.length, clientType]);
 
   // Generate next 14 days
   const getAvailableDates = () => {
@@ -775,7 +844,9 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
 
   // Auto-schedule appointment based on first preference
   const autoScheduleFromPreferences = async (): Promise<boolean> => {
-    if (!selectedBaby || schedulePreferences.length === 0) return false;
+    const isParentAppointment = clientType === 'self';
+    if (!isParentAppointment && !selectedBaby) return false;
+    if (schedulePreferences.length === 0) return false;
     if (!selectedPurchaseId && !selectedPackageId) return false;
 
     setAutoScheduling(true);
@@ -812,7 +883,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          babyId: selectedBaby.id,
+          ...(isParentAppointment ? { forSelf: true } : { babyId: selectedBaby!.id }),
           packagePurchaseId: selectedPurchaseId,
           packageId: selectedPackageId,
           date: dateStr,
@@ -906,8 +977,12 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
   };
 
   const handleSubmit = async () => {
-    // Must have baby, date, time, and package selected
-    if (!selectedBaby || !selectedDate || !selectedTime) return;
+    // Must have date, time, and package selected
+    // For baby appointments, must have baby selected
+    // For self appointments, clientType must be 'self'
+    const isParentAppointment = clientType === 'self';
+    if (!isParentAppointment && !selectedBaby) return;
+    if (!selectedDate || !selectedTime) return;
     if (!selectedPurchaseId && !selectedPackageId) return;
 
     setSubmitting(true);
@@ -917,7 +992,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          babyId: selectedBaby.id,
+          ...(isParentAppointment ? { forSelf: true } : { babyId: selectedBaby!.id }),
           packagePurchaseId: selectedPurchaseId, // null if new package from catalog
           packageId: selectedPackageId, // For displaying package info (provisional)
           date: formatLocalDateString(selectedDate),
@@ -1032,10 +1107,12 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     if (fromSuccess || step === 'success' || step === 'payment') {
       onSuccess();
     }
-    setStep('baby');
+    setStep('client');
+    setClientType(null);
     setSelectedBaby(null);
     setSelectedPackageId(null);
     setSelectedPurchaseId(null);
+    setCatalogPackages([]);
     setSelectedDate(null);
     setSelectedTime("");
     setButtonAnimated(false);
@@ -1076,6 +1153,31 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
     }));
   };
 
+  // Transform parent packages to PackageSelector format (for self-appointments)
+  const getParentPackagesForSelector = (): PackagePurchaseData[] => {
+    if (!parentInfo?.packages) return [];
+    return parentInfo.packages.map((pkg) => ({
+      id: pkg.id,
+      remainingSessions: pkg.remainingSessions,
+      totalSessions: pkg.totalSessions,
+      usedSessions: pkg.usedSessions,
+      package: {
+        id: pkg.package.id,
+        name: pkg.package.name,
+        categoryId: pkg.package.categoryId,
+        duration: pkg.package.duration,
+      },
+    }));
+  };
+
+  // Get packages for selector based on client type
+  const getPackagesForSelector = (): PackagePurchaseData[] => {
+    if (clientType === 'self') {
+      return getParentPackagesForSelector();
+    }
+    return getBabyPackagesForSelector();
+  };
+
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString("es-ES", {
       weekday: "short",
@@ -1086,8 +1188,41 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
 
   // Navigation handlers
   const handleBack = () => {
-    if (step === 'package' && babies.length > 1 && !preselectedBabyId) {
-      setStep('baby');
+    const hasBothOptions = babies.length > 0 && !!parentInfo?.id;
+
+    if (step === 'baby') {
+      // Go back to client selection only if both options exist
+      if (hasBothOptions) {
+        setStep('client');
+        setClientType(null);
+        setSelectedBaby(null);
+        setSelectedPackageId(null);
+        setSelectedPurchaseId(null);
+        setCatalogPackages([]);
+      }
+    } else if (step === 'package') {
+      if (clientType === 'self') {
+        // Go back to client selection if both options exist
+        if (hasBothOptions) {
+          setStep('client');
+          setClientType(null);
+          setSelectedPackageId(null);
+          setSelectedPurchaseId(null);
+          setCatalogPackages([]);
+        }
+      } else if (babies.length > 1 && !preselectedBabyId) {
+        setStep('baby');
+        setSelectedBaby(null);
+        setSelectedPackageId(null);
+        setSelectedPurchaseId(null);
+      } else if (hasBothOptions) {
+        setStep('client');
+        setClientType(null);
+        setSelectedBaby(null);
+        setSelectedPackageId(null);
+        setSelectedPurchaseId(null);
+        setCatalogPackages([]);
+      }
     } else if (step === 'preferences') {
       setStep('package');
     } else if (step === 'datetime') {
@@ -1119,6 +1254,20 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
         setStep('datetime');
       }
     }
+  };
+
+  // Check if back navigation is possible
+  const canGoBack = () => {
+    const hasBothOptions = babies.length > 0 && !!parentInfo?.id;
+
+    if (step === 'baby') return hasBothOptions;
+    if (step === 'package') {
+      if (clientType === 'self') return hasBothOptions;
+      return babies.length > 1 || hasBothOptions;
+    }
+    if (step === 'preferences') return true;
+    if (step === 'datetime') return true;
+    return false;
   };
 
   // Calculate step numbers for display
@@ -1189,7 +1338,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Back button */}
-                {((step === 'package' && babies.length > 1 && !preselectedBabyId) || step === 'preferences' || step === 'datetime') && (
+                {(step === 'baby' || step === 'package' || step === 'preferences' || step === 'datetime') && canGoBack() && (
                   <button
                     onClick={handleBack}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
@@ -1199,20 +1348,27 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                 )}
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">
+                    {step === 'client' && t("portal.appointments.wizard.selectClientType")}
                     {step === 'baby' && t("portal.appointments.selectBaby")}
                     {step === 'package' && t("packages.selectPackage")}
                     {step === 'preferences' && t("portal.appointments.wizard.schedulePreferences")}
                     {step === 'datetime' && t("portal.appointments.wizard.selectDateTime")}
                   </h2>
-                  {step !== 'baby' && (
+                  {step !== 'client' && step !== 'baby' && (
                     <p className="text-xs text-gray-500">
                       {t("portal.appointments.wizard.step")} {getStepNumber()} {t("portal.appointments.wizard.of")} {getTotalSteps()}
                     </p>
                   )}
                 </div>
               </div>
-              {/* Baby indicator */}
-              {selectedBaby && step !== 'baby' && (
+              {/* Client indicator */}
+              {clientType === 'self' && step !== 'client' && (
+                <div className="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1">
+                  <UserRound className="h-4 w-4 text-rose-600" />
+                  <span className="text-sm font-medium text-rose-700">{parentInfo?.name}</span>
+                </div>
+              )}
+              {selectedBaby && step !== 'baby' && step !== 'client' && (
                 <div className="flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1">
                   <Baby className="h-4 w-4 text-teal-600" />
                   <span className="text-sm font-medium text-teal-700">{selectedBaby.name}</span>
@@ -1224,6 +1380,82 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
 
         {/* Content - Scrollable */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+          {/* Client Type Selection Step */}
+          {step === 'client' && (
+            <div className="p-4">
+              <p className="mb-4 text-sm text-gray-600">
+                {t("portal.appointments.wizard.selectClientTypeDescription")}
+              </p>
+              <div className="space-y-3">
+                {/* Option: For my baby */}
+                {babies.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setClientType('baby');
+                      if (babies.length === 1) {
+                        const baby = babies[0];
+                        setSelectedBaby(baby);
+                        if (baby.packages.length === 1) {
+                          setSelectedPurchaseId(baby.packages[0].id);
+                          setSelectedPackageId(baby.packages[0].package.id);
+                        }
+                        setStep('package');
+                        fetchCatalog("BABY");
+                      } else {
+                        setStep('baby');
+                      }
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl border-2 border-teal-100 bg-white p-4 text-left transition-all hover:border-teal-300 hover:bg-teal-50/50 hover:shadow-md"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-md">
+                      <Baby className="h-7 w-7" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-semibold text-gray-800">
+                        {t("portal.appointments.wizard.forMyBaby")}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {babies.length === 1
+                          ? babies[0].name
+                          : t("portal.appointments.wizard.forMyBabyDesc", { count: babies.length })}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-6 w-6 shrink-0 text-teal-400" />
+                  </button>
+                )}
+
+                {/* Option: For myself (parent services) */}
+                {parentInfo?.id && (
+                  <button
+                    onClick={() => {
+                      setClientType('self');
+                      if (parentInfo?.packages && parentInfo.packages.length === 1) {
+                        setSelectedPurchaseId(parentInfo.packages[0].id);
+                        setSelectedPackageId(parentInfo.packages[0].package.id);
+                      }
+                      setStep('package');
+                      fetchCatalog("PARENT");
+                    }}
+                    className="flex w-full items-center gap-4 rounded-2xl border-2 border-rose-100 bg-white p-4 text-left transition-all hover:border-rose-300 hover:bg-rose-50/50 hover:shadow-md"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 text-white shadow-md">
+                      <UserRound className="h-7 w-7" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-semibold text-gray-800">
+                        {t("portal.appointments.wizard.forMyself")}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {t("portal.appointments.wizard.forMyselfDesc")}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-6 w-6 shrink-0 text-rose-400" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Baby Selection Step */}
           {step === 'baby' && (
             <div className="p-4">
@@ -1284,7 +1516,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
           )}
 
           {/* Package Selection Step */}
-          {step === 'package' && selectedBaby && (
+          {step === 'package' && (selectedBaby || clientType === 'self') && (
             <div className="p-4">
               {loadingCatalog ? (
                 <div className="flex items-center justify-center py-12">
@@ -1292,9 +1524,9 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                 </div>
               ) : (
                 <PackageSelector
-                  babyId={selectedBaby.id}
+                  babyId={clientType === 'self' ? undefined : selectedBaby?.id}
                   packages={catalogPackages}
-                  babyPackages={getBabyPackagesForSelector()}
+                  babyPackages={getPackagesForSelector()}
                   selectedPackageId={selectedPackageId}
                   selectedPurchaseId={selectedPurchaseId}
                   onSelectPackage={handlePackageSelect}
@@ -1305,13 +1537,14 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                   compact={true}
                   showProvisionalMessage={false}
                   maxHeight="none"
+                  defaultCategoryId={catalogPackages[0]?.categoryId || undefined}
                 />
               )}
             </div>
           )}
 
           {/* Schedule Preferences Step */}
-          {step === 'preferences' && selectedBaby && (
+          {step === 'preferences' && (selectedBaby || clientType === 'self') && (
             <div className="p-4 space-y-6">
               {/* Selected package summary */}
               <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
@@ -1446,7 +1679,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
           )}
 
           {/* Date & Time Selection Step */}
-          {step === 'datetime' && selectedBaby && (
+          {step === 'datetime' && (selectedBaby || clientType === 'self') && (
             <div className="p-4 space-y-6">
               {/* Selected package summary */}
               <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
@@ -1638,8 +1871,12 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
                   {/* Appointment summary */}
                   <div className="rounded-xl bg-gray-50 p-4 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{t("common.baby")}:</span>
-                      <span className="font-medium text-gray-800">{selectedBaby?.name}</span>
+                      <span className="text-gray-500">
+                        {clientType === 'self' ? t("common.client") : t("common.baby")}:
+                      </span>
+                      <span className="font-medium text-gray-800">
+                        {clientType === 'self' ? parentInfo?.name : selectedBaby?.name}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">{t("common.date")}:</span>
@@ -1689,8 +1926,12 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
               {/* Summary */}
               <div className="mt-6 w-full max-w-xs space-y-2 rounded-xl bg-gray-50 p-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">{t("common.baby")}:</span>
-                  <span className="font-medium text-gray-800">{selectedBaby?.name}</span>
+                  <span className="text-gray-500">
+                    {clientType === 'self' ? t("common.client") : t("common.baby")}:
+                  </span>
+                  <span className="font-medium text-gray-800">
+                    {clientType === 'self' ? parentInfo?.name : selectedBaby?.name}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">{t("common.package")}:</span>
@@ -1736,7 +1977,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, onSuccess, preselec
           </div>
         )}
 
-        {step !== 'success' && step !== 'baby' && step !== 'payment' && (
+        {step !== 'success' && step !== 'client' && step !== 'baby' && step !== 'payment' && (
           <div className="shrink-0 border-t border-gray-100 bg-white p-4 sm:rounded-b-2xl">
             {/* Error message */}
             {submitError && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Baby, Clock, CheckCircle, AlertCircle, FileEdit, Eye, User, Info, Package } from "lucide-react";
+import { Baby, Clock, CheckCircle, AlertCircle, FileEdit, Eye, User, Info, Package, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,13 @@ interface BabyData {
   }>;
 }
 
+interface ParentData {
+  id: string;
+  name: string;
+  phone?: string | null;
+  pregnancyWeeks?: number | null;
+}
+
 interface TherapistSessionCardProps {
   appointment: {
     id: string;
@@ -40,7 +47,8 @@ interface TherapistSessionCardProps {
       id: string;
       name: string;
     } | null;
-    baby: BabyData;
+    baby?: BabyData | null;
+    parent?: ParentData | null;
     session?: {
       id: string;
       sessionNumber: number;
@@ -82,19 +90,28 @@ export function TherapistSessionCard({
   // For IN_PROGRESS/COMPLETED, only assigned therapist can see actions
   const canPerformActions = appointment.status !== "SCHEDULED" && isAssignedTherapist;
 
-  // Calculate baby age
-  const birthDate = new Date(appointment.baby.birthDate);
-  const today = new Date();
-  const ageMonths = Math.floor(
-    (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
-  );
+  // Determine if this is a parent appointment
+  const isParentAppointment = !appointment.baby && !!appointment.parent;
+  const clientName = appointment.baby?.name || appointment.parent?.name || "";
 
-  const ageDisplay =
-    ageMonths < 12
-      ? `${ageMonths} ${t("common.months")}`
-      : ageMonths < 24
-      ? `1 ${t("common.year")} ${ageMonths - 12 > 0 ? `${ageMonths - 12} ${t("common.months")}` : ""}`
-      : `${Math.floor(ageMonths / 12)} ${t("common.years")}`;
+  // Calculate baby age (only for baby appointments)
+  let ageDisplay = "";
+  if (appointment.baby) {
+    const birthDate = new Date(appointment.baby.birthDate);
+    const today = new Date();
+    const ageMonths = Math.floor(
+      (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+    );
+
+    ageDisplay =
+      ageMonths < 12
+        ? `${ageMonths} ${t("common.months")}`
+        : ageMonths < 24
+        ? `1 ${t("common.year")} ${ageMonths - 12 > 0 ? `${ageMonths - 12} ${t("common.months")}` : ""}`
+        : `${Math.floor(ageMonths / 12)} ${t("common.years")}`;
+  } else if (appointment.parent?.pregnancyWeeks) {
+    ageDisplay = t("age.weeks", { count: appointment.parent.pregnancyWeeks });
+  }
 
   // Status colors and badges
   const getStatusConfig = () => {
@@ -136,20 +153,23 @@ export function TherapistSessionCard({
 
   const statusConfig = getStatusConfig();
 
-  // Can evaluate only if assigned and session is in progress or completed
+  // Can evaluate only if assigned, session is in progress or completed, AND it's a baby appointment
+  // (evaluations are only for babies, not for parent services like prenatal massage)
   const canEvaluate =
+    !isParentAppointment &&
     canPerformActions &&
     !appointment.isEvaluated &&
     appointment.session &&
     (appointment.status === "IN_PROGRESS" || appointment.status === "COMPLETED");
 
-  const hasEvaluation = canPerformActions && appointment.isEvaluated && appointment.session;
+  const hasEvaluation = !isParentAppointment && canPerformActions && appointment.isEvaluated && appointment.session;
 
-  // Check if baby has medical alerts
-  const hasMedicalAlerts =
+  // Check if baby has medical alerts (only for baby appointments)
+  const hasMedicalAlerts = appointment.baby && (
     appointment.baby.allergies ||
     appointment.baby.diagnosedIllness ||
-    appointment.baby.birthDifficulty;
+    appointment.baby.birthDifficulty
+  );
 
   return (
     <div
@@ -171,23 +191,35 @@ export function TherapistSessionCard({
           <span className="text-xs font-bold sm:text-sm">{appointment.startTime}</span>
         </div>
 
-        {/* Baby avatar - hidden on mobile */}
-        <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 sm:flex">
-          <Baby className="h-6 w-6 text-teal-600" />
+        {/* Client avatar - hidden on mobile */}
+        <div className={cn(
+          "hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br sm:flex",
+          isParentAppointment ? "from-rose-100 to-pink-100" : "from-teal-100 to-cyan-100"
+        )}>
+          {isParentAppointment ? (
+            <UserRound className="h-6 w-6 text-rose-600" />
+          ) : (
+            <Baby className="h-6 w-6 text-teal-600" />
+          )}
         </div>
 
         {/* Info */}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="font-semibold text-gray-800">{appointment.baby.name}</p>
-            {appointment.baby.parents?.[0]?.parent?.name && (
+            <p className="font-semibold text-gray-800">{clientName}</p>
+            {isParentAppointment && (
+              <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                {t("calendar.clientType.parent")}
+              </span>
+            )}
+            {!isParentAppointment && appointment.baby?.parents?.[0]?.parent?.name && (
               <span className="flex items-center gap-1 text-xs text-gray-400">
                 <User className="h-3 w-3" />
                 {appointment.baby.parents[0].parent.name}
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-500">{ageDisplay}</p>
+          {ageDisplay && <p className="text-sm text-gray-500">{ageDisplay}</p>}
           <div className="flex flex-wrap items-center gap-2">
             {/* Package badge */}
             <span
@@ -213,8 +245,8 @@ export function TherapistSessionCard({
               {statusConfig.label}
             </span>
 
-            {/* Evaluation status badge */}
-            {appointment.status !== "SCHEDULED" && (
+            {/* Evaluation status badge - only for baby appointments */}
+            {!isParentAppointment && appointment.status !== "SCHEDULED" && (
               <span
                 className={cn(
                   "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
@@ -241,23 +273,25 @@ export function TherapistSessionCard({
 
         {/* Action buttons - desktop only */}
         <div className="hidden flex-shrink-0 items-center gap-2 sm:flex">
-          {/* Ver Bebé button - always available */}
-          <Button
-            variant="outline"
-            onClick={() => onViewBaby(appointment.baby)}
-            className={cn(
-              "rounded-xl border-2 px-3 transition-all hover:shadow-md",
-              hasMedicalAlerts
-                ? "border-rose-200 text-rose-600 hover:bg-rose-50"
-                : "border-cyan-200 text-cyan-600 hover:bg-cyan-50"
-            )}
-          >
-            <Info className="mr-2 h-4 w-4" />
-            {t("session.viewBaby")}
-            {hasMedicalAlerts && (
-              <span className="ml-1 flex h-2 w-2 rounded-full bg-rose-500" />
-            )}
-          </Button>
+          {/* Ver Bebé button - only for baby appointments */}
+          {appointment.baby && (
+            <Button
+              variant="outline"
+              onClick={() => onViewBaby(appointment.baby!)}
+              className={cn(
+                "rounded-xl border-2 px-3 transition-all hover:shadow-md",
+                hasMedicalAlerts
+                  ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+                  : "border-cyan-200 text-cyan-600 hover:bg-cyan-50"
+              )}
+            >
+              <Info className="mr-2 h-4 w-4" />
+              {t("session.viewBaby")}
+              {hasMedicalAlerts && (
+                <span className="ml-1 flex h-2 w-2 rounded-full bg-rose-500" />
+              )}
+            </Button>
+          )}
 
           {canEvaluate && (
             <Button
@@ -292,24 +326,26 @@ export function TherapistSessionCard({
 
       {/* Action buttons - mobile only */}
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2 sm:hidden">
-        {/* Ver Bebé button - always available */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onViewBaby(appointment.baby)}
-          className={cn(
-            "rounded-xl border-2 transition-all",
-            hasMedicalAlerts
-              ? "border-rose-200 text-rose-600 hover:bg-rose-50"
-              : "border-cyan-200 text-cyan-600 hover:bg-cyan-50"
-          )}
-        >
-          <Info className="mr-1.5 h-3.5 w-3.5" />
-          {t("session.viewBaby")}
-          {hasMedicalAlerts && (
-            <span className="ml-1 flex h-2 w-2 rounded-full bg-rose-500" />
-          )}
-        </Button>
+        {/* Ver Bebé button - only for baby appointments */}
+        {appointment.baby && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onViewBaby(appointment.baby!)}
+            className={cn(
+              "rounded-xl border-2 transition-all",
+              hasMedicalAlerts
+                ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+                : "border-cyan-200 text-cyan-600 hover:bg-cyan-50"
+            )}
+          >
+            <Info className="mr-1.5 h-3.5 w-3.5" />
+            {t("session.viewBaby")}
+            {hasMedicalAlerts && (
+              <span className="ml-1 flex h-2 w-2 rounded-full bg-rose-500" />
+            )}
+          </Button>
+        )}
 
         {canEvaluate && (
           <Button

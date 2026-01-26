@@ -144,6 +144,11 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
       INVALID_EVENT_STATUS: 400,
       INVALID_PARTICIPANT_TYPE: 400,
       INVALID_DISCOUNT_TYPE: 400,
+
+      // Parent errors
+      PARENT_HAS_BABIES: 400,
+      PARENT_HAS_APPOINTMENTS: 400,
+      PARENT_HAS_PURCHASES: 400,
     };
 
     const statusCode = knownErrors[error.message];

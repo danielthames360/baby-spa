@@ -156,6 +156,52 @@ export const updateParentSchema = parentSchema.partial();
 
 export type UpdateParentData = z.infer<typeof updateParentSchema>;
 
+// Parent with LEAD fields schema (for creating parents/leads from admin)
+export const parentWithLeadSchema = z.object({
+  name: z
+    .string()
+    .min(1, "NAME_REQUIRED")
+    .min(2, "NAME_TOO_SHORT")
+    .max(100, "NAME_TOO_LONG"),
+  phone: z
+    .string()
+    .min(1, "PHONE_REQUIRED")
+    .regex(/^[\d\s+()-]+$/, "PHONE_INVALID")
+    .min(8, "PHONE_INVALID"),
+  email: z
+    .string()
+    .email("EMAIL_INVALID")
+    .optional()
+    .or(z.literal("")),
+  // LEAD fields
+  status: z.enum(["LEAD", "ACTIVE", "INACTIVE"]).optional(),
+  pregnancyWeeks: z.coerce
+    .number()
+    .min(1, "PREGNANCY_WEEKS_TOO_LOW")
+    .max(45, "PREGNANCY_WEEKS_TOO_HIGH")
+    .nullable()
+    .optional(),
+  leadSource: z.string().max(100).optional().nullable(),
+  leadNotes: z.string().max(1000).optional().nullable(),
+});
+
+export type ParentWithLeadData = z.infer<typeof parentWithLeadSchema>;
+
+// Update parent with LEAD fields schema
+export const updateParentWithLeadSchema = parentWithLeadSchema.partial();
+
+export type UpdateParentWithLeadData = z.infer<typeof updateParentWithLeadSchema>;
+
+// Parent list filters schema
+export const parentListFiltersSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["all", "withBabies", "leads"]).default("all"),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+});
+
+export type ParentListFilters = z.infer<typeof parentListFiltersSchema>;
+
 // Search params schema
 export const babySearchParamsSchema = z.object({
   search: z.string().optional(),

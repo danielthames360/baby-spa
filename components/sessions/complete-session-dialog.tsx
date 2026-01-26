@@ -38,6 +38,7 @@ import {
   Search,
   AlertTriangle,
   CalendarClock,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -118,7 +119,11 @@ interface SessionData {
     baby: {
       id: string;
       name: string;
-    };
+    } | null;
+    parent: {
+      id: string;
+      name: string;
+    } | null;
   };
   products: SessionProduct[];
 }
@@ -191,8 +196,10 @@ export function CompleteSessionDialog({
     remainingSessions: number;
     packageName: string;
     packageDuration: number;
-    babyId: string;
-    babyName: string;
+    babyId?: string;
+    babyName?: string;
+    parentId?: string;
+    parentName?: string;
     schedulePreferences: string | null;
   } | null>(null);
 
@@ -208,9 +215,9 @@ export function CompleteSessionDialog({
     }
   }, []);
 
-  const fetchPackages = useCallback(async () => {
+  const fetchPackages = useCallback(async (serviceType: "BABY" | "PARENT" = "BABY") => {
     try {
-      const response = await fetch("/api/packages?active=true");
+      const response = await fetch(`/api/packages?active=true&serviceType=${serviceType}`);
       const data = await response.json();
       if (response.ok) {
         setPackages(data.packages || []);
@@ -220,10 +227,11 @@ export function CompleteSessionDialog({
     }
   }, []);
 
-  const fetchBabyPackages = useCallback(async (babyId: string) => {
+  const fetchClientPackages = useCallback(async (clientId: string, isParent: boolean) => {
     setIsLoadingBabyPackages(true);
     try {
-      const response = await fetch(`/api/babies/${babyId}/packages`);
+      const endpoint = isParent ? `/api/parents/${clientId}/packages` : `/api/babies/${clientId}/packages`;
+      const response = await fetch(endpoint);
       const data = await response.json();
       if (response.ok) {
         const availablePackages = (data.packages || [])
@@ -291,17 +299,24 @@ export function CompleteSessionDialog({
 
       fetchSession();
       fetchProducts();
-      fetchPackages();
+      // Note: fetchPackages is called in initializePackageSelection after we know the service type
     }
-  }, [open, sessionId, fetchSession, fetchProducts, fetchPackages]);
+  }, [open, sessionId, fetchSession, fetchProducts]);
 
-  // Fetch baby packages and pre-select when session data is loaded
+  // Fetch client packages (baby or parent) and pre-select when session data is loaded
   useEffect(() => {
     const initializePackageSelection = async () => {
       if (!session) return;
 
-      const babyId = session.appointment.baby.id;
-      const fetchedBabyPackages = await fetchBabyPackages(babyId);
+      const isParentAppointment = !session.appointment.baby && !!session.appointment.parent;
+      const clientId = session.appointment.baby?.id || session.appointment.parent?.id;
+
+      if (!clientId) return;
+
+      // Fetch catalog packages based on service type
+      await fetchPackages(isParentAppointment ? "PARENT" : "BABY");
+
+      const fetchedClientPackages = await fetchClientPackages(clientId, isParentAppointment);
 
       // Pre-select logic:
       // 1. If session has a linked package purchase, select it
@@ -317,9 +332,9 @@ export function CompleteSessionDialog({
         setSelectedPackageId(session.appointment.selectedPackageId);
         setSelectedPurchaseId(null);
         setSelectedPurchaseName(session.appointment.selectedPackage?.name || "");
-      } else if (fetchedBabyPackages.length === 1) {
+      } else if (fetchedClientPackages.length === 1) {
         // Auto-select if only one package
-        const singlePackage = fetchedBabyPackages[0];
+        const singlePackage = fetchedClientPackages[0];
         setSelectedPurchaseId(singlePackage.id);
         setSelectedPackageId(singlePackage.package.id);
         setSelectedPurchaseName(singlePackage.package.name);
@@ -327,7 +342,7 @@ export function CompleteSessionDialog({
     };
 
     initializePackageSelection();
-  }, [session, packages, fetchBabyPackages]);
+  }, [session, fetchPackages, fetchClientPackages]);
 
   // Calculate installment payment status when session has a linked package with installments
   useEffect(() => {
@@ -500,8 +515,10 @@ export function CompleteSessionDialog({
           remainingSessions: purchaseData.remainingSessions,
           packageName: purchaseData.package?.name || selectedPurchaseName,
           packageDuration: purchaseData.package?.duration || 30,
-          babyId: session!.appointment.baby.id,
-          babyName: session!.appointment.baby.name,
+          babyId: session!.appointment.baby?.id,
+          babyName: session!.appointment.baby?.name,
+          parentId: session!.appointment.parent?.id,
+          parentName: session!.appointment.parent?.name,
           schedulePreferences: purchaseData.schedulePreferences || null,
         });
         setShowSuccessView(true);
@@ -568,7 +585,7 @@ export function CompleteSessionDialog({
               </p>
               <div className="mt-4 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-4">
                 <p className="text-sm text-gray-600">
-                  <span className="font-semibold text-teal-700">{completedPurchaseInfo.babyName}</span>
+                  <span className="font-semibold text-teal-700">{completedPurchaseInfo.babyName || completedPurchaseInfo.parentName}</span>
                   {" - "}
                   <span className="font-medium">{completedPurchaseInfo.packageName}</span>
                 </p>
@@ -597,32 +614,49 @@ export function CompleteSessionDialog({
         ) : (
           <div className="space-y-6 pt-4">
             {/* Session info - Full width header */}
-            <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 shadow-sm">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-md">
-                <Baby className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-800">
-                  {session.appointment.baby.name}
-                </p>
-                <p className="text-xs text-emerald-600">
-                  {t("session.sessionNumber", { number: session.sessionNumber })}
-                </p>
-              </div>
-              {hasLinkedPackage && session.packagePurchase && (
-                <div className="rounded-lg bg-white/80 px-3 py-1.5 text-right shadow-sm">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">{t("session.packageUsed")}</p>
-                  <p className="text-sm font-semibold text-emerald-600">
-                    {session.packagePurchase.package.name} ({session.packagePurchase.remainingSessions} {t("common.sessionsUnit")})
-                  </p>
+            {(() => {
+              const isParentAppointment = !session.appointment.baby && session.appointment.parent;
+              const clientName = session.appointment.baby?.name || session.appointment.parent?.name || "";
+              return (
+                <div className={`flex items-center gap-3 rounded-xl bg-gradient-to-r px-4 py-3 shadow-sm ${isParentAppointment ? "from-rose-50 to-pink-50" : "from-emerald-50 to-teal-50"}`}>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br shadow-md ${isParentAppointment ? "from-rose-400 to-pink-500" : "from-emerald-500 to-teal-500"}`}>
+                    {isParentAppointment ? (
+                      <UserRound className="h-5 w-5 text-white" />
+                    ) : (
+                      <Baby className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-800">
+                        {clientName}
+                      </p>
+                      {isParentAppointment && (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                          {t("calendar.clientType.parent")}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-xs ${isParentAppointment ? "text-rose-600" : "text-emerald-600"}`}>
+                      {t("session.sessionNumber", { number: session.sessionNumber })}
+                    </p>
+                  </div>
+                  {hasLinkedPackage && session.packagePurchase && (
+                    <div className="rounded-lg bg-white/80 px-3 py-1.5 text-right shadow-sm">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">{t("session.packageUsed")}</p>
+                      <p className="text-sm font-semibold text-emerald-600">
+                        {session.packagePurchase.package.name} ({session.packagePurchase.remainingSessions} {t("common.sessionsUnit")})
+                      </p>
+                    </div>
+                  )}
+                  {needsPackageSelection && (
+                    <div className="rounded-lg bg-blue-50 px-3 py-1.5 text-right shadow-sm border border-blue-200">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-blue-600">{t("session.pendingPackage")}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {needsPackageSelection && (
-                <div className="rounded-lg bg-blue-50 px-3 py-1.5 text-right shadow-sm border border-blue-200">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-blue-600">{t("session.pendingPackage")}</p>
-                </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Installment payment alert - NEVER blocks, just informs */}
             {installmentPaymentStatus && !installmentPaymentStatus.isPaidInFull && (
@@ -689,7 +723,7 @@ export function CompleteSessionDialog({
                 {/* Package Selection - Always show PackageSelector */}
                 {!isLoadingBabyPackages && (
                   <PackageSelector
-                    babyId={session.appointment.baby.id}
+                    babyId={session.appointment.baby?.id || session.appointment.parent?.id || ""}
                     packages={packages}
                     babyPackages={babyPackages}
                     selectedPackageId={selectedPackageId}
@@ -1155,14 +1189,14 @@ export function CompleteSessionDialog({
         />
       )}
 
-      {/* Bulk Scheduling Dialog */}
-      {completedPurchaseInfo && (
+      {/* Bulk Scheduling Dialog - only for baby appointments */}
+      {completedPurchaseInfo && completedPurchaseInfo.babyId && (
         <BulkSchedulingDialog
           open={showBulkScheduling}
           onOpenChange={setShowBulkScheduling}
           packagePurchaseId={completedPurchaseInfo.id}
           babyId={completedPurchaseInfo.babyId}
-          babyName={completedPurchaseInfo.babyName}
+          babyName={completedPurchaseInfo.babyName || ""}
           packageName={completedPurchaseInfo.packageName}
           packageDuration={completedPurchaseInfo.packageDuration}
           availableSessions={completedPurchaseInfo.remainingSessions}

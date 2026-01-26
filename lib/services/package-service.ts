@@ -12,6 +12,7 @@ export interface PackageWithPurchases {
     name: string;
     color: string | null;
   } | null;
+  serviceType: "BABY" | "PARENT" | null; // BABY = services for babies, PARENT = services for parents
   sessionCount: number;
   basePrice: Prisma.Decimal;
   duration: number;
@@ -30,6 +31,7 @@ export interface PackageCreateInput {
   name: string;
   description?: string;
   categoryId?: string | null;
+  serviceType?: "BABY" | "PARENT"; // BABY = services for babies, PARENT = services for parents
   sessionCount: number;
   basePrice: number;
   duration?: number;
@@ -159,6 +161,7 @@ export const packageService = {
         name: data.name,
         description: data.description,
         categoryId: data.categoryId,
+        serviceType: data.serviceType,
         sessionCount: data.sessionCount,
         basePrice: data.basePrice,
         duration: data.duration ?? 60,
@@ -200,6 +203,7 @@ export const packageService = {
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
+        ...(data.serviceType !== undefined && { serviceType: data.serviceType }),
         ...(data.sessionCount && { sessionCount: data.sessionCount }),
         ...(data.basePrice && { basePrice: data.basePrice }),
         ...(data.duration !== undefined && { duration: data.duration }),
@@ -560,6 +564,52 @@ export const packageService = {
     const result = await prisma.packagePurchase.aggregate({
       where: {
         babyId,
+        remainingSessions: { gt: 0 },
+      },
+      _sum: {
+        remainingSessions: true,
+      },
+    });
+
+    return result._sum.remainingSessions || 0;
+  },
+
+  // Parent package methods (for parent services like prenatal massage)
+  async getPackagesWithSessionsForParent(
+    parentId: string
+  ): Promise<PackagePurchaseWithDetails[]> {
+    const purchases = await prisma.packagePurchase.findMany({
+      where: {
+        parentId,
+        remainingSessions: { gt: 0 },
+      },
+      orderBy: { createdAt: "asc" },
+      include: {
+        package: {
+          select: {
+            id: true,
+            name: true,
+            categoryId: true,
+            categoryRef: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+          },
+        },
+        payment: true,
+      },
+    });
+
+    return purchases as PackagePurchaseWithDetails[];
+  },
+
+  async getTotalRemainingSessionsForParent(parentId: string): Promise<number> {
+    const result = await prisma.packagePurchase.aggregate({
+      where: {
+        parentId,
         remainingSessions: { gt: 0 },
       },
       _sum: {

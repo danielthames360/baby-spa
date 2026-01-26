@@ -379,6 +379,19 @@ export function PackageSelector({
     packages.some((pkg) => pkg.categoryId === cat.id)
   );
 
+  // Auto-switch to a category that has packages if current category is empty
+  useEffect(() => {
+    if (packages.length > 0 && categories.length > 0) {
+      const currentCategoryHasPackages = packages.some(
+        (pkg) => pkg.categoryId === activeCategoryId
+      );
+      if (!currentCategoryHasPackages && availableCategories.length > 0) {
+        // Switch to first category that has packages
+        setActiveCategoryId(availableCategories[0].id);
+      }
+    }
+  }, [packages, categories, activeCategoryId, availableCategories]);
+
   // Filter packages by category
   const filteredPackages = activeCategoryId
     ? packages.filter((pkg) => pkg.categoryId === activeCategoryId)

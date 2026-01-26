@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Package } from "lucide-react";
+import { Loader2, Package, Baby, Heart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ interface PackageData {
   name: string;
   description: string | null;
   categoryId: string | null;
+  serviceType?: "BABY" | "PARENT";
   sessionCount: number;
   basePrice: number | string;
   duration?: number;
@@ -82,6 +83,7 @@ export function PackageFormDialog({
       name: "",
       description: "",
       categoryId: null,
+      serviceType: "BABY",
       sessionCount: 1,
       basePrice: 0,
       duration: 60,
@@ -120,6 +122,7 @@ export function PackageFormDialog({
           name: packageData.name,
           description: packageData.description || "",
           categoryId: packageData.categoryId,
+          serviceType: packageData.serviceType ?? "BABY",
           sessionCount: packageData.sessionCount,
           basePrice: Number(packageData.basePrice),
           duration: packageData.duration ?? 60,
@@ -141,6 +144,7 @@ export function PackageFormDialog({
           name: "",
           description: "",
           categoryId: null,
+          serviceType: "BABY",
           sessionCount: 1,
           basePrice: 0,
           duration: 60,
@@ -293,6 +297,66 @@ export function PackageFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                </FormItem>
+              )}
+            />
+
+            {/* Service Type Selector */}
+            <FormField
+              control={form.control}
+              name="serviceType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">
+                    {t("packages.form.serviceType")}
+                  </FormLabel>
+                  <FormDescription className="text-xs">
+                    {t("packages.form.serviceTypeHelp")}
+                  </FormDescription>
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => field.onChange("BABY")}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                        field.value === "BABY"
+                          ? "border-teal-500 bg-teal-50 text-teal-700"
+                          : "border-gray-200 hover:border-teal-200 hover:bg-teal-50/50"
+                      }`}
+                    >
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                        field.value === "BABY"
+                          ? "bg-teal-100"
+                          : "bg-gray-100"
+                      }`}>
+                        <Baby className="h-5 w-5" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-medium">{t("packages.form.serviceTypeBaby")}</p>
+                        <p className="text-xs text-gray-500">{t("packages.form.serviceTypeBabyDesc")}</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => field.onChange("PARENT")}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                        field.value === "PARENT"
+                          ? "border-pink-500 bg-pink-50 text-pink-700"
+                          : "border-gray-200 hover:border-pink-200 hover:bg-pink-50/50"
+                      }`}
+                    >
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                        field.value === "PARENT"
+                          ? "bg-pink-100"
+                          : "bg-gray-100"
+                      }`}>
+                        <Heart className="h-5 w-5" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-medium">{t("packages.form.serviceTypeParent")}</p>
+                        <p className="text-xs text-gray-500">{t("packages.form.serviceTypeParentDesc")}</p>
+                      </div>
+                    </button>
+                  </div>
                 </FormItem>
               )}
             />

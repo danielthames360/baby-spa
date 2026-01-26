@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 // Create appointment schema
+// Either babyId OR parentId must be provided, but not both
 export const createAppointmentSchema = z.object({
-  babyId: z.string().min(1, "BABY_REQUIRED"),
+  babyId: z.string().optional().nullable(), // For baby appointments
+  parentId: z.string().optional().nullable(), // For parent appointments (prenatal massage, etc.)
   date: z.string().min(1, "DATE_REQUIRED"), // ISO date string
   startTime: z
     .string()
@@ -11,7 +13,18 @@ export const createAppointmentSchema = z.object({
   packageId: z.string().optional().nullable(), // Provisional package from catalog
   packagePurchaseId: z.string().optional().nullable(), // Existing package purchase
   createAsPending: z.boolean().optional(), // If true, create as PENDING_PAYMENT (for packages requiring advance payment)
-});
+}).refine(
+  (data) => {
+    // Either babyId or parentId must be provided (XOR logic)
+    const hasBaby = data.babyId && data.babyId.length > 0;
+    const hasParent = data.parentId && data.parentId.length > 0;
+    return (hasBaby || hasParent) && !(hasBaby && hasParent);
+  },
+  {
+    message: "CLIENT_REQUIRED", // Either baby or parent must be specified
+    path: ["babyId"],
+  }
+);
 
 export type CreateAppointmentData = z.infer<typeof createAppointmentSchema>;
 

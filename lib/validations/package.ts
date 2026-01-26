@@ -15,6 +15,8 @@ export const packageSchema = z.object({
     .string()
     .optional()
     .nullable(),
+  // BABY = services for babies (hydrotherapy, etc.), PARENT = services for parents (prenatal massage, etc.)
+  serviceType: z.enum(["BABY", "PARENT"]).optional(),
   sessionCount: z
     .number()
     .int()
@@ -70,6 +72,7 @@ export type PackageFormInput = {
   name: string;
   description?: string;
   categoryId?: string | null;
+  serviceType?: "BABY" | "PARENT";
   sessionCount: number;
   basePrice: number;
   duration?: number;

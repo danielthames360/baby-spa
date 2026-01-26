@@ -24,7 +24,8 @@ export const MAX_APPOINTMENTS_PER_HOUR = MAX_APPOINTMENTS_PER_SLOT;
 // Types
 export interface AppointmentWithRelations {
   id: string;
-  babyId: string;
+  babyId: string | null; // Optional: null for parent-only appointments
+  parentId: string | null; // Optional: null for baby appointments (parent comes with baby)
   selectedPackageId: string | null; // Provisional package selection
   packagePurchaseId: string | null;
   date: Date;
@@ -37,7 +38,7 @@ export interface AppointmentWithRelations {
   pendingSchedulePreferences: string | null;
   createdAt: Date;
   updatedAt: Date;
-  baby: {
+  baby?: {
     id: string;
     name: string;
     birthDate: Date;
@@ -50,7 +51,14 @@ export interface AppointmentWithRelations {
         phone: string;
       };
     }[];
-  };
+  } | null;
+  parent?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    pregnancyWeeks: number | null;
+  } | null;
   session?: {
     id: string;
     status: string;
@@ -87,7 +95,8 @@ export interface DayAvailability {
 }
 
 export interface CreateAppointmentInput {
-  babyId: string;
+  babyId?: string; // For baby appointments
+  parentId?: string; // For parent-only appointments (prenatal massage, etc.)
   date: Date;
   startTime: string; // HH:mm format
   notes?: string;
@@ -187,6 +196,15 @@ export const appointmentService = {
             },
           },
         },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            pregnancyWeeks: true,
+          },
+        },
         session: {
           select: {
             id: true,
@@ -266,6 +284,15 @@ export const appointmentService = {
                 },
               },
             },
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            pregnancyWeeks: true,
           },
         },
         session: {
@@ -380,7 +407,7 @@ export const appointmentService = {
         total: maxAppointments,
         appointments: slotAppointments.map((apt) => ({
           id: apt.id,
-          babyName: apt.baby.name,
+          babyName: apt.baby?.name || apt.parent?.name || "Unknown",
           status: apt.status,
         })),
       };
@@ -579,6 +606,7 @@ export const appointmentService = {
   async create(input: CreateAppointmentInput): Promise<AppointmentWithRelations> {
     const {
       babyId,
+      parentId,
       date,
       startTime,
       notes,
@@ -589,6 +617,14 @@ export const appointmentService = {
       packagePurchaseId,
       createAsPending = false,
     } = input;
+
+    // Validate that either babyId or parentId is provided (XOR)
+    if (!babyId && !parentId) {
+      throw new Error("CLIENT_REQUIRED");
+    }
+    if (babyId && parentId) {
+      throw new Error("INVALID_CLIENT_SELECTION");
+    }
 
     // Normalize date to UTC noon to avoid timezone day-shift issues
     const appointmentDate = normalizeToUTCNoon(date);
@@ -628,13 +664,21 @@ export const appointmentService = {
     // Calculate end time based on package duration
     const endTime = calculateEndTime(startTime, sessionDuration);
 
-    // Validate baby exists
-    const baby = await prisma.baby.findUnique({
-      where: { id: babyId },
-    });
-
-    if (!baby) {
-      throw new Error("BABY_NOT_FOUND");
+    // Validate baby or parent exists
+    if (babyId) {
+      const baby = await prisma.baby.findUnique({
+        where: { id: babyId },
+      });
+      if (!baby) {
+        throw new Error("BABY_NOT_FOUND");
+      }
+    } else if (parentId) {
+      const parent = await prisma.parent.findUnique({
+        where: { id: parentId },
+      });
+      if (!parent) {
+        throw new Error("PARENT_NOT_FOUND");
+      }
     }
 
     // Check if date is closed
@@ -648,7 +692,7 @@ export const appointmentService = {
       throw new Error("OUTSIDE_BUSINESS_HOURS");
     }
 
-    // Note: We allow multiple appointments per day for the same baby
+    // Note: We allow multiple appointments per day for the same baby/parent
     // (e.g., different activities like hydrotherapy + stimulation)
 
     // Check availability for each 30-minute slot within the appointment time range
@@ -675,10 +719,11 @@ export const appointmentService = {
 
     // Create appointment (no session deduction at booking time)
     const appointment = await prisma.$transaction(async (tx) => {
-      // Create appointment
+      // Create appointment with either babyId or parentId
       const newAppointment = await tx.appointment.create({
         data: {
-          babyId,
+          babyId: babyId || null,
+          parentId: parentId || null,
           date: appointmentDate,
           startTime,
           endTime,
@@ -709,6 +754,15 @@ export const appointmentService = {
               },
             },
           },
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              pregnancyWeeks: true,
+            },
+          },
           session: {
             select: {
               id: true,
@@ -731,6 +785,8 @@ export const appointmentService = {
             startTime,
             endTime,
             status: initialStatus,
+            ...(babyId && { babyId }),
+            ...(parentId && { parentId }),
           } as Prisma.InputJsonValue,
         },
       });
@@ -939,6 +995,15 @@ export const appointmentService = {
               },
             },
           },
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              pregnancyWeeks: true,
+            },
+          },
           session: {
             select: {
               id: true,
@@ -1031,6 +1096,15 @@ export const appointmentService = {
               },
             },
           },
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              pregnancyWeeks: true,
+            },
+          },
           session: {
             select: {
               id: true,
@@ -1040,11 +1114,21 @@ export const appointmentService = {
         },
       });
 
-      // Increment no-show count for primary parent
-      const primaryParent = existing.baby.parents.find((p) => p.isPrimary);
-      if (primaryParent) {
+      // Determine parent ID - either from baby's primary parent or from direct parent appointment
+      let parentIdToUpdate: string | null = null;
+      if (existing.baby?.parents) {
+        const primaryParent = existing.baby.parents.find((p) => p.isPrimary);
+        if (primaryParent) {
+          parentIdToUpdate = primaryParent.parent.id;
+        }
+      } else if (existing.parentId) {
+        parentIdToUpdate = existing.parentId;
+      }
+
+      // Increment no-show count for parent
+      if (parentIdToUpdate) {
         const parent = await tx.parent.update({
-          where: { id: primaryParent.parent.id },
+          where: { id: parentIdToUpdate },
           data: {
             noShowCount: { increment: 1 },
           },
@@ -1053,7 +1137,7 @@ export const appointmentService = {
         // If 3+ no-shows, require prepayment
         if (parent.noShowCount >= 3) {
           await tx.parent.update({
-            where: { id: primaryParent.parent.id },
+            where: { id: parentIdToUpdate },
             data: {
               requiresPrepayment: true,
             },
@@ -1108,7 +1192,7 @@ export const appointmentService = {
       throw new Error("APPOINTMENT_NOT_FOUND");
     }
 
-    // Reset no-show count for parent when baby attends
+    // Reset no-show count for parent when they attend
     const appointment = await prisma.$transaction(async (tx) => {
       const updated = await tx.appointment.update({
         where: { id },
@@ -1136,6 +1220,15 @@ export const appointmentService = {
               },
             },
           },
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              pregnancyWeeks: true,
+            },
+          },
           session: {
             select: {
               id: true,
@@ -1145,11 +1238,21 @@ export const appointmentService = {
         },
       });
 
-      // Reset no-show count for primary parent
-      const primaryParent = existing.baby.parents.find((p) => p.isPrimary);
-      if (primaryParent) {
+      // Determine parent ID - either from baby's primary parent or from direct parent appointment
+      let parentIdToReset: string | null = null;
+      if (existing.baby?.parents) {
+        const primaryParent = existing.baby.parents.find((p) => p.isPrimary);
+        if (primaryParent) {
+          parentIdToReset = primaryParent.parent.id;
+        }
+      } else if (existing.parentId) {
+        parentIdToReset = existing.parentId;
+      }
+
+      // Reset no-show count for parent
+      if (parentIdToReset) {
         await tx.parent.update({
-          where: { id: primaryParent.parent.id },
+          where: { id: parentIdToReset },
           data: {
             noShowCount: 0,
           },
@@ -1206,6 +1309,69 @@ export const appointmentService = {
                 },
               },
             },
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            pregnancyWeeks: true,
+          },
+        },
+        session: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+    });
+
+    return appointments as AppointmentWithRelations[];
+  },
+
+  // Get upcoming appointments for a parent (direct parent appointments, not baby appointments)
+  async getUpcomingForParent(parentId: string): Promise<AppointmentWithRelations[]> {
+    const today = getStartOfDayUTC(new Date());
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        parentId,
+        date: { gte: today },
+        status: { in: [AppointmentStatus.SCHEDULED, AppointmentStatus.IN_PROGRESS] },
+      },
+      include: {
+        baby: {
+          select: {
+            id: true,
+            name: true,
+            birthDate: true,
+            gender: true,
+            parents: {
+              where: { isPrimary: true },
+              select: {
+                isPrimary: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    phone: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            pregnancyWeeks: true,
           },
         },
         session: {

@@ -78,6 +78,7 @@ import {
   Pencil,
   CreditCard,
   AlertTriangle,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
@@ -89,6 +90,8 @@ interface AppointmentDetailsProps {
   onOpenChange: (open: boolean) => void;
   appointment: {
     id: string;
+    babyId?: string | null; // Optional for parent appointments
+    parentId?: string | null; // For parent appointments
     date: Date;
     startTime: string; // HH:mm format
     endTime: string;   // HH:mm format
@@ -102,7 +105,7 @@ interface AppointmentDetailsProps {
     session?: {
       id: string;
     } | null;
-    baby: {
+    baby?: {
       id: string;
       name: string;
       parents: {
@@ -113,7 +116,14 @@ interface AppointmentDetailsProps {
           phone: string;
         };
       }[];
-    };
+    } | null;
+    parent?: {
+      id: string;
+      name: string;
+      phone: string;
+      email: string | null;
+      pregnancyWeeks: number | null;
+    } | null;
     packagePurchase?: {
       id: string;
       totalSessions?: number;
@@ -365,7 +375,14 @@ export function AppointmentDetails({
 
   if (!appointment) return null;
 
-  const primaryParent = appointment.baby.parents.find((p) => p.isPrimary)?.parent;
+  // Determine if this is a parent appointment
+  const isParentAppointment = !appointment.babyId && appointment.parentId && appointment.parent;
+  const primaryParent = !isParentAppointment
+    ? appointment.baby?.parents?.find((p) => p.isPrimary)?.parent
+    : null;
+  const clientName = isParentAppointment ? appointment.parent?.name : appointment.baby?.name;
+  const clientPhone = isParentAppointment ? appointment.parent?.phone : primaryParent?.phone;
+  const ClientIcon = isParentAppointment ? UserRound : Baby;
   const statusInfo = statusConfig[appointment.status];
 
   // Format time string to HH:mm
@@ -455,8 +472,9 @@ export function AppointmentDetails({
     }
   };
 
-  // Handle view baby details
+  // Handle view baby details (only for baby appointments)
   const handleViewBaby = async () => {
+    if (!appointment.baby) return;
     setIsLoadingBaby(true);
     try {
       const response = await fetch(`/api/babies/${appointment.baby.id}`);
@@ -472,7 +490,7 @@ export function AppointmentDetails({
     }
   };
 
-  // Handle edit package
+  // Handle edit package (works for both baby and parent appointments)
   const handleEditPackage = async () => {
     setIsLoadingPackages(true);
     setPackageError(null);
@@ -487,13 +505,20 @@ export function AppointmentDetails({
     }
 
     try {
-      // Fetch baby's packages and catalog in parallel
-      const [babyPkgRes, catalogRes] = await Promise.all([
-        fetch(`/api/babies/${appointment.baby.id}/packages`),
+      // Fetch packages and catalog in parallel
+      // For baby appointments, fetch baby's packages; for parent appointments, just fetch catalog
+      const promises: Promise<Response>[] = [
         fetch("/api/packages?active=true"),
-      ]);
+      ];
+      if (appointment.baby) {
+        promises.unshift(fetch(`/api/babies/${appointment.baby.id}/packages`));
+      }
 
-      if (babyPkgRes.ok) {
+      const responses = await Promise.all(promises);
+      const babyPkgRes = appointment.baby ? responses[0] : null;
+      const catalogRes = appointment.baby ? responses[1] : responses[0];
+
+      if (babyPkgRes && babyPkgRes.ok) {
         const data = await babyPkgRes.json();
         const packages = (data.packages || []).filter(
           (p: PackagePurchaseData) => p.remainingSessions > 0
@@ -700,7 +725,7 @@ export function AppointmentDetails({
                     </p>
                   </div>
                   <PackageSelector
-                    babyId={appointment.baby.id}
+                    babyId={appointment.baby?.id || ""}
                     packages={catalogPackages}
                     babyPackages={babyPackages}
                     selectedPackageId={selectedPackageId}
@@ -789,18 +814,34 @@ export function AppointmentDetails({
               </Alert>
             )}
 
-            {/* Baby info */}
-            <div className="rounded-xl border-2 border-teal-100 bg-white p-4">
+            {/* Client info (Baby or Parent) */}
+            <div className={cn(
+              "rounded-xl border-2 bg-white p-4",
+              isParentAppointment ? "border-rose-100" : "border-teal-100"
+            )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 shadow-md shadow-teal-200">
-                    <Baby className="h-5 w-5 text-white" />
+                  <div className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-full shadow-md",
+                    isParentAppointment
+                      ? "bg-gradient-to-br from-rose-400 to-pink-500 shadow-rose-200"
+                      : "bg-gradient-to-br from-teal-500 to-cyan-500 shadow-teal-200"
+                  )}>
+                    <ClientIcon className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800">
-                      {appointment.baby.name}
-                    </p>
-                    {primaryParent && (
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-800">
+                        {clientName}
+                      </p>
+                      {isParentAppointment && (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                          {t("calendar.clientType.parent")}
+                        </span>
+                      )}
+                    </div>
+                    {/* For baby appointments, show primary parent */}
+                    {!isParentAppointment && primaryParent && (
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
                           <User className="h-3 w-3" />
@@ -812,38 +853,62 @@ export function AppointmentDetails({
                         </span>
                       </div>
                     )}
+                    {/* For parent appointments, show phone */}
+                    {isParentAppointment && clientPhone && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {clientPhone}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleViewBaby}
-                    disabled={isLoadingBaby}
-                    className="h-8 w-8 p-0 text-cyan-600 hover:bg-cyan-100"
-                  >
-                    {isLoadingBaby ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Info className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Link href={`/admin/clients/${appointment.baby.id}`} target="_blank">
+                {/* Buttons - only show for baby appointments */}
+                {!isParentAppointment && appointment.baby && (
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-teal-600 hover:bg-teal-100"
+                      onClick={handleViewBaby}
+                      disabled={isLoadingBaby}
+                      className="h-8 w-8 p-0 text-cyan-600 hover:bg-cyan-100"
+                    >
+                      {isLoadingBaby ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Info className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Link href={`/admin/clients/${appointment.baby.id}`} target="_blank">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-teal-600 hover:bg-teal-100"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+                {/* Link to parent profile for parent appointments */}
+                {isParentAppointment && appointment.parent && (
+                  <Link href={`/admin/parents/${appointment.parent.id}`} target="_blank">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-100"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
                   </Link>
-                </div>
+                )}
               </div>
 
               {/* WhatsApp button */}
-              {primaryParent && (
+              {clientPhone && (
                 <a
-                  href={`https://wa.me/${primaryParent.phone.replace(/\D/g, "")}`}
+                  href={`https://wa.me/${clientPhone.replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
@@ -1127,14 +1192,16 @@ export function AppointmentDetails({
         </DialogContent>
       </Dialog>
 
-      {/* Start session dialog with therapist selection */}
-      {appointment && (
+      {/* Start session dialog with therapist selection - for both baby and parent appointments */}
+      {appointment && (appointment.baby || isParentAppointment) && (
         <StartSessionDialog
           open={showStartSessionDialog}
           onOpenChange={setShowStartSessionDialog}
           appointmentId={appointment.id}
-          babyId={appointment.baby.id}
-          babyName={appointment.baby.name}
+          babyId={appointment.baby?.id}
+          babyName={appointment.baby?.name}
+          parentId={appointment.parent?.id}
+          parentName={appointment.parent?.name}
           startTime={appointment.startTime}
           preselectedPurchaseId={appointment.packagePurchaseId || undefined}
           preselectedCatalogPackageId={

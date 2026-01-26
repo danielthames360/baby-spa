@@ -11,19 +11,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Baby,
   Calendar,
   Clock,
-  Search,
   Loader2,
   AlertCircle,
-  User,
   Package,
   CreditCard,
   AlertTriangle,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -31,40 +29,17 @@ import {
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
+import {
+  ClientSelector,
+  type SelectedClient,
+  type BabySearchResult,
+} from "@/components/calendar/client-selector";
 
 // bundle-dynamic-imports: Lazy load payment dialog to reduce initial bundle
 const RegisterPaymentDialog = dynamic(
   () => import("@/components/appointments/register-payment-dialog").then((m) => m.RegisterPaymentDialog),
   { ssr: false }
 );
-
-interface BabySearchResult {
-  id: string;
-  name: string;
-  birthDate: string;
-  gender: string;
-  parents: {
-    isPrimary: boolean;
-    parent: {
-      id: string;
-      name: string;
-      phone: string;
-    };
-  }[];
-  packagePurchases: {
-    id: string;
-    remainingSessions: number;
-    totalSessions: number;
-    usedSessions: number;
-    isActive: boolean;
-    package: {
-      id: string;
-      name: string;
-      categoryId: string | null;
-      duration: number;
-    };
-  }[];
-}
 
 interface AppointmentDialogProps {
   open: boolean;
@@ -85,12 +60,7 @@ export function AppointmentDialog({
   const locale = useLocale();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<BabySearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedBaby, setSelectedBaby] = useState<BabySearchResult | null>(
-    null,
-  );
+  const [selectedClient, setSelectedClient] = useState<SelectedClient | null>(null);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,9 +104,7 @@ export function AppointmentDialog({
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (!open) {
-      setSearchQuery("");
-      setSearchResults([]);
-      setSelectedBaby(null);
+      setSelectedClient(null);
       setNotes("");
       setError(null);
       setSelectedPackageId(null);
@@ -147,11 +115,15 @@ export function AppointmentDialog({
     }
   }, [open]);
 
-  // Fetch package catalog
-  const fetchCatalog = useCallback(async () => {
+  // Fetch package catalog filtered by client type
+  const fetchCatalog = useCallback(async (serviceType?: "BABY" | "PARENT") => {
     setLoadingCatalog(true);
     try {
-      const response = await fetch("/api/packages?active=true");
+      const params = new URLSearchParams({ active: "true" });
+      if (serviceType) {
+        params.set("serviceType", serviceType);
+      }
+      const response = await fetch(`/api/packages?${params.toString()}`);
       const data = await response.json();
       if (response.ok) {
         setCatalogPackages(data.packages || []);
@@ -163,12 +135,13 @@ export function AppointmentDialog({
     }
   }, []);
 
-  // Fetch catalog when dialog opens
+  // Fetch catalog when dialog opens or client type changes
   useEffect(() => {
-    if (open && catalogPackages.length === 0) {
-      fetchCatalog();
+    if (open) {
+      const serviceType = selectedClient?.type === "PARENT" ? "PARENT" : "BABY";
+      fetchCatalog(serviceType);
     }
-  }, [open, fetchCatalog, catalogPackages.length]);
+  }, [open, fetchCatalog, selectedClient?.type]);
 
   // Handle package selection
   const handlePackageSelect = (
@@ -179,63 +152,60 @@ export function AppointmentDialog({
     setSelectedPurchaseId(purchaseId);
   };
 
-  // Transform baby packages to PackageSelector format
-  const getBabyPackagesForSelector = (): PackagePurchaseData[] => {
-    if (!selectedBaby) return [];
-    return selectedBaby.packagePurchases
-      .filter((p) => p.isActive && p.remainingSessions > 0)
-      .map((pkg) => ({
-        id: pkg.id,
-        remainingSessions: pkg.remainingSessions,
-        totalSessions: pkg.totalSessions,
-        usedSessions: pkg.usedSessions,
-        package: {
-          id: pkg.package.id,
-          name: pkg.package.name,
-          categoryId: pkg.package.categoryId,
-          duration: pkg.package.duration,
-        },
-      }));
+  // Transform client packages to PackageSelector format
+  const getClientPackagesForSelector = (): PackagePurchaseData[] => {
+    // For baby appointments, use baby's packages
+    if (selectedClient?.type === "BABY" && selectedClient.baby) {
+      return selectedClient.baby.packagePurchases
+        .filter((p) => p.isActive && p.remainingSessions > 0)
+        .map((pkg) => ({
+          id: pkg.id,
+          remainingSessions: pkg.remainingSessions,
+          totalSessions: pkg.totalSessions,
+          usedSessions: pkg.usedSessions,
+          package: {
+            id: pkg.package.id,
+            name: pkg.package.name,
+            categoryId: pkg.package.categoryId,
+            duration: pkg.package.duration,
+          },
+        }));
+    }
+    // For parent appointments, use parent's packages if available
+    if (selectedClient?.type === "PARENT" && selectedClient.parent?.packagePurchases) {
+      return selectedClient.parent.packagePurchases
+        .filter((p) => p.isActive && p.remainingSessions > 0)
+        .map((pkg) => ({
+          id: pkg.id,
+          remainingSessions: pkg.remainingSessions,
+          totalSessions: pkg.totalSessions,
+          usedSessions: 0, // Parent packages may not have usedSessions tracked yet
+          package: {
+            id: pkg.package.id,
+            name: pkg.package.name,
+            categoryId: pkg.package.categoryId,
+            duration: pkg.package.duration,
+          },
+        }));
+    }
+    return [];
   };
 
-  // Search babies
-  const searchBabies = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await fetch(
-        `/api/babies?search=${encodeURIComponent(query)}&limit=5`,
-      );
-      const data = await response.json();
-      setSearchResults(data.babies || []);
-    } catch (err) {
-      console.error("Error searching babies:", err);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
-
-  // Debounced search
+  // Auto-select package when client is selected
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery) {
-        searchBabies(searchQuery);
+    if (selectedClient) {
+      let activePackages: { id: string; package: { id: string } }[] = [];
+
+      if (selectedClient.type === "BABY" && selectedClient.baby) {
+        activePackages = selectedClient.baby.packagePurchases.filter(
+          (p) => p.isActive && p.remainingSessions > 0,
+        );
+      } else if (selectedClient.type === "PARENT" && selectedClient.parent?.packagePurchases) {
+        activePackages = selectedClient.parent.packagePurchases.filter(
+          (p) => p.isActive && p.remainingSessions > 0,
+        );
       }
-    }, 300);
 
-    return () => clearTimeout(timer);
-  }, [searchQuery, searchBabies]);
-
-  // Auto-select package when baby is selected
-  useEffect(() => {
-    if (selectedBaby) {
-      const activePackages = selectedBaby.packagePurchases.filter(
-        (p) => p.isActive && p.remainingSessions > 0,
-      );
       if (activePackages.length === 1) {
         setSelectedPurchaseId(activePackages[0].id);
         setSelectedPackageId(activePackages[0].package.id);
@@ -244,7 +214,7 @@ export function AppointmentDialog({
         setSelectedPackageId(null);
       }
     }
-  }, [selectedBaby]);
+  }, [selectedClient]);
 
   // Auto-scroll to bottom when advance payment confirmation appears
   useEffect(() => {
@@ -281,7 +251,7 @@ export function AppointmentDialog({
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!selectedBaby) return;
+    if (!selectedClient) return;
     if (!selectedPackageId && !selectedPurchaseId) return;
 
     // Check if package requires advance payment and show confirmation
@@ -300,25 +270,33 @@ export function AppointmentDialog({
   // Create appointment with optional pending status
   // showPaymentAfter: if true, open payment dialog after creating (for "Registrar Pago Ahora" flow)
   const createAppointment = async (createAsPending: boolean, showPaymentAfter: boolean = false) => {
-    if (!selectedBaby) return;
+    if (!selectedClient) return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Build request body based on client type
+      const requestBody: Record<string, unknown> = {
+        packagePurchaseId: selectedPurchaseId,
+        packageId: selectedPackageId,
+        date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+        startTime: time,
+        notes: notes || undefined,
+        createAsPending,
+      };
+
+      // Set either babyId or parentId based on client type
+      if (selectedClient.type === "BABY" && selectedClient.baby) {
+        requestBody.babyId = selectedClient.baby.id;
+      } else if (selectedClient.type === "PARENT" && selectedClient.parent) {
+        requestBody.parentId = selectedClient.parent.id;
+      }
+
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          babyId: selectedBaby.id,
-          packagePurchaseId: selectedPurchaseId,
-          packageId: selectedPackageId,
-          // Use local date format to avoid timezone issues
-          date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
-          startTime: time,
-          notes: notes || undefined,
-          createAsPending,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -330,14 +308,14 @@ export function AppointmentDialog({
         return;
       }
 
-      // If user chose to pay now, show payment dialog
-      if (showPaymentAfter) {
+      // If user chose to pay now, show payment dialog (only for baby appointments for now)
+      if (showPaymentAfter && selectedClient.type === "BABY" && selectedClient.baby) {
         const pkg = getSelectedPackageData();
         setCreatedAppointment({
           id: data.appointment.id,
           date: new Date(data.appointment.date),
           startTime: data.appointment.startTime,
-          baby: { id: selectedBaby.id, name: selectedBaby.name },
+          baby: { id: selectedClient.baby.id, name: selectedClient.baby.name },
           selectedPackage: pkg ? {
             id: pkg.id,
             name: pkg.name,
@@ -411,113 +389,15 @@ export function AppointmentDialog({
             </div>
           </div>
 
-          {/* Baby search */}
-          {!selectedBaby ? (
-            <div className="space-y-3">
-              <Label className="text-gray-700">
-                {t("calendar.searchBaby")}
-              </Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t("calendar.searchBabyPlaceholder")}
-                  className="h-12 rounded-xl border-2 border-teal-100 pl-10 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
-                />
-                {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-teal-500" />
-                )}
-              </div>
+          {/* Client selection (Baby or Parent) */}
+          <ClientSelector
+            selectedClient={selectedClient}
+            onClientSelect={setSelectedClient}
+          />
 
-              {/* Search results */}
-              {searchResults.length > 0 && (
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-gray-100 p-2">
-                  {searchResults.map((baby) => {
-                    // Sum all remaining sessions from active packages
-                    const totalRemainingSessions = baby.packagePurchases
-                      .filter((p) => p.isActive && p.remainingSessions > 0)
-                      .reduce((sum, p) => sum + p.remainingSessions, 0);
-                    const primaryParent = baby.parents.find((p) => p.isPrimary);
-
-                    return (
-                      <button
-                        key={baby.id}
-                        onClick={() => setSelectedBaby(baby)}
-                        className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-teal-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100">
-                            <Baby className="h-5 w-5 text-teal-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-800">
-                              {baby.name}
-                            </p>
-                            {primaryParent && (
-                              <p className="text-sm text-gray-500">
-                                {primaryParent.parent.name}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {totalRemainingSessions > 0 ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
-                            {totalRemainingSessions}{" "}
-                            {t("common.sessionsUnit")}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                            {t("calendar.noPackage")}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {searchQuery.length >= 2 &&
-                searchResults.length === 0 &&
-                !isSearching && (
-                  <p className="text-center text-sm text-gray-500">
-                    {t("common.noResults")}
-                  </p>
-                )}
-            </div>
-          ) : (
-            /* Selected baby */
+          {/* Package selection - shown when client is selected */}
+          {selectedClient && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-xl border-2 border-teal-200 bg-teal-50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500">
-                    <Baby className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800">
-                      {selectedBaby.name}
-                    </p>
-                    {selectedBaby.parents.find((p) => p.isPrimary) && (
-                      <p className="flex items-center gap-1 text-sm text-gray-500">
-                        <User className="h-3 w-3" />
-                        {
-                          selectedBaby.parents.find((p) => p.isPrimary)?.parent
-                            .name
-                        }
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedBaby(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  {t("calendar.change")}
-                </Button>
-              </div>
-
               {/* Package selection */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
@@ -530,9 +410,9 @@ export function AppointmentDialog({
                   </div>
                 ) : (
                   <PackageSelector
-                    babyId={selectedBaby.id}
+                    babyId={selectedClient.type === "BABY" ? selectedClient.baby?.id : undefined}
                     packages={catalogPackages}
-                    babyPackages={getBabyPackagesForSelector()}
+                    babyPackages={getClientPackagesForSelector()}
                     selectedPackageId={selectedPackageId}
                     selectedPurchaseId={selectedPurchaseId}
                     onSelectPackage={handlePackageSelect}
@@ -634,13 +514,13 @@ export function AppointmentDialog({
               <Button
                 onClick={handleSubmit}
                 disabled={
-                  !selectedBaby ||
+                  !selectedClient ||
                   isSubmitting ||
                   (!selectedPackageId && !selectedPurchaseId)
                 }
                 className={cn(
                   "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
-                  (!selectedBaby ||
+                  (!selectedClient ||
                     (!selectedPackageId && !selectedPurchaseId)) &&
                     "opacity-50",
                 )}

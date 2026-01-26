@@ -1,19 +1,28 @@
 "use client";
 
-import { Baby, User, Clock, Package, AlertCircle } from "lucide-react";
+import { Baby, User, Clock, Package, AlertCircle, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
+type ClientType = "BABY" | "PARENT";
+
 interface AppointmentCardProps {
   id: string;
-  babyName: string;
-  parentName?: string;
+  clientName: string; // Name of baby or parent
+  clientType?: ClientType; // BABY or PARENT - defaults to BABY
+  parentName?: string; // Secondary parent name (only for baby appointments)
   packageName?: string;
   time: string;
   status: "PENDING_PAYMENT" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
   onClick?: () => void;
   compact?: boolean;
   fillHeight?: boolean;
+}
+
+// Legacy prop name support
+interface LegacyAppointmentCardProps extends Omit<AppointmentCardProps, "clientName"> {
+  babyName?: string;
+  clientName?: string;
 }
 
 const statusConfig = {
@@ -56,7 +65,9 @@ const statusConfig = {
 };
 
 export function AppointmentCard({
-  babyName,
+  clientName,
+  babyName, // Legacy prop support
+  clientType = "BABY",
   parentName,
   packageName,
   time,
@@ -64,10 +75,17 @@ export function AppointmentCard({
   onClick,
   compact = false,
   fillHeight = false,
-}: AppointmentCardProps) {
+}: LegacyAppointmentCardProps) {
   const t = useTranslations();
   const config = statusConfig[status];
   const isPendingPayment = status === "PENDING_PAYMENT";
+
+  // Support legacy babyName prop
+  const displayName = clientName || babyName || "";
+  const isParentAppointment = clientType === "PARENT";
+
+  // Icon component based on client type
+  const ClientIcon = isParentAppointment ? UserRound : Baby;
 
   if (compact) {
     return (
@@ -90,10 +108,16 @@ export function AppointmentCard({
         />
 
         <div className="ml-1.5 flex flex-col justify-center h-full min-w-0">
-          {/* Baby name */}
-          <div className="flex items-center gap-1 min-w-0">
-            <Baby className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate text-xs font-medium">{babyName}</span>
+          {/* Client name (baby or parent) */}
+          <div className={cn(
+            "flex items-center gap-1 min-w-0",
+            isParentAppointment && "text-rose-700"
+          )}>
+            <ClientIcon className={cn(
+              "h-3 w-3 flex-shrink-0",
+              isParentAppointment && "text-rose-600"
+            )} />
+            <span className="truncate text-xs font-medium">{displayName}</span>
           </div>
 
           {/* Package name - show in fillHeight mode */}
@@ -160,10 +184,16 @@ export function AppointmentCard({
           <span>{time}</span>
         </div>
 
-        {/* Baby name */}
-        <div className="flex items-center gap-1">
-          <Baby className="h-3.5 w-3.5 flex-shrink-0" />
-          <span className="truncate text-sm font-medium">{babyName}</span>
+        {/* Client name (baby or parent) */}
+        <div className={cn(
+          "flex items-center gap-1",
+          isParentAppointment && "text-rose-700"
+        )}>
+          <ClientIcon className={cn(
+            "h-3.5 w-3.5 flex-shrink-0",
+            isParentAppointment && "text-rose-600"
+          )} />
+          <span className="truncate text-sm font-medium">{displayName}</span>
         </div>
 
         {/* Package name */}
@@ -175,8 +205,8 @@ export function AppointmentCard({
           <span className="truncate">{packageName || "A definir"}</span>
         </div>
 
-        {/* Parent name */}
-        {parentName && (
+        {/* Parent name (only for baby appointments) */}
+        {parentName && !isParentAppointment && (
           <div className="flex items-center gap-1 text-xs opacity-75">
             <User className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{parentName}</span>

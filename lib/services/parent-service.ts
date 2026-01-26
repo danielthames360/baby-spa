@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { ParentStatus, Prisma } from "@prisma/client";
 
 // Types
 export interface ParentWithBabies {
@@ -12,6 +12,12 @@ export interface ParentWithBabies {
   noShowCount: number;
   requiresPrepayment: boolean;
   lastNoShowDate: Date | null;
+  // LEAD fields
+  status: ParentStatus;
+  pregnancyWeeks: number | null;
+  leadSource: string | null;
+  leadNotes: string | null;
+  convertedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   babies: {
@@ -33,6 +39,11 @@ export interface ParentCreateInput {
   phone?: string;
   email?: string;
   birthDate?: Date;
+  // LEAD fields
+  status?: ParentStatus;
+  pregnancyWeeks?: number;
+  leadSource?: string;
+  leadNotes?: string;
 }
 
 export interface ParentSearchResult {
@@ -41,12 +52,34 @@ export interface ParentSearchResult {
   phone: string | null;
   email: string | null;
   accessCode: string;
+  status: ParentStatus;
+  pregnancyWeeks: number | null;
   babies: {
     baby: {
       id: string;
       name: string;
     };
   }[];
+  packagePurchases?: {
+    id: string;
+    remainingSessions: number;
+    totalSessions: number;
+    usedSessions: number;
+    isActive: boolean;
+    package: {
+      id: string;
+      name: string;
+      categoryId: string | null;
+      duration: number;
+    };
+  }[];
+}
+
+export interface ParentListFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "all" | "withBabies" | "leads";
 }
 
 // Generate unique access code: BSB-XXXXX
@@ -82,30 +115,56 @@ async function getUniqueAccessCode(): Promise<string> {
 
 // Service functions
 export const parentService = {
-  async search(query: string): Promise<ParentSearchResult[]> {
+  async search(query: string, statusFilter?: ParentStatus): Promise<ParentSearchResult[]> {
     if (!query || query.length < 2) {
       return [];
     }
 
+    const where: Prisma.ParentWhereInput = {
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+      ],
+    };
+
+    if (statusFilter) {
+      where.status = statusFilter;
+    }
+
     const parents = await prisma.parent.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { phone: { contains: query } },
-        ],
-      },
+      where,
       select: {
         id: true,
         name: true,
         phone: true,
         email: true,
         accessCode: true,
+        status: true,
+        pregnancyWeeks: true,
         babies: {
           select: {
             baby: {
               select: {
                 id: true,
                 name: true,
+              },
+            },
+          },
+        },
+        packagePurchases: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            remainingSessions: true,
+            totalSessions: true,
+            usedSessions: true,
+            isActive: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+                categoryId: true,
+                duration: true,
               },
             },
           },
@@ -201,6 +260,9 @@ export const parentService = {
     // Generate unique access code
     const accessCode = await getUniqueAccessCode();
 
+    // Default status: LEAD if no babies, ACTIVE if created with babies
+    const status = data.status || ParentStatus.LEAD;
+
     const parent = await prisma.parent.create({
       data: {
         name: data.name,
@@ -208,6 +270,10 @@ export const parentService = {
         email: data.email,
         birthDate: data.birthDate,
         accessCode,
+        status,
+        pregnancyWeeks: data.pregnancyWeeks,
+        leadSource: data.leadSource,
+        leadNotes: data.leadNotes,
       },
       include: {
         babies: {
@@ -254,6 +320,10 @@ export const parentService = {
         ...(data.phone && { phone: data.phone }),
         ...(data.email !== undefined && { email: data.email }),
         ...(data.birthDate !== undefined && { birthDate: data.birthDate }),
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.pregnancyWeeks !== undefined && { pregnancyWeeks: data.pregnancyWeeks }),
+        ...(data.leadSource !== undefined && { leadSource: data.leadSource }),
+        ...(data.leadNotes !== undefined && { leadNotes: data.leadNotes }),
       },
       include: {
         babies: {
@@ -328,18 +398,110 @@ export const parentService = {
     return newCode;
   },
 
-  async list(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-  } = {}): Promise<{
+  // Convert a LEAD to ACTIVE when they register a baby
+  async convertLeadToActive(id: string): Promise<ParentWithBabies> {
+    const parent = await prisma.parent.update({
+      where: { id },
+      data: {
+        status: ParentStatus.ACTIVE,
+        convertedAt: new Date(),
+      },
+      include: {
+        babies: {
+          include: {
+            baby: {
+              select: {
+                id: true,
+                name: true,
+                birthDate: true,
+                gender: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return parent as ParentWithBabies;
+  },
+
+  // Get appointments for a parent (parent services like prenatal massage)
+  async getAppointments(parentId: string) {
+    return prisma.appointment.findMany({
+      where: { parentId },
+      include: {
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        packagePurchase: {
+          select: {
+            id: true,
+            package: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { date: "desc" },
+    });
+  },
+
+  // Get package purchases for a parent (parent services)
+  async getPackagePurchases(parentId: string) {
+    return prisma.packagePurchase.findMany({
+      where: { parentId, isActive: true },
+      include: {
+        package: {
+          select: {
+            id: true,
+            name: true,
+            sessionCount: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  // Get detailed parent with all related data
+  async getWithDetails(id: string) {
+    const [parent, appointments, packagePurchases] = await Promise.all([
+      this.getById(id),
+      this.getAppointments(id),
+      this.getPackagePurchases(id),
+    ]);
+
+    if (!parent) return null;
+
+    return {
+      ...parent,
+      appointments,
+      packagePurchases,
+    };
+  },
+
+  // List parents with filters
+  async list(params: ParentListFilters = {}): Promise<{
     parents: ParentSearchResult[];
     total: number;
     page: number;
     totalPages: number;
+    counts: {
+      all: number;
+      withBabies: number;
+      leads: number;
+    };
   }> {
-    const { page = 1, limit = 10, search } = params;
+    const { page = 1, limit = 10, search, status = "all" } = params;
 
+    // Build where clause
     const where: Prisma.ParentWhereInput = {};
 
     if (search) {
@@ -349,7 +511,15 @@ export const parentService = {
       ];
     }
 
-    const [parents, total] = await Promise.all([
+    // Status filter
+    if (status === "leads") {
+      where.status = ParentStatus.LEAD;
+    } else if (status === "withBabies") {
+      where.babies = { some: {} };
+    }
+
+    // async-parallel: Run count queries in parallel
+    const [parents, total, allCount, withBabiesCount, leadsCount] = await Promise.all([
       prisma.parent.findMany({
         where,
         select: {
@@ -358,6 +528,8 @@ export const parentService = {
           phone: true,
           email: true,
           accessCode: true,
+          status: true,
+          pregnancyWeeks: true,
           babies: {
             select: {
               baby: {
@@ -374,6 +546,39 @@ export const parentService = {
         take: limit,
       }),
       prisma.parent.count({ where }),
+      // Count all parents (with search if applied)
+      prisma.parent.count({
+        where: search ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search } },
+          ],
+        } : {},
+      }),
+      // Count parents with babies (with search if applied)
+      prisma.parent.count({
+        where: {
+          ...(search ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search } },
+            ],
+          } : {}),
+          babies: { some: {} },
+        },
+      }),
+      // Count LEADS (with search if applied)
+      prisma.parent.count({
+        where: {
+          ...(search ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search } },
+            ],
+          } : {}),
+          status: ParentStatus.LEAD,
+        },
+      }),
     ]);
 
     return {
@@ -381,6 +586,41 @@ export const parentService = {
       total,
       page,
       totalPages: Math.ceil(total / limit),
+      counts: {
+        all: allCount,
+        withBabies: withBabiesCount,
+        leads: leadsCount,
+      },
     };
+  },
+
+  // Delete parent (only if no babies, appointments, or purchases)
+  async delete(id: string): Promise<void> {
+    const parent = await prisma.parent.findUnique({
+      where: { id },
+      include: {
+        babies: { select: { id: true } },
+        appointments: { select: { id: true } },
+        packagePurchases: { select: { id: true } },
+      },
+    });
+
+    if (!parent) {
+      throw new Error("PARENT_NOT_FOUND");
+    }
+
+    if (parent.babies.length > 0) {
+      throw new Error("PARENT_HAS_BABIES");
+    }
+
+    if (parent.appointments.length > 0) {
+      throw new Error("PARENT_HAS_APPOINTMENTS");
+    }
+
+    if (parent.packagePurchases.length > 0) {
+      throw new Error("PARENT_HAS_PURCHASES");
+    }
+
+    await prisma.parent.delete({ where: { id } });
   },
 };

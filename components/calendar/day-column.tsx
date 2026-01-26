@@ -16,8 +16,9 @@ import { PartyPopper } from "lucide-react";
 
 interface Appointment {
   id: string;
-  babyName: string;
-  parentName?: string;
+  babyName: string; // Name of baby or parent (legacy name for compatibility)
+  clientType?: "BABY" | "PARENT"; // Type of client
+  parentName?: string; // Secondary parent name (for baby appointments)
   packageName?: string;
   startTime: string;
   endTime: string;
@@ -266,7 +267,8 @@ export function DayColumn({
                       >
                         <AppointmentCard
                           id={apt.id}
-                          babyName={apt.babyName}
+                          clientName={apt.babyName}
+                          clientType={apt.clientType}
                           parentName={apt.parentName}
                           packageName={apt.packageName}
                           time={`${apt.startTime}-${apt.endTime}`}

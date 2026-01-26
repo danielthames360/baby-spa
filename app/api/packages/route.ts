@@ -14,8 +14,20 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get("includeInactive") === "true";
+    const activeOnly = searchParams.get("active") === "true";
+    const serviceType = searchParams.get("serviceType") as "BABY" | "PARENT" | null;
 
-    const packages = await packageService.list(includeInactive);
+    let packages = await packageService.list(includeInactive);
+
+    // Filter by active only if requested
+    if (activeOnly) {
+      packages = packages.filter((pkg) => pkg.isActive);
+    }
+
+    // Filter by service type if specified
+    if (serviceType) {
+      packages = packages.filter((pkg) => pkg.serviceType === serviceType);
+    }
 
     return NextResponse.json({ packages });
   } catch (error) {
