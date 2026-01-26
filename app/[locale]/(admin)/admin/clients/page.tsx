@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Search,
   Plus,
@@ -26,7 +27,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BabyCard } from "@/components/babies/baby-card";
-import { CreateRegistrationLinkDialog } from "@/components/registration/create-link-dialog";
+
+// bundle-dynamic-imports: Lazy load dialog to reduce initial bundle
+const CreateRegistrationLinkDialog = dynamic(
+  () => import("@/components/registration/create-link-dialog").then((m) => m.CreateRegistrationLinkDialog),
+  { ssr: false }
+);
 
 interface BabyListItem {
   id: string;

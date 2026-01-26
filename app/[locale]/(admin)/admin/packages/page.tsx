@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   Package,
   Plus,
@@ -15,8 +16,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PackageFormDialog } from "@/components/packages/package-form-dialog";
-import { CategoryManagerDialog } from "@/components/categories/category-manager-dialog";
+
+// bundle-dynamic-imports: Lazy load dialogs to reduce initial bundle
+const PackageFormDialog = dynamic(
+  () => import("@/components/packages/package-form-dialog").then((m) => m.PackageFormDialog),
+  { ssr: false }
+);
+const CategoryManagerDialog = dynamic(
+  () => import("@/components/categories/category-manager-dialog").then((m) => m.CategoryManagerDialog),
+  { ssr: false }
+);
 
 interface Category {
   id: string;

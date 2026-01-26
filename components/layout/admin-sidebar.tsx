@@ -19,6 +19,7 @@ import {
   CreditCard,
   Receipt,
   ListTodo,
+  PartyPopper,
   ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const navigation = [
   { key: "packages", href: "/admin/packages", icon: Package },
   { key: "sessions", href: "/admin/sessions", icon: ClipboardList },
   { key: "waitlist", href: "/admin/waitlist", icon: ListTodo },
+  { key: "events", href: "/admin/events", icon: PartyPopper },
   { key: "notifications", href: "/admin/notifications", icon: Bell },
   { key: "inventory", href: "/admin/inventory", icon: Warehouse },
 ];

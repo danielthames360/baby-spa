@@ -133,6 +133,17 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
       INVALID_INSTALLMENT_AMOUNT: 400,
       PACKAGE_PAYMENT_NOT_FOUND: 404,
       CAN_ONLY_DELETE_LATEST_PAYMENT: 400,
+
+      // Event errors
+      EVENT_NOT_FOUND: 404,
+      PARTICIPANT_NOT_FOUND: 404,
+      EVENT_ALREADY_REGISTERED: 400,
+      EVENT_FULL: 400,
+      EVENT_NOT_EDITABLE: 400,
+      EVENT_NOT_DELETABLE: 400,
+      INVALID_EVENT_STATUS: 400,
+      INVALID_PARTICIPANT_TYPE: 400,
+      INVALID_DISCOUNT_TYPE: 400,
     };
 
     const statusCode = knownErrors[error.message];

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,12 @@ import {
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
-import { RegisterPaymentDialog } from "@/components/appointments/register-payment-dialog";
+
+// bundle-dynamic-imports: Lazy load payment dialog to reduce initial bundle
+const RegisterPaymentDialog = dynamic(
+  () => import("@/components/appointments/register-payment-dialog").then((m) => m.RegisterPaymentDialog),
+  { ssr: false }
+);
 
 interface BabySearchResult {
   id: string;

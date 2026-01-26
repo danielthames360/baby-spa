@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, Calendar, Loader2, CalendarDays, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,19 @@ interface ClosedDate {
   reason?: string;
 }
 
+interface Event {
+  id: string;
+  name: string;
+  type: "BABIES" | "PARENTS";
+  date: string | Date;
+  startTime: string;
+  endTime: string;
+  status: string;
+  blockedTherapists: number;
+  maxParticipants: number;
+  _count?: { participants: number };
+}
+
 type ViewMode = "week" | "day";
 
 // Get start of week (Monday)
@@ -115,6 +129,7 @@ function formatSingleDate(date: Date, dateLocale: string): string {
 export function CalendarView() {
   const t = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -135,6 +150,7 @@ export function CalendarView() {
     localStorage.setItem("calendar-view-mode", viewMode);
   }, [viewMode]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMoving, setIsMoving] = useState(false);
@@ -190,10 +206,27 @@ export function CalendarView() {
     }
   }, []);
 
+  // Fetch events for current week
+  const fetchEvents = useCallback(async () => {
+    try {
+      const weekEnd = getWeekEnd(currentWeekStart);
+      const response = await fetch(
+        `/api/events?dateFrom=${formatLocalDateString(currentWeekStart)}&dateTo=${formatLocalDateString(weekEnd)}&status=PUBLISHED,IN_PROGRESS`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data.events || []);
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  }, [currentWeekStart]);
+
   useEffect(() => {
     fetchAppointments();
     fetchClosedDates();
-  }, [fetchAppointments, fetchClosedDates]);
+    fetchEvents();
+  }, [fetchAppointments, fetchClosedDates, fetchEvents]);
 
   // Week navigation
   const goToPreviousWeek = () => {
@@ -257,6 +290,11 @@ export function CalendarView() {
     setViewMode("day");
   };
 
+  // Handle event click to navigate to event details
+  const handleEventClick = (eventId: string) => {
+    router.push(`/${locale}/admin/events/${eventId}`);
+  };
+
   // Handle drag and drop to move appointment
   const handleMoveAppointment = async (appointmentId: string, newTime: string, newDate?: Date) => {
     const appointment = appointments.find((a) => a.id === appointmentId);
@@ -305,6 +343,16 @@ export function CalendarView() {
       : `${aptDateValue.getFullYear()}-${String(aptDateValue.getMonth() + 1).padStart(2, "0")}-${String(aptDateValue.getDate()).padStart(2, "0")}`;
     const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
     return aptDateStr === selectedDateStr;
+  });
+
+  // Get events for selected date (day view)
+  const dayEvents = events.filter((event) => {
+    const eventDateValue = event.date;
+    const eventDateStr = typeof eventDateValue === "string"
+      ? eventDateValue.split("T")[0]
+      : `${eventDateValue.getFullYear()}-${String(eventDateValue.getMonth() + 1).padStart(2, "0")}-${String(eventDateValue.getDate()).padStart(2, "0")}`;
+    const selectedDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    return eventDateStr === selectedDateStr;
   });
 
   return (
@@ -428,17 +476,21 @@ export function CalendarView() {
           <WeekView
             weekStart={currentWeekStart}
             appointments={appointments}
+            events={events}
             closedDates={closedDates}
             onSlotClick={handleSlotClick}
             onAppointmentClick={handleAppointmentClick}
+            onEventClick={handleEventClick}
             onDayClick={handleDayClick}
           />
         ) : (
           <DayView
             date={selectedDate}
             appointments={dayAppointments}
+            events={dayEvents}
             onSlotClick={handleSlotClick}
             onAppointmentClick={handleAppointmentClick}
+            onEventClick={handleEventClick}
             onDrop={(appointmentId, time) => handleMoveAppointment(appointmentId, time)}
           />
         )}

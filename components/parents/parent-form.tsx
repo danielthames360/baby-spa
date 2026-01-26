@@ -19,10 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getStringValue } from "@/lib/form-utils";
 
 interface ParentFormProps<T extends FieldValues> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: UseFormReturn<T, any, any>;
+  form: UseFormReturn<T>;
   prefix?: string;
   isPrimary?: boolean;
   /** Hide relationship and isPrimary fields (when managed externally) */
@@ -42,13 +42,6 @@ export function ParentFormFields<T extends FieldValues>({ form, prefix = "", isP
       return t(`babyForm.errors.${error}`);
     }
     return error;
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getStringValue = (value: any): string => {
-    if (value === null || value === undefined) return "";
-    if (typeof value === "string") return value;
-    return String(value);
   };
 
   return (

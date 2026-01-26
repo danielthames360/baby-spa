@@ -77,8 +77,7 @@ export function calculateExactAge(birthDate: Date | string): AgeResult {
  */
 export function formatAge(
   age: AgeResult,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: (key: string, params?: any) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 ): string {
   // Less than a month - show days
   if (age.totalMonths < 1) {
@@ -119,8 +118,7 @@ export function formatAge(
  */
 export function formatAgeShort(
   age: AgeResult,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: (key: string, params?: any) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 ): string {
   // Less than a month - show days
   if (age.totalMonths < 1) {

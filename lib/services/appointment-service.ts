@@ -456,25 +456,45 @@ export const appointmentService = {
     endTime: string,
     excludeAppointmentId?: string,
     maxAppointments: number = MAX_APPOINTMENTS_FOR_STAFF
-  ): Promise<{ available: boolean; conflictingSlot?: string; occupiedCount?: number }> {
+  ): Promise<{ available: boolean; conflictingSlot?: string; occupiedCount?: number; reducedByEvent?: boolean }> {
     // Use centralized date utilities for consistent handling
     const startOfDay = getStartOfDayUTC(date);
     const endOfDay = getEndOfDayUTC(date);
 
-    // Get all appointments for this specific date
-    // Using a date range to handle any time component variations
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
+    // async-parallel: Run independent queries in parallel
+    const [appointments, overlappingEvents] = await Promise.all([
+      // Get all appointments for this specific date
+      // Using a date range to handle any time component variations
+      prisma.appointment.findMany({
+        where: {
+          date: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+          status: {
+            notIn: [AppointmentStatus.CANCELLED],
+          },
+          ...(excludeAppointmentId && { id: { not: excludeAppointmentId } }),
         },
-        status: {
-          notIn: [AppointmentStatus.CANCELLED],
+      }),
+      // Check for events that might block therapists during this time range
+      // Events with blockedTherapists > 0 reduce appointment capacity
+      prisma.event.findMany({
+        where: {
+          date: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+          status: { in: ["PUBLISHED", "IN_PROGRESS"] },
+          blockedTherapists: { gt: 0 },
         },
-        ...(excludeAppointmentId && { id: { not: excludeAppointmentId } }),
-      },
-    });
+        select: {
+          startTime: true,
+          endTime: true,
+          blockedTherapists: true,
+        },
+      }),
+    ]);
 
     // Convert times to minutes for easier calculation
     const toMinutes = (time: string) => {
@@ -488,13 +508,50 @@ export const appointmentService = {
       return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
     };
 
+    // Helper to get max blocked therapists for a specific slot time
+    const getBlockedTherapistsForSlot = (slotStart: number, slotEnd: number): number => {
+      let maxBlocked = 0;
+      for (const event of overlappingEvents) {
+        const eventStart = toMinutes(event.startTime);
+        const eventEnd = toMinutes(event.endTime);
+        // Event overlaps with slot if it starts before slot ends AND ends after slot starts
+        if (eventStart < slotEnd && eventEnd > slotStart) {
+          maxBlocked = Math.max(maxBlocked, event.blockedTherapists);
+        }
+      }
+      return maxBlocked;
+    };
+
     const startMins = toMinutes(startTime);
     const endMins = toMinutes(endTime);
+    const TOTAL_THERAPISTS = 4; // Baby Spa has 4 therapists
 
     // Check each 30-minute slot within the requested time range
     for (let slotStart = startMins; slotStart < endMins; slotStart += SLOT_DURATION_MINUTES) {
       const slotEnd = slotStart + SLOT_DURATION_MINUTES;
       const slotStartTime = fromMinutes(slotStart);
+
+      // Check if an event blocks therapists during this slot
+      const blockedTherapists = getBlockedTherapistsForSlot(slotStart, slotEnd);
+
+      // Calculate effective max appointments for this slot
+      // If event blocks therapists, reduce capacity proportionally
+      let effectiveMax = maxAppointments;
+      if (blockedTherapists > 0) {
+        const availableTherapists = TOTAL_THERAPISTS - blockedTherapists;
+        if (availableTherapists <= 0) {
+          // All therapists blocked - no appointments possible
+          return {
+            available: false,
+            conflictingSlot: slotStartTime,
+            occupiedCount: 0,
+            reducedByEvent: true,
+          };
+        }
+        // Reduce max appointments proportionally to available therapists
+        // If 2 of 4 therapists blocked, max goes from 5 to ~2-3
+        effectiveMax = Math.min(maxAppointments, availableTherapists);
+      }
 
       // Count how many appointments occupy this specific slot
       const occupiedCount = appointments.filter((apt) => {
@@ -505,11 +562,12 @@ export const appointmentService = {
       }).length;
 
       // If this slot is at capacity, the new appointment cannot be scheduled
-      if (occupiedCount >= maxAppointments) {
+      if (occupiedCount >= effectiveMax) {
         return {
           available: false,
           conflictingSlot: slotStartTime,
           occupiedCount,
+          reducedByEvent: blockedTherapists > 0,
         };
       }
     }

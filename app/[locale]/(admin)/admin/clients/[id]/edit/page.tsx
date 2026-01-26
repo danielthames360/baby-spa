@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,8 +78,7 @@ export default function EditBabyPage() {
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<BabyFormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(babySchema) as any,
+    resolver: zodResolver(babySchema) as Resolver<BabyFormValues>,
     defaultValues: {
       name: "",
       birthDate: undefined,

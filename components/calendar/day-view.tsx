@@ -9,7 +9,7 @@ import {
   SLOT_DURATION_MINUTES,
   timeToMinutes,
 } from "@/lib/constants/business-hours";
-import { Baby, Clock, User, Phone, GripVertical, Package } from "lucide-react";
+import { Baby, Clock, User, Phone, GripVertical, Package, PartyPopper, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Appointment {
@@ -44,11 +44,26 @@ interface Appointment {
   } | null;
 }
 
+interface Event {
+  id: string;
+  name: string;
+  type: "BABIES" | "PARENTS";
+  startTime: string;
+  endTime: string;
+  status: string;
+  blockedTherapists: number;
+  maxParticipants: number;
+  _count?: { participants: number };
+  participants?: unknown[]; // Support both _count and participants array
+}
+
 interface DayViewProps {
   date: Date;
   appointments: Appointment[];
+  events?: Event[];
   onSlotClick?: (date: Date, time: string) => void;
   onAppointmentClick?: (appointmentId: string) => void;
+  onEventClick?: (eventId: string) => void;
   onDragStart?: (appointmentId: string) => void;
   onDrop?: (appointmentId: string, time: string) => void;
 }
@@ -110,8 +125,10 @@ function formatTime(time: string): string {
 export function DayView({
   date,
   appointments,
+  events = [],
   onSlotClick,
   onAppointmentClick,
+  onEventClick,
   onDragStart,
   onDrop,
 }: DayViewProps) {
@@ -199,6 +216,42 @@ export function DayView({
           {appointments.filter((a) => a.status !== "CANCELLED").length} {t("calendar.appointmentsToday")}
         </p>
       </div>
+
+      {/* Events for this day */}
+      {events.length > 0 && (
+        <div className="space-y-2 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4">
+          {events.map((event) => (
+            <button
+              key={event.id}
+              onClick={() => onEventClick?.(event.id)}
+              className="flex w-full items-center gap-3 rounded-xl border border-purple-200 bg-white/80 p-3 text-left transition-all hover:shadow-md"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-100 to-pink-100">
+                <PartyPopper className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-800">{event.name}</p>
+                <p className="text-xs text-gray-500">
+                  {event.startTime} - {event.endTime} · {event._count?.participants ?? event.participants?.length ?? 0}/{event.maxParticipants} {t("events.participants.title").toLowerCase()}
+                </p>
+              </div>
+              {event.blockedTherapists > 0 && (
+                <div className={cn(
+                  "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
+                  event.blockedTherapists === 4
+                    ? "bg-rose-100 text-rose-700"
+                    : "bg-amber-100 text-amber-700"
+                )}>
+                  <AlertTriangle className="h-3 w-3" />
+                  {event.blockedTherapists === 4
+                    ? t("events.calendar.noAppointments")
+                    : t("events.calendar.therapistsAvailable", { count: 4 - event.blockedTherapists })}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Time slots */}
       <div className="flex-1 overflow-y-auto">

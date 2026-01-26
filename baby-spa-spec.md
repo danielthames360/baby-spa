@@ -283,6 +283,150 @@ model PackagePurchase {
 }
 ```
 
+
+### Parent (Padre/Madre)
+
+```prisma
+model Parent {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String?
+  phone               String
+  
+  // Para padres potenciales (LEADS de talleres prenatales)
+  status              ParentStatus  @default(ACTIVE)
+  pregnancyWeeks      Int?          // Semanas de embarazo al registrar
+  leadSource          String?       // "EVENTO_TALLER", "INSTAGRAM", "REFERIDO", etc.
+  leadNotes           String?       // Notas del lead
+  convertedAt         DateTime?     // Fecha cuando se convirtió en cliente
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relaciones
+  babies              Baby[]
+  eventParticipations EventParticipant[]
+}
+
+enum ParentStatus {
+  LEAD      // Padre potencial (embarazada sin bebé aún)
+  ACTIVE    // Cliente activo (tiene bebé registrado)
+  INACTIVE  // Cliente inactivo
+}
+```
+
+### Event (Evento Grupal)
+
+```prisma
+model Event {
+  id                  String        @id @default(cuid())
+  name                String
+  description         String?
+  eventType           EventType     // BABIES | PARENTS
+  
+  date                DateTime      @db.Date
+  startTime           String
+  endTime             String
+  
+  maxParticipants     Int?
+  minAgeMonths        Int?
+  maxAgeMonths        Int?
+  
+  basePrice           Decimal       @db.Decimal(10, 2)
+  
+  blocksCalendar      Boolean       @default(false)
+  blockedTherapists   Int           @default(0)  // 0-4
+  
+  status              EventStatus   @default(DRAFT)
+  notes               String?
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  createdById         String
+  
+  createdBy           User          @relation(fields: [createdById], references: [id])
+  participants        EventParticipant[]
+  productUsages       EventProductUsage[]
+}
+
+enum EventType {
+  BABIES    // Evento para bebés
+  PARENTS   // Taller para padres (leads)
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+```
+### EventParticipant (Inscripción a Evento)
+
+```prisma
+model EventParticipant {
+  id                  String            @id @default(cuid())
+  eventId             String
+  babyId              String?           // Si eventType = BABIES
+  parentId            String?           // Si eventType = PARENTS
+  
+  status              ParticipantStatus @default(REGISTERED)
+  
+  originalPrice       Decimal           @db.Decimal(10, 2)
+  discountType        DiscountType?
+  discountAmount      Decimal           @default(0)
+  discountReason      String?
+  finalPrice          Decimal           @db.Decimal(10, 2)
+  
+  paymentStatus       PaymentStatus     @default(PENDING)
+  paidAmount          Decimal           @default(0)
+  paymentMethod       PaymentMethod?
+  paidAt              DateTime?
+  
+  attended            Boolean?
+  notes               String?
+  
+  registeredAt        DateTime          @default(now())
+  registeredById      String
+  
+  event               Event             @relation(...)
+  baby                Baby?             @relation(...)
+  parent              Parent?           @relation(...)
+  registeredBy        User              @relation(...)
+  
+  @@unique([eventId, babyId])
+  @@unique([eventId, parentId])
+}
+
+enum ParticipantStatus {
+  REGISTERED
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+}
+
+enum DiscountType {
+  COURTESY      // 100% gratis
+  FIXED         // Monto fijo
+}
+```
+### EventProductUsage (Productos usados en evento)
+
+```prisma
+model EventProductUsage {
+  id          String    @id @default(cuid())
+  eventId     String
+  productId   String
+  quantity    Int
+  notes       String?
+  createdAt   DateTime  @default(now())
+  
+  event       Event     @relation(...)
+  product     Product   @relation(...)
+}
+```
+
 ### Appointment (Cita)
 ```prisma
 model Appointment {
@@ -967,16 +1111,56 @@ TRADUCCIONES:
 
 ### Módulo 4.1: Sistema de Eventos Grupales
 ```
-□ Modelo Event
-□ Modelo EventParticipant
-□ UI: Pantalla de eventos (lista/timeline)
-□ UI: Crear/editar evento
-□ UI: Detalle de evento con participantes
-□ UI: Agregar bebé al evento
-□ UI: Registrar pago por participante
-□ UI: Marcar asistencia
-□ Lógica: Bloquear día en calendario normal
-□ UI: Card de evento en calendario del staff
+MODELOS:
+□ Agregar campos LEAD a modelo Parent (status, pregnancyWeeks, leadSource, convertedAt)
+□ Crear modelo Event (EventType: BABIES | PARENTS)
+□ Crear modelo EventParticipant (con descuentos y pagos)
+□ Crear modelo EventProductUsage (inventario)
+□ Migración de base de datos
+
+UI - PÁGINAS:
+□ /admin/events - Lista de eventos con filtros
+□ /admin/events/new - Crear evento
+□ /admin/events/[id] - Detalle con participantes
+□ /admin/events/[id]/edit - Editar evento
+
+UI - COMPONENTES:
+□ EventList, EventCard, EventForm
+□ EventDetails con lista de participantes
+□ AddParticipantDialog (bebé registrado o nuevo cliente)
+□ AddParentLeadDialog (para talleres prenatales)
+□ MarkAttendanceDialog
+□ EventProductsSection
+□ EventCalendarCard (visualización en calendario)
+
+FUNCIONALIDADES:
+□ Inscribir bebés registrados
+□ Registrar nuevos clientes desde evento (no walk-in parcial)
+□ Inscribir padres LEAD en talleres prenatales
+□ Descuentos: Cortesía (100%) o Fijo (-X Bs)
+□ Pagos por participante
+□ Marcar asistencia (sin penalización no-show)
+□ Registrar productos usados del inventario
+□ Estados: DRAFT → PUBLISHED → IN_PROGRESS → COMPLETED
+
+BLOQUEO DE CALENDARIO:
+□ Configurable por evento: 0, 1, 2, 3, o 4 terapeutas bloqueados
+□ Mostrar evento en calendario con indicador visual
+□ Reducir capacidad de slots durante horario del evento
+□ Mostrar alerta de capacidad reducida
+
+TIPOS DE EVENTOS:
+□ BABIES - Hora de Juego, Babython, eventos masivos
+□ PARENTS - Talleres prenatales (captar leads)
+
+APIS:
+□ CRUD /api/events
+□ GET/POST /api/events/[id]/participants
+□ PUT /api/events/[id]/participants/[id] (pago, asistencia)
+□ GET/POST /api/events/[id]/products
+
+TRADUCCIONES:
+□ Sección "events" en es.json y pt-BR.json
 ```
 
 

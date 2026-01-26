@@ -70,6 +70,41 @@ enum MovementType {
   ADJUSTMENT
 }
 
+// ============================================================
+// ENUMS PARA EVENTOS GRUPALES
+// ============================================================
+
+enum ParentStatus {
+  LEAD      // Padre potencial (embarazada sin bebé)
+  ACTIVE    // Cliente activo
+  INACTIVE  // Cliente inactivo
+}
+
+enum EventType {
+  BABIES    // Eventos para bebés (Hora de Juego, Babython)
+  PARENTS   // Eventos para padres/leads (Talleres prenatales)
+}
+
+enum EventStatus {
+  DRAFT       // Borrador, no visible públicamente
+  PUBLISHED   // Publicado, abierto para inscripciones
+  IN_PROGRESS // En curso
+  COMPLETED   // Finalizado
+  CANCELLED   // Cancelado
+}
+
+enum ParticipantStatus {
+  REGISTERED  // Registrado/inscrito
+  CONFIRMED   // Confirmado (pagó o cortesía)
+  CANCELLED   // Canceló participación
+  NO_SHOW     // No asistió
+}
+
+enum DiscountType {
+  COURTESY  // Gratis (100% descuento)
+  FIXED     // Descuento fijo en monto
+}
+
 enum MuscleTone {
   LOW
   NORMAL
@@ -110,13 +145,15 @@ model User {
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
-  sessionsAsTherapist  Session[]
-  appointmentsAssigned Appointment[]
-  registrationLinks    RegistrationLink[]
-  babyNotes            BabyNote[]
-  staffPayments        StaffPayment[]
-  appointmentPayments  AppointmentPayment[]
-  packagePayments      PackagePayment[]
+  sessionsAsTherapist     Session[]
+  appointmentsAssigned    Appointment[]
+  registrationLinks       RegistrationLink[]
+  babyNotes               BabyNote[]
+  staffPayments           StaffPayment[]
+  appointmentPayments     AppointmentPayment[]
+  packagePayments         PackagePayment[]
+  createdEvents           Event[]
+  registeredParticipants  EventParticipant[]
 
   @@map("users")
 }
@@ -143,11 +180,19 @@ model Parent {
   requiresPrepayment Boolean   @default(false)
   lastNoShowDate     DateTime?
 
+  // Status y campos LEAD (para talleres prenatales)
+  status              ParentStatus  @default(ACTIVE)
+  pregnancyWeeks      Int?          // Semanas de embarazo (para LEADs)
+  leadSource          String?       // Fuente del lead (Instagram, Referido, etc.)
+  leadNotes           String?       // Notas sobre el lead
+  convertedAt         DateTime?     // Fecha en que pasó de LEAD a ACTIVE
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  babies        BabyParent[]
-  waitlistItems Waitlist[]
+  babies                BabyParent[]
+  waitlistItems         Waitlist[]
+  eventParticipations   EventParticipant[]
 
   @@map("parents")
 }
@@ -196,12 +241,13 @@ model Baby {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parents          BabyParent[]
-  packagePurchases PackagePurchase[]
-  appointments     Appointment[]
-  sessions         Session[]
-  notifications    NotificationLog[]
-  notes            BabyNote[]
+  parents               BabyParent[]
+  packagePurchases      PackagePurchase[]
+  appointments          Appointment[]
+  sessions              Session[]
+  notifications         NotificationLog[]
+  notes                 BabyNote[]
+  eventParticipations   EventParticipant[]
 
   @@map("babies")
 }
@@ -618,6 +664,7 @@ model Product {
 
   movements     InventoryMovement[]
   sessionUsages SessionProduct[]
+  eventUsages   EventProductUsage[]
 
   @@map("products")
 }
@@ -823,4 +870,117 @@ model SystemSettings {
   updatedAt             DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ============================================================
+// EVENTOS GRUPALES
+// ============================================================
+
+model Event {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  type        EventType   // BABIES o PARENTS
+
+  // Fecha y horario
+  date        DateTime    @db.Date
+  startTime   String      // HH:mm format
+  endTime     String      // HH:mm format
+
+  // Capacidad y bloqueo
+  maxParticipants    Int       @default(10)
+  blockedTherapists  Int       @default(0)  // 0-4: cuántos terapeutas se bloquean
+
+  // Rango de edad (solo para eventos tipo BABIES)
+  minAgeMonths       Int?      // Edad mínima en meses
+  maxAgeMonths       Int?      // Edad máxima en meses
+
+  // Precio y descuentos
+  basePrice          Decimal   @db.Decimal(10, 2)
+
+  status      EventStatus @default(DRAFT)
+
+  // Notas
+  internalNotes  String?   // Solo visible para staff
+  externalNotes  String?   // Visible para padres (descripción pública)
+
+  // Auditoría
+  createdById String
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  participants  EventParticipant[]
+  productUsages EventProductUsage[]
+
+  @@map("events")
+}
+
+// ============================================================
+// PARTICIPANTES DE EVENTOS
+// ============================================================
+
+model EventParticipant {
+  id        String            @id @default(cuid())
+  eventId   String
+  event     Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Participante: bebé O padre (mutuamente excluyentes según tipo evento)
+  babyId    String?
+  baby      Baby?             @relation(fields: [babyId], references: [id])
+  parentId  String?
+  parent    Parent?           @relation(fields: [parentId], references: [id])
+
+  status    ParticipantStatus @default(REGISTERED)
+
+  // Descuentos individuales por participante
+  discountType    DiscountType?   // COURTESY o FIXED
+  discountAmount  Decimal?        @db.Decimal(10, 2)  // Monto si es FIXED
+  discountReason  String?         // Razón del descuento
+
+  // Pago
+  amountDue       Decimal         @db.Decimal(10, 2)  // Monto a pagar (precio - descuento)
+  amountPaid      Decimal         @default(0) @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod?
+  paymentReference String?
+  paidAt          DateTime?
+
+  // Asistencia
+  attended        Boolean?        // null = no marcado, true = asistió, false = no asistió
+  attendedAt      DateTime?
+
+  // Notas
+  notes           String?
+
+  // Auditoría
+  registeredById  String
+  registeredBy    User            @relation(fields: [registeredById], references: [id])
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([eventId, babyId])
+  @@unique([eventId, parentId])
+  @@map("event_participants")
+}
+
+// ============================================================
+// PRODUCTOS USADOS EN EVENTOS
+// ============================================================
+
+model EventProductUsage {
+  id          String    @id @default(cuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+
+  quantity    Int       @default(1)
+  unitPrice   Decimal   @db.Decimal(10, 2)
+  notes       String?
+
+  createdAt   DateTime  @default(now())
+
+  @@map("event_product_usages")
 }

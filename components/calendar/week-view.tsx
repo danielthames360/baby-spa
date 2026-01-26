@@ -41,12 +41,28 @@ interface ClosedDate {
   reason?: string;
 }
 
+interface Event {
+  id: string;
+  name: string;
+  type: "BABIES" | "PARENTS";
+  date: string | Date;
+  startTime: string;
+  endTime: string;
+  status: string;
+  blockedTherapists: number;
+  maxParticipants: number;
+  _count?: { participants: number };
+  participants?: unknown[]; // Support both _count and participants array
+}
+
 interface WeekViewProps {
   weekStart: Date;
   appointments: Appointment[];
+  events?: Event[];
   closedDates: ClosedDate[];
   onSlotClick?: (date: Date, time: string) => void;
   onAppointmentClick?: (appointmentId: string) => void;
+  onEventClick?: (eventId: string) => void;
   onDayClick?: (date: Date) => void;
 }
 
@@ -86,9 +102,11 @@ function getAllTimeSlots(): string[] {
 export function WeekView({
   weekStart,
   appointments,
+  events = [],
   closedDates,
   onSlotClick,
   onAppointmentClick,
+  onEventClick,
   onDayClick,
 }: WeekViewProps) {
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
@@ -144,6 +162,18 @@ export function WeekView({
     }));
   };
 
+  // Get events for a specific date (using local date comparison)
+  const getEventsForDate = (date: Date): Event[] => {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return events.filter((event) => {
+      const eventDateValue = event.date;
+      const eventDateStr = typeof eventDateValue === "string"
+        ? eventDateValue.split("T")[0]
+        : `${eventDateValue.getFullYear()}-${String(eventDateValue.getMonth() + 1).padStart(2, "0")}-${String(eventDateValue.getDate()).padStart(2, "0")}`;
+      return eventDateStr === dateStr;
+    });
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-lg shadow-teal-500/10 backdrop-blur-md">
       <div className="flex flex-1 overflow-hidden">
@@ -171,6 +201,7 @@ export function WeekView({
             const dayOfWeek = date.getDay();
             const { closed, reason } = isDateClosed(date);
             const dayAppointments = getAppointmentsForDate(date);
+            const dayEvents = getEventsForDate(date);
             const timeSlots = getTimeSlotsForDay(dayOfWeek);
             const isToday = date.toDateString() === today.toDateString();
 
@@ -191,11 +222,13 @@ export function WeekView({
                 date={date}
                 timeSlots={timeSlots}
                 appointments={transformedAppointments}
+                events={dayEvents}
                 isClosed={closed}
                 closedReason={reason}
                 isToday={isToday}
                 onSlotClick={(time) => onSlotClick?.(date, time)}
                 onAppointmentClick={onAppointmentClick}
+                onEventClick={onEventClick}
                 onDayClick={() => onDayClick?.(date)}
               />
             );

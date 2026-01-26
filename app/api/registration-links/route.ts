@@ -109,8 +109,10 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
     // Build where clause based on status
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
+    const where: {
+      isUsed?: boolean;
+      expiresAt?: { gte?: Date; lt?: Date };
+    } = {};
 
     if (status === "used") {
       where.isUsed = true;

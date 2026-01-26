@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./time-slot";
 import { AppointmentCard } from "./appointment-card";
+import { EventCalendarCard } from "@/components/events/event-calendar-card";
 import {
   SLOT_HEIGHT_PX,
   SLOT_DURATION_MINUTES,
@@ -11,6 +12,7 @@ import {
   timeToMinutes,
   getAppointmentHeight,
 } from "@/lib/constants/business-hours";
+import { PartyPopper } from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -28,15 +30,30 @@ interface TimeSlotData {
   total: number;
 }
 
+interface Event {
+  id: string;
+  name: string;
+  type: "BABIES" | "PARENTS";
+  startTime: string;
+  endTime: string;
+  status: string;
+  blockedTherapists: number;
+  maxParticipants: number;
+  _count?: { participants: number };
+  participants?: unknown[]; // Support both _count and participants array
+}
+
 interface DayColumnProps {
   date: Date;
   timeSlots: TimeSlotData[];
   appointments: Appointment[];
+  events?: Event[];
   isClosed?: boolean;
   closedReason?: string;
   isToday?: boolean;
   onSlotClick?: (time: string) => void;
   onAppointmentClick?: (appointmentId: string) => void;
+  onEventClick?: (eventId: string) => void;
   onDayClick?: () => void;
 }
 
@@ -49,11 +66,13 @@ export function DayColumn({
   date,
   timeSlots,
   appointments,
+  events = [],
   isClosed = false,
   closedReason,
   isToday = false,
   onSlotClick,
   onAppointmentClick,
+  onEventClick,
   onDayClick,
 }: DayColumnProps) {
   const t = useTranslations();
@@ -97,16 +116,24 @@ export function DayColumn({
         <span className="text-xs font-medium uppercase text-gray-500">
           {dayName}
         </span>
-        <span
-          className={cn(
-            "mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
-            isToday
-              ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white"
-              : "text-gray-700"
+        <div className="mt-1 flex items-center gap-1">
+          <span
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+              isToday
+                ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white"
+                : "text-gray-700"
+            )}
+          >
+            {dayNumber}
+          </span>
+          {/* Event indicator */}
+          {events.length > 0 && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+              <PartyPopper className="h-3 w-3" />
+            </span>
           )}
-        >
-          {dayNumber}
-        </span>
+        </div>
       </button>
 
       {/* Day content */}
@@ -196,17 +223,34 @@ export function DayColumn({
                   const maxLaneUsed = Math.max(0, ...Array.from(appointmentLanes.values())) + 1;
                   const effectiveLanes = Math.max(1, maxLaneUsed);
 
-                  return sortedAppointments.map((apt) => {
+                  // Check if appointment overlaps with any event
+                  const appointmentOverlapsEvent = (aptStart: number, aptEnd: number): boolean => {
+                    return events.some((event) => {
+                      const eventStart = timeToMinutes(event.startTime.slice(0, 5));
+                      const eventEnd = timeToMinutes(event.endTime.slice(0, 5));
+                      return aptStart < eventEnd && aptEnd > eventStart;
+                    });
+                  };
+
+                  // Render appointments
+                  const appointmentElements = sortedAppointments.map((apt) => {
                     const startMinutes = timeToMinutes(apt.startTime);
+                    const endMinutes = timeToMinutes(apt.endTime);
                     const topPosition =
                       ((startMinutes - firstSlotMinutes) / SLOT_DURATION_MINUTES) *
                       SLOT_HEIGHT_PX;
 
                     const height = getAppointmentHeight(apt.startTime, apt.endTime);
                     const lane = appointmentLanes.get(apt.id) || 0;
+
+                    // If appointment overlaps with event, shift to the right (35% offset) and reduce width
+                    const overlapsEvent = appointmentOverlapsEvent(startMinutes, endMinutes);
+                    const availableWidth = overlapsEvent ? 65 : 100; // 65% if event exists, 100% otherwise
+                    const baseOffset = overlapsEvent ? 35 : 0; // Start at 35% if event exists
+
                     // Use effectiveLanes for width calculation so cards expand when fewer appointments
-                    const width = `${100 / effectiveLanes}%`;
-                    const left = `${(100 / effectiveLanes) * lane}%`;
+                    const width = `${availableWidth / effectiveLanes}%`;
+                    const left = `${baseOffset + (availableWidth / effectiveLanes) * lane}%`;
 
                     return (
                       <div
@@ -217,6 +261,7 @@ export function DayColumn({
                           height: `${height}px`,
                           width,
                           left,
+                          zIndex: 10, // Appointments on top for click handling
                         }}
                       >
                         <AppointmentCard
@@ -233,6 +278,45 @@ export function DayColumn({
                       </div>
                     );
                   });
+
+                  // Render events (left portion, leaving room for appointments)
+                  // Events take 35% width on the left, appointments use remaining 65%
+                  const eventElements = events.map((event, eventIndex) => {
+                    const eventStartMinutes = timeToMinutes(event.startTime.slice(0, 5));
+                    const topPosition =
+                      ((eventStartMinutes - firstSlotMinutes) / SLOT_DURATION_MINUTES) *
+                      SLOT_HEIGHT_PX;
+                    const height = getAppointmentHeight(
+                      event.startTime.slice(0, 5),
+                      event.endTime.slice(0, 5)
+                    );
+
+                    // If multiple events overlap, stack them horizontally within the 35% area
+                    const eventWidth = events.length > 1 ? 35 / events.length : 35;
+                    const eventLeft = events.length > 1 ? eventWidth * eventIndex : 0;
+
+                    return (
+                      <div
+                        key={`event-${event.id}`}
+                        className="pointer-events-auto absolute p-0.5"
+                        style={{
+                          top: `${topPosition}px`,
+                          height: `${height}px`,
+                          width: `${eventWidth}%`,
+                          left: `${eventLeft}%`,
+                          zIndex: 5, // Below appointments for click handling
+                        }}
+                      >
+                        <EventCalendarCard
+                          event={event}
+                          onClick={() => onEventClick?.(event.id)}
+                          fillHeight
+                        />
+                      </div>
+                    );
+                  });
+
+                  return [...eventElements, ...appointmentElements];
                 })()}
               </div>
             )}

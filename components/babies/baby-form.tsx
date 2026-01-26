@@ -19,10 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getStringValue, getDateValue } from "@/lib/form-utils";
 
 interface BabyFormProps<T extends FieldValues> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: UseFormReturn<T, any, any>;
+  form: UseFormReturn<T>;
   prefix?: string;
 }
 
@@ -38,23 +38,6 @@ export function BabyFormFields<T extends FieldValues>({ form, prefix = "" }: Bab
       return t(`babyForm.errors.${error}`);
     }
     return error;
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getStringValue = (value: any): string => {
-    if (value === null || value === undefined) return "";
-    if (typeof value === "string") return value;
-    return String(value);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getDateValue = (value: any): string => {
-    if (!value) return "";
-    try {
-      return new Date(value as string | number | Date).toISOString().split("T")[0];
-    } catch {
-      return "";
-    }
   };
 
   return (

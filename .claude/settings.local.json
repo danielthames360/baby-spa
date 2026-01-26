@@ -67,7 +67,13 @@
       "mcp__prisma__migrate-status",
       "Bash(npx prisma:*)",
       "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"si\" npx prisma migrate reset:*)",
-      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"si\" npx prisma db push:*)"
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"si\" npx prisma db push:*)",
+      "Bash(while read f)",
+      "Bash(do if ! grep -q \"dynamic\\\\|next/dynamic\" \"$f\")",
+      "Bash(then echo \"$f\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(git checkout:*)"
     ]
   }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,7 @@ export default function EditParentPage() {
   const [parentName, setParentName] = useState("");
 
   const form = useForm<ParentFormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(updateParentSchema) as any,
+    resolver: zodResolver(updateParentSchema) as Resolver<ParentFormValues>,
     defaultValues: {
       name: "",
       phone: "",

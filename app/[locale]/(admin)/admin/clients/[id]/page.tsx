@@ -50,12 +50,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import dynamic from "next/dynamic";
 import { calculateExactAge, formatAge } from "@/lib/utils/age";
-import { AddParentDialog } from "@/components/babies/add-parent-dialog";
 import { SessionHistoryCard } from "@/components/sessions/session-history-card";
 import { PackageInstallmentsCard } from "@/components/packages/package-installments-card";
 import { Prisma } from "@prisma/client";
 
-// Dynamic imports for heavy dialog components (reduces initial bundle size)
+// bundle-dynamic-imports: Lazy load all dialog components to reduce initial bundle
+const AddParentDialog = dynamic(
+  () => import("@/components/babies/add-parent-dialog").then((mod) => mod.AddParentDialog),
+  { ssr: false }
+);
 const SellPackageDialog = dynamic(
   () => import("@/components/packages/sell-package-dialog").then((mod) => mod.SellPackageDialog),
   { ssr: false }

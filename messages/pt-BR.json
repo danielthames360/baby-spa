@@ -110,6 +110,7 @@
     "staffPayments": "Pagamentos Funcionários",
     "expenses": "Despesas",
     "waitlist": "Lista de Espera",
+    "events": "Eventos",
     "profile": "Meu Perfil",
     "help": "Ajuda",
     "history": "Histórico"
@@ -858,7 +859,8 @@
       "createNew": "Criar novo pai/mãe",
       "found": "Pai/mãe encontrado",
       "selectExisting": "Selecionar existente",
-      "orCreateNew": "ou criar um novo"
+      "orCreateNew": "ou criar um novo",
+      "newParentInfo": "Insira os dados do pai/mãe para criar um novo cliente."
     },
     "parentForm": {
       "title": "Dados do Pai/Mãe",
@@ -1411,5 +1413,265 @@
     "thursday": "Quinta",
     "friday": "Sexta",
     "saturday": "Sábado"
+  },
+
+  "events": {
+    "title": "Eventos",
+    "subtitle": "Gerencie eventos e workshops",
+    "newEvent": "Novo Evento",
+    "editEvent": "Editar Evento",
+    "eventDetails": "Detalhes do Evento",
+    "upcoming": "Próximos",
+    "inProgress": "Em Andamento",
+    "in_progress": "Em Andamento",
+    "past": "Passados",
+    "all": "Todos",
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "completed": "Concluído",
+    "cancelled": "Cancelado",
+
+    "types": {
+      "BABIES": "Bebês",
+      "PARENTS": "Pais/Leads"
+    },
+
+    "typeLabels": {
+      "BABIES": "Evento para Bebês",
+      "PARENTS": "Workshop para Pais"
+    },
+
+    "typeDescriptions": {
+      "BABIES": "Hora de Brincar, Babython, etc.",
+      "PARENTS": "Workshops pré-natais, palestras informativas"
+    },
+
+    "form": {
+      "basicInfo": "Informações Básicas",
+      "name": "Nome do evento",
+      "namePlaceholder": "Ex: Hora de Brincar - Janeiro",
+      "description": "Descrição",
+      "descriptionPlaceholder": "Breve descrição do evento",
+      "type": "Tipo de evento",
+      "selectType": "Selecionar tipo",
+
+      "dateTime": "Data e Horário",
+      "date": "Data",
+      "startTime": "Hora de início",
+      "endTime": "Hora de término",
+
+      "capacity": "Capacidade",
+      "maxParticipants": "Máximo de participantes",
+      "blockedTherapists": "Terapeutas bloqueados",
+      "blockedTherapistsHelp": "Quantos terapeutas estarão ocupados durante o evento",
+      "totalBlock": "Bloqueio total",
+      "allTherapists": "Todos",
+      "noBlockedTherapists": "Nenhum",
+
+      "ageRange": "Faixa etária",
+      "minAge": "Idade mínima",
+      "maxAge": "Idade máxima",
+      "months": "meses",
+      "ageRangeHelp": "Um alerta será exibido ao adicionar bebês fora desta faixa",
+
+      "pricing": "Preço",
+      "basePrice": "Preço base",
+      "pricePerParticipant": "Preço por participante",
+
+      "notes": "Notas",
+      "internalNotes": "Notas internas",
+      "internalNotesHelp": "Visível apenas para a equipe",
+      "externalNotes": "Descrição pública",
+      "externalNotesHelp": "Visível para os pais",
+
+      "saveDraft": "Salvar Rascunho",
+      "saveAndPublish": "Salvar e Publicar",
+      "publish": "Publicar",
+      "startEvent": "Iniciar Evento",
+      "completeEvent": "Finalizar Evento",
+      "cancelEvent": "Cancelar Evento",
+      "viewEvent": "Ver Evento"
+    },
+
+    "participants": {
+      "title": "Participantes",
+      "addParticipant": "Adicionar Participante",
+      "addBaby": "Adicionar Bebê",
+      "addParentLead": "Adicionar Pai/Lead",
+      "searchBaby": "Buscar bebê...",
+      "searchParent": "Buscar pai...",
+      "registerNewBaby": "Registrar Novo Bebê",
+      "registerNewLead": "Registrar Novo Lead",
+      "registerNew": "Registrar Novo Cliente",
+      "firstTimeVisit": "Primeira vez que vem?",
+      "registerAndSelect": "Registrar e Selecionar",
+      "babyDataInfo": "Insira os dados do bebê para completar o registro.",
+      "noParticipants": "Nenhum participante registrado",
+      "participant": "Participante",
+      "status": "Status",
+      "payment": "Pagamento",
+      "attendance": "Presença",
+      "remove": "Remover",
+      "confirmRemove": "Remover este participante do evento?",
+
+      "statuses": {
+        "REGISTERED": "Registrado",
+        "CONFIRMED": "Confirmado",
+        "CANCELLED": "Cancelado",
+        "NO_SHOW": "Não compareceu"
+      }
+    },
+
+    "discount": {
+      "title": "Desconto",
+      "type": "Tipo de desconto",
+      "noDiscount": "Sem desconto",
+      "courtesy": "Cortesia (Grátis)",
+      "fixed": "Desconto fixo",
+      "amount": "Valor do desconto",
+      "reason": "Motivo do desconto",
+      "reasonPlaceholder": "Ex: Cliente VIP, Promoção especial"
+    },
+
+    "payment": {
+      "registerPayment": "Registrar Pagamento",
+      "amount": "Valor",
+      "amountDue": "A pagar",
+      "amountPaid": "Pago",
+      "pending": "Pendente",
+      "paid": "Pago",
+      "method": "Método de pagamento",
+      "reference": "Referência/Comprovante",
+      "referencePlaceholder": "Nº da transferência, comprovante...",
+      "free": "Grátis",
+      "alreadyPaid": "Já pago",
+      "payLater": "Pagar Depois",
+      "registerNow": "Registrar Pagamento",
+      "register": "Registrar Pagamento",
+      "methods": {
+        "cash": "Dinheiro",
+        "transfer": "Transferência",
+        "card": "Cartão",
+        "other": "Outro"
+      }
+    },
+
+    "attendance": {
+      "markAttendance": "Marcar Presença",
+      "bulkAttendance": "Presença em Massa",
+      "attended": "Compareceu",
+      "notAttended": "Não compareceu",
+      "notMarked": "Não marcado",
+      "markAll": "Marcar todos como presentes",
+      "markAllAttended": "Todos presentes",
+      "markAllAbsent": "Todos ausentes",
+      "summary": "Resumo",
+      "save": "Salvar",
+      "saveAttendance": "Salvar Presença"
+    },
+
+    "products": {
+      "title": "Produtos Utilizados",
+      "add": "Adicionar",
+      "added": "Produto adicionado",
+      "removed": "Produto removido",
+      "addProduct": "Adicionar Produto",
+      "selectProduct": "Selecionar produto",
+      "quantity": "Quantidade",
+      "total": "Total",
+      "noProducts": "Nenhum produto registrado",
+      "unitPrice": "Preço unitário",
+      "subtotal": "Subtotal"
+    },
+
+    "sales": {
+      "sellProduct": "Vender Produto",
+      "viewPurchases": "Ver Compras",
+      "purchasedProducts": "Produtos Comprados",
+      "noPurchases": "Nenhuma compra registrada",
+      "selectedProducts": "Produtos Selecionados",
+      "completeSale": "Completar Venda",
+      "saleCompleted": "Venda concluída"
+    },
+
+    "summary": {
+      "title": "Resumo",
+      "totalParticipants": "Total de participantes",
+      "confirmed": "Confirmados",
+      "pending": "Pendentes",
+      "totalExpected": "Total esperado",
+      "totalCollected": "Total arrecadado",
+      "pendingCollection": "Pendente de cobrança",
+      "attendanceRate": "Taxa de presença"
+    },
+
+    "calendar": {
+      "capacityReduced": "Capacidade reduzida",
+      "therapistsAvailable": "{count} terapeutas disponíveis",
+      "noAppointments": "Não é possível agendar consultas durante o evento",
+      "eventInProgress": "Evento em andamento"
+    },
+
+    "lead": {
+      "title": "Novo Lead",
+      "name": "Nome completo",
+      "phone": "Telefone",
+      "email": "E-mail",
+      "pregnancyWeeks": "Semanas de gravidez",
+      "source": "Como nos conheceu?",
+      "sourcePlaceholder": "Ex: Instagram, Indicação, Google",
+      "notes": "Notas",
+      "notesPlaceholder": "Informações adicionais sobre o lead"
+    },
+
+    "messages": {
+      "created": "Evento criado com sucesso",
+      "updated": "Evento atualizado",
+      "deleted": "Evento excluído",
+      "published": "Evento publicado",
+      "started": "Evento iniciado",
+      "completed": "Evento finalizado",
+      "cancelled": "Evento cancelado",
+      "participantAdded": "Participante adicionado",
+      "participantRemoved": "Participante removido",
+      "paymentRegistered": "Pagamento registrado",
+      "attendanceSaved": "Presença salva",
+      "attendanceMarked": "Presença registrada com sucesso",
+      "productAdded": "Produto adicionado",
+      "productRemoved": "Produto removido",
+      "clientRegistered": "Cliente registrado com sucesso"
+    },
+
+    "errors": {
+      "NAME_REQUIRED": "O nome é obrigatório",
+      "NAME_TOO_SHORT": "O nome é muito curto",
+      "INVALID_DATE_FORMAT": "Formato de data inválido",
+      "INVALID_TIME_FORMAT": "Formato de hora inválido",
+      "EVENT_NOT_FOUND": "Evento não encontrado",
+      "EVENT_FULL": "O evento está lotado",
+      "EVENT_ALREADY_REGISTERED": "Já está registrado neste evento",
+      "EVENT_NOT_EDITABLE": "O evento não pode ser editado",
+      "EVENT_NOT_DELETABLE": "Apenas eventos em rascunho podem ser excluídos",
+      "INVALID_EVENT_STATUS": "Mudança de status não permitida",
+      "INVALID_PARTICIPANT_TYPE": "Tipo de participante inválido para este evento",
+      "PARTICIPANT_NOT_FOUND": "Participante não encontrado",
+      "INSUFFICIENT_STOCK": "Estoque insuficiente",
+      "EVENT_NOT_IN_PROGRESS": "O evento não está em andamento"
+    },
+
+    "empty": {
+      "title": "Nenhum evento",
+      "description": "Crie seu primeiro evento para começar",
+      "filtered": "Nenhum evento corresponde aos filtros"
+    },
+
+    "confirmations": {
+      "delete": "Excluir este evento?",
+      "deleteDescription": "Esta ação não pode ser desfeita",
+      "cancel": "Cancelar este evento?",
+      "cancelDescription": "Os participantes serão notificados",
+      "complete": "Finalizar este evento?",
+      "completeDescription": "Será marcado como concluído"
+    }
   }
 }

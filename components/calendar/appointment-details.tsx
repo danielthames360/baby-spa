@@ -32,14 +32,26 @@ import {
   AlertDialogDestructiveAction,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { StartSessionDialog } from "@/components/sessions/start-session-dialog";
-import { CompleteSessionDialog } from "@/components/sessions/complete-session-dialog";
-import { ViewBabyDialog } from "@/components/sessions/view-baby-dialog";
-import { RegisterPaymentDialog } from "@/components/appointments/register-payment-dialog";
 
-// Dynamic import for installment payment dialog
+// bundle-dynamic-imports: Lazy load all dialog components to reduce initial bundle
+const StartSessionDialog = dynamic(
+  () => import("@/components/sessions/start-session-dialog").then((m) => m.StartSessionDialog),
+  { ssr: false }
+);
+const CompleteSessionDialog = dynamic(
+  () => import("@/components/sessions/complete-session-dialog").then((m) => m.CompleteSessionDialog),
+  { ssr: false }
+);
+const ViewBabyDialog = dynamic(
+  () => import("@/components/sessions/view-baby-dialog").then((m) => m.ViewBabyDialog),
+  { ssr: false }
+);
+const RegisterPaymentDialog = dynamic(
+  () => import("@/components/appointments/register-payment-dialog").then((m) => m.RegisterPaymentDialog),
+  { ssr: false }
+);
 const RegisterInstallmentPaymentDialog = dynamic(
-  () => import("@/components/packages/register-installment-payment-dialog").then(mod => mod.RegisterInstallmentPaymentDialog),
+  () => import("@/components/packages/register-installment-payment-dialog").then((m) => m.RegisterInstallmentPaymentDialog),
   { ssr: false }
 );
 import {

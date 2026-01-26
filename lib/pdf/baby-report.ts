@@ -1,6 +1,13 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Type augmentation for jspdf-autotable's lastAutoTable property
+interface JsPDFWithAutoTable extends jsPDF {
+  lastAutoTable: {
+    finalY: number;
+  };
+}
+
 interface SessionEvaluation {
   sessionNumber: number;
   date: string;
@@ -272,8 +279,7 @@ export function generateBabyReport(data: BabyReportData): jsPDF {
     });
 
     // Get the final Y position after the table
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    yPos = (doc as any).lastAutoTable.finalY + 15;
+    yPos = (doc as JsPDFWithAutoTable).lastAutoTable.finalY + 15;
 
     // Detailed evaluations
     data.sessions.forEach((session, index) => {

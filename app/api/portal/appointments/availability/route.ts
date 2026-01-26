@@ -86,20 +86,34 @@ export async function GET(request: Request) {
     // Afternoon slots
     addSlots(businessHours.afternoonOpen, businessHours.afternoonClose);
 
-    // Get existing appointments for this date (include endTime for overlap check)
+    // Get existing appointments and events in parallel
     // PENDING_PAYMENT appointments don't block slots
-    const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        date,
-        status: {
-          in: ["SCHEDULED", "IN_PROGRESS"],
+    const [existingAppointments, events] = await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          date,
+          status: {
+            in: ["SCHEDULED", "IN_PROGRESS"],
+          },
         },
-      },
-      select: {
-        startTime: true,
-        endTime: true,
-      },
-    });
+        select: {
+          startTime: true,
+          endTime: true,
+        },
+      }),
+      prisma.event.findMany({
+        where: {
+          date,
+          status: "PUBLISHED",
+          blockedTherapists: { gt: 0 },
+        },
+        select: {
+          startTime: true,
+          endTime: true,
+          blockedTherapists: true,
+        },
+      }),
+    ]);
 
     // Helper: convert time string to minutes
     const toMinutes = (time: string) => {
@@ -123,10 +137,24 @@ export async function GET(request: Request) {
         return aptStart < slotEnd && aptEnd > slotStart;
       }).length;
 
+      // Calculate max blocked therapists from overlapping events
+      const maxBlockedByEvents = events.reduce((max, event) => {
+        const eventStart = toMinutes(event.startTime);
+        const eventEnd = toMinutes(event.endTime);
+        // Check if event overlaps with this slot
+        if (eventStart < slotEnd && eventEnd > slotStart) {
+          return Math.max(max, event.blockedTherapists);
+        }
+        return max;
+      }, 0);
+
+      // Reduce capacity based on events - if event blocks >= 2, slot is unavailable for parents
+      const effectiveCapacity = Math.max(0, MAX_SLOTS_PER_HOUR - maxBlockedByEvents);
+
       return {
         time: slot,
-        available: overlappingCount < MAX_SLOTS_PER_HOUR,
-        remaining: Math.max(0, MAX_SLOTS_PER_HOUR - overlappingCount),
+        available: overlappingCount < effectiveCapacity,
+        remaining: Math.max(0, effectiveCapacity - overlappingCount),
       };
     });
 
