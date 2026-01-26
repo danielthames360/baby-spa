@@ -244,6 +244,62 @@ prisma.appointment.findMany({
 "
 ```
 
+
+### Puntos importantes:
+- **Siempre** usar `require('dotenv').config()` para cargar variables de entorno
+- **Siempre** usar `@prisma/adapter-pg` (PrismaPg) - el proyecto usa PostgreSQL adapter
+- **Escapar** el `$` en `prisma.$disconnect()` como `prisma.\$disconnect()` en bash
+- Consultar `prisma/schema.prisma` para ver los modelos y relaciones disponibles
+
+### Modelos principales:
+- `appointment` - Citas (include: baby, selectedPackage, therapist, session, packagePurchase, payments)
+- `baby` - Bebés (include: parents, appointments, packagePurchases)
+- `parent` - Padres (include: babies)
+- `package` - Paquetes disponibles
+- `packagePurchase` - Compras de paquetes
+- `session` - Sesiones de terapia
+- `user` - Usuarios del sistema (staff)
+
+### Ejemplo: Ver últimas citas con formato legible
+```bash
+cd D:/projects/next/baby-spa && node -e "
+require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
+
+const connectionString = process.env.DATABASE_URL;
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+prisma.appointment.findMany({
+  orderBy: { createdAt: 'desc' },
+  take: 5,
+  select: {
+    id: true,
+    date: true,
+    startTime: true,
+    endTime: true,
+    status: true,
+    createdAt: true,
+    baby: { select: { name: true } }
+  }
+}).then(data => {
+  console.log('=== Últimas 5 citas ===');
+  data.forEach(apt => {
+    console.log('---');
+    console.log('Baby:', apt.baby.name);
+    console.log('Date stored:', apt.date.toISOString());
+    console.log('Time:', apt.startTime, '-', apt.endTime);
+    console.log('Status:', apt.status);
+  });
+}).catch(err => {
+  console.error('Error:', err.message);
+}).finally(() => {
+  prisma.\$disconnect();
+});
+"
+```
+
 **Modelos principales:** `appointment`, `baby`, `parent`, `package`, `packagePurchase`, `session`, `event`, `eventParticipant`
 
 ---
