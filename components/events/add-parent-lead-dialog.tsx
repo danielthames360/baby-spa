@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Search, UserRound, Loader2, UserPlus, Phone, Mail } from "lucide-react";
+import { Search, UserRound, Loader2, UserPlus, Phone, Mail, Check, CreditCard } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { RegisterPaymentDialog } from "./register-payment-dialog";
 
 interface ParentResult {
   id: string;
@@ -65,6 +66,14 @@ export function AddParentLeadDialog({
   const [pregnancyWeeks, setPregnancyWeeks] = useState("");
   const [leadSource, setLeadSource] = useState("");
   const [leadNotes, setLeadNotes] = useState("");
+
+  // State for success + register payment flow
+  const [addedParticipant, setAddedParticipant] = useState<{
+    id: string;
+    name: string;
+    amountDue: number;
+  } | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   // Discount state
   const [discountType, setDiscountType] = useState<string>("");
@@ -146,11 +155,29 @@ export function AddParentLeadDialog({
         throw new Error(error.error || "Error adding participant");
       }
 
-      toast.success(t("messages.participantAdded"));
-      onOpenChange(false);
-      resetForm();
-      onSuccess?.();
-      router.refresh();
+      const data = await response.json();
+      const participantName = activeTab === "search" && selectedParent
+        ? selectedParent.name
+        : newName;
+
+      // If price > 0, show success state with option to register payment
+      if (calculatedPrice > 0) {
+        setAddedParticipant({
+          id: data.participant.id,
+          name: participantName,
+          amountDue: calculatedPrice,
+        });
+        toast.success(t("messages.participantAdded"));
+        onSuccess?.();
+        router.refresh();
+      } else {
+        // Free/courtesy - just close
+        toast.success(t("messages.participantAdded"));
+        onOpenChange(false);
+        resetForm();
+        onSuccess?.();
+        router.refresh();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error";
       if (message === "EVENT_ALREADY_REGISTERED") {
@@ -180,6 +207,23 @@ export function AddParentLeadDialog({
     setDiscountAmount("");
     setDiscountReason("");
     setNotes("");
+    setAddedParticipant(null);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onOpenChange(false);
+  };
+
+  const handleRegisterPayment = () => {
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentDialog(false);
+    resetForm();
+    onOpenChange(false);
+    router.refresh();
   };
 
   const calculatedPrice = discountType === "COURTESY"
@@ -193,6 +237,43 @@ export function AddParentLeadDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
       <DialogContent className="max-w-md rounded-2xl">
+        {/* Success state - participant added, ask about payment */}
+        {addedParticipant ? (
+          <>
+            <div className="flex flex-col items-center py-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                <Check className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h3 className="mt-4 text-xl font-semibold text-gray-800">
+                {t("messages.participantAdded")}
+              </h3>
+              <p className="mt-2 text-gray-600">
+                <span className="font-medium">{addedParticipant.name}</span>
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {t("payment.amountDue")}: <span className="font-semibold text-teal-600">Bs. {addedParticipant.amountDue}</span>
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleClose}
+                className="flex-1 rounded-xl border-2"
+              >
+                {t("payment.payLater")}
+              </Button>
+              <Button
+                onClick={handleRegisterPayment}
+                className="flex-1 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-300/50"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {t("payment.registerNow")}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <UserRound className="h-5 w-5 text-cyan-600" />
@@ -420,7 +501,23 @@ export function AddParentLeadDialog({
             </Button>
           </div>
         )}
+          </>
+        )}
       </DialogContent>
+
+      {/* Register Payment Dialog */}
+      {addedParticipant && (
+        <RegisterPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          eventId={eventId}
+          participantId={addedParticipant.id}
+          participantName={addedParticipant.name}
+          amountDue={addedParticipant.amountDue}
+          amountPaid={0}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </Dialog>
   );
 }

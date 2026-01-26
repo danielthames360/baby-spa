@@ -144,7 +144,7 @@ export function EventDetails({ event }: EventDetailsProps) {
   const canComplete = event.status === "IN_PROGRESS";
   const canCancel = ["DRAFT", "PUBLISHED", "IN_PROGRESS"].includes(event.status);
   const canDelete = event.status === "DRAFT";
-  const canAddParticipants = ["DRAFT", "PUBLISHED"].includes(event.status);
+  const canAddParticipants = ["DRAFT", "PUBLISHED", "IN_PROGRESS"].includes(event.status);
 
   const handleStatusChange = async (newStatus: string) => {
     setIsUpdatingStatus(true);
