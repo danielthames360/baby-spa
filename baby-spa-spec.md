@@ -1364,7 +1364,7 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 5.2: Pagos Divididos (Split Payments)
 
 ## ⏳ Fase 6: Operaciones (~35 hrs)
-- [ ] Módulo 6.1: Notificaciones en Tiempo Real (~8 hrs)
+- [x] Módulo 6.1: Notificaciones en Tiempo Real (COMPLETADO)
 - [ ] Módulo 6.2: Arqueo de Caja (~15 hrs)
 - [ ] Módulo 6.3: Actividad Reciente (~12 hrs)
 
@@ -1392,33 +1392,48 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 
 ## Fase 6: Operaciones
 
-### Módulo 6.1: Notificaciones en Tiempo Real
+### Módulo 6.1: Notificaciones en Tiempo Real ✅ COMPLETADO
 ```
 MODELOS:
-□ Enum NotificationType
-□ Modelo Notification
-□ Migración ejecutada
+✅ Enum StaffNotificationType (NEW_APPOINTMENT, CANCELLED_APPOINTMENT, RESCHEDULED_APPOINTMENT)
+✅ Modelo Notification (con metadata JSON, forRole, expiresAt)
+✅ Campos en SystemSettings: notificationPollingInterval, notificationExpirationDays
+✅ Migración ejecutada
 
 BACKEND:
-□ NotificationService (create, list, markRead, markAllRead)
-□ GET /api/notifications
-□ GET /api/notifications/count
-□ PATCH /api/notifications/:id/read
-□ PATCH /api/notifications/read-all
-□ Integrar creación en appointment-service (cuando viene de portal)
-□ Cron job de limpieza (7 días)
+✅ NotificationService (create, list, getCount, markAsRead, markAllAsRead, deleteExpired)
+✅ GET /api/notifications (con filtro por rol: ADMIN ve todas, RECEPTION solo las suyas)
+✅ GET /api/notifications/count (lightweight para polling)
+✅ GET /api/notifications/config (polling interval desde settings)
+✅ PATCH /api/notifications/:id/read
+✅ PATCH /api/notifications/read-all
+✅ Integración en portal appointments (crea notificación al agendar)
 
 FRONTEND:
-□ Hook useNotifications (polling cada 5 min)
-□ Componente NotificationBell (campana en header)
-□ Componente NotificationPanel (desplegable)
-□ Componente NotificationToast (stack abajo-derecha)
-□ Archivo de sonido + lógica de reproducción
-□ Integrar en layout del admin
+✅ Zustand store (notification-store.ts) para estado global
+✅ Hook useNotifications (polling configurable 1-30 min)
+✅ Hook useNotificationSound (reproducción de sonido)
+✅ NotificationBell (campana en header con badge animado)
+✅ NotificationPanel (dropdown con portal, responsive mobile)
+✅ NotificationToast + NotificationToastContainer (glassmorphism, max 3 visibles)
+✅ Sonido notification.mp3
+✅ Integrado en admin layout
+
+CONFIGURACIÓN (Settings > Admin):
+✅ Intervalo de polling: 1-30 minutos (default 5)
+✅ Días de expiración: 1-30 días (default 7)
+✅ Solo ADMIN puede modificar
+
+UX FEATURES:
+✅ Click en "Ver" → Navega al calendario con fecha correcta + abre modal del appointment
+✅ Optimistic updates para marcar como leído
+✅ Agrupación por fecha (Hoy, Ayer, Esta Semana, Anteriores)
+✅ Panel responsive (full-width en mobile con botón cerrar)
+✅ Toasts compactos con glassmorphism
 
 TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
+✅ es.json completo
+✅ pt-BR.json completo
 ```
 
 ### Módulo 6.2: Arqueo de Caja
@@ -1727,3 +1742,13 @@ Cuando implementes nuevas funcionalidades, revisa estos patrones:
 - Formulario: `components/babies/baby-form.tsx`
 - Service: `lib/services/baby-service.ts`
 - Validación: `lib/validations/baby.ts`
+
+### Módulo de Notificaciones (Referencia)
+- Service: `lib/services/notification-service.ts`
+- Store (Zustand): `lib/stores/notification-store.ts`
+- Hook principal: `hooks/use-notifications.ts`
+- Hook de sonido: `hooks/use-notification-sound.ts`
+- API endpoints: `app/api/notifications/` (route, count, config, read-all, [id]/read)
+- Componentes UI: `components/notifications/` (bell, panel, toast, toast-container, item)
+- Sonido: `public/sounds/notification.mp3`
+- Integración: `app/api/portal/appointments/route.ts` (crea notificación al agendar)
