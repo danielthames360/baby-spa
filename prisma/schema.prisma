@@ -149,12 +149,20 @@ enum Mood {
   IRRITABLE
 }
 
-enum NotificationType {
+// Para NotificationLog (notificaciones a padres)
+enum NotificationLogType {
   MESVERSARY
   BIRTHDAY
   APPOINTMENT_24H
   PATTERN_REMINDER
   INACTIVE_CLIENT
+}
+
+// Para Notification (notificaciones en tiempo real al staff)
+enum StaffNotificationType {
+  NEW_APPOINTMENT           // Cita agendada desde portal
+  CANCELLED_APPOINTMENT     // Cita cancelada desde portal
+  RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
 }
 
 // ============================================================
@@ -190,6 +198,7 @@ model User {
   babyCardPurchasesCreated   BabyCardPurchase[]    @relation("BabyCardPurchasesCreated")
   babyCardRewardsApplied     BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
   paymentDetailsCreated      PaymentDetail[]       @relation("PaymentDetailsCreated")
+  notificationsRead          Notification[]        @relation("NotificationReadBy")
 
   @@map("users")
 }
@@ -847,19 +856,57 @@ model Expense {
 // ============================================================
 
 model NotificationLog {
-  id                  String           @id @default(cuid())
+  id                  String              @id @default(cuid())
   babyId              String
-  baby                Baby             @relation(fields: [babyId], references: [id])
-  type                NotificationType
-  emailSent           Boolean          @default(false)
+  baby                Baby                @relation(fields: [babyId], references: [id])
+  type                NotificationLogType
+  emailSent           Boolean             @default(false)
   emailSentAt         DateTime?
-  whatsappContacted   Boolean          @default(false)
+  whatsappContacted   Boolean             @default(false)
   whatsappContactedAt DateTime?
   metadata            Json?
 
   createdAt DateTime @default(now())
 
   @@map("notification_logs")
+}
+
+// ============================================================
+// NOTIFICACIONES EN TIEMPO REAL (Staff)
+// ============================================================
+
+model Notification {
+  id            String                 @id @default(cuid())
+
+  // Tipo y contenido
+  type          StaffNotificationType
+  title         String
+  message       String
+
+  // Referencia para navegación
+  entityType    String?                // "appointment"
+  entityId      String?                // ID de la cita
+
+  // Datos adicionales para navegación
+  metadata      Json?                  // { date: "2026-01-28", isPendingPayment: true }
+
+  // Estado de lectura (compartido entre staff)
+  isRead        Boolean                @default(false)
+  readAt        DateTime?
+  readById      String?
+  readBy        User?                  @relation("NotificationReadBy", fields: [readById], references: [id])
+
+  // Audiencia
+  forRole       UserRole               @default(RECEPTION)
+
+  // Timestamps
+  createdAt     DateTime               @default(now())
+  expiresAt     DateTime               // createdAt + 7 días
+
+  @@index([isRead, forRole])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
 // ============================================================
@@ -924,6 +971,10 @@ model SystemSettings {
   whatsappNumber        String?  // Número de WhatsApp para comprobantes
   whatsappCountryCode   String?  @default("+591")  // Country code for WhatsApp
   whatsappMessage       String?  @default("Hola, adjunto mi comprobante de pago para la cita del {fecha} a las {hora}. Bebé: {bebe}")
+
+  // Configuración de notificaciones
+  notificationPollingInterval  Int @default(5)   // Intervalo de polling en minutos (1-30)
+  notificationExpirationDays   Int @default(7)   // Días hasta que expira una notificación (1-30)
 
   updatedAt             DateTime @updatedAt
 

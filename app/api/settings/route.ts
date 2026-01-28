@@ -72,6 +72,8 @@ export async function PUT(request: Request) {
       whatsappNumber,
       whatsappCountryCode,
       whatsappMessage,
+      notificationPollingInterval,
+      notificationExpirationDays,
     } = body;
 
     // Validate QR image size if provided (max 2MB for base64)
@@ -90,6 +92,28 @@ export async function PUT(request: Request) {
       );
     }
 
+    // Validate notification polling interval (1-30 minutes)
+    if (notificationPollingInterval !== undefined) {
+      const interval = Number(notificationPollingInterval);
+      if (isNaN(interval) || interval < 1 || interval > 30) {
+        return NextResponse.json(
+          { error: "INVALID_POLLING_INTERVAL" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate notification expiration days (1-30 days)
+    if (notificationExpirationDays !== undefined) {
+      const days = Number(notificationExpirationDays);
+      if (isNaN(days) || days < 1 || days > 30) {
+        return NextResponse.json(
+          { error: "INVALID_EXPIRATION_DAYS" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Update or create settings
     const settings = await prisma.systemSettings.upsert({
       where: { id: "default" },
@@ -100,6 +124,8 @@ export async function PUT(request: Request) {
         whatsappNumber,
         whatsappCountryCode: whatsappCountryCode || "+591",
         whatsappMessage,
+        notificationPollingInterval: notificationPollingInterval ?? 5,
+        notificationExpirationDays: notificationExpirationDays ?? 7,
       },
       update: {
         ...(defaultPackageId !== undefined && { defaultPackageId }),
@@ -107,6 +133,8 @@ export async function PUT(request: Request) {
         ...(whatsappNumber !== undefined && { whatsappNumber }),
         ...(whatsappCountryCode !== undefined && { whatsappCountryCode }),
         ...(whatsappMessage !== undefined && { whatsappMessage }),
+        ...(notificationPollingInterval !== undefined && { notificationPollingInterval: Number(notificationPollingInterval) }),
+        ...(notificationExpirationDays !== undefined && { notificationExpirationDays: Number(notificationExpirationDays) }),
       },
       include: {
         defaultPackage: {

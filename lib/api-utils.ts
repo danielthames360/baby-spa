@@ -161,6 +161,9 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
       REWARD_ALREADY_USED: 400,
       FIRST_FREE_SESSION_ALREADY_USED: 400,
       BABY_CARD_NO_FREE_SESSION: 400,
+
+      // Notification errors
+      NOTIFICATION_NOT_FOUND: 404,
     };
 
     const statusCode = knownErrors[error.message];

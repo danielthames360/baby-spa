@@ -741,12 +741,23 @@
       "whatsappNumber": "Número de WhatsApp",
       "whatsappPlaceholder": "Número sem código do país",
       "messageTemplate": "Mensagem padrão",
-      "messageVariables": "Variáveis disponíveis: {fecha}, {hora}, {bebe}, {monto}",
+      "messageVariables": "Variáveis disponíveis: '{'fecha'}', '{'hora'}', '{'bebe'}', '{'monto'}'",
       "saveChanges": "Salvar Alterações",
       "saved": "Configurações salvas com sucesso",
       "invalidFormat": "Formato de imagem inválido. Use JPG, PNG ou WebP.",
       "fileTooLarge": "A imagem é muito grande. Máximo 2MB.",
       "invalidPhone": "Número de telefone inválido"
+    },
+    "notifications": {
+      "title": "Notificações",
+      "pollingInterval": "Intervalo de atualização",
+      "pollingIntervalHelp": "Com que frequência são verificadas novas notificações (1-30 minutos)",
+      "expirationDays": "Dias de expiração",
+      "expirationDaysHelp": "Quantos dias as notificações são mantidas antes de expirar (1-30 dias)",
+      "minutes": "minutos",
+      "days": "dias",
+      "invalidPollingInterval": "O intervalo deve estar entre 1 e 30 minutos",
+      "invalidExpirationDays": "Os dias de expiração devem estar entre 1 e 30"
     }
   },
 
@@ -887,7 +898,19 @@
     "birthday": "Aniversário",
     "reminder24h": "Lembrete 24h",
     "pending": "Pendentes de contato",
-    "contacted": "Contatados"
+    "contacted": "Contatados",
+    "noNotifications": "Sem notificações",
+    "markAllRead": "Marcar todas como lidas",
+    "markRead": "Marcar como lida",
+    "view": "Ver",
+    "viewAll": "Ver todas",
+    "andMore": "E mais {count}...",
+    "ago": "há {time}",
+    "readBy": "Lido por {name}",
+    "today": "Hoje",
+    "yesterday": "Ontem",
+    "thisWeek": "Esta semana",
+    "older": "Anteriores"
   },
 
   "errors": {

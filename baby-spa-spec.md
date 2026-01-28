@@ -2,7 +2,7 @@
 ## Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
 
 **Última actualización:** Enero 2026  
-**Versión:** 4.0
+**Versión:** 5.0
 
 ---
 
@@ -47,9 +47,9 @@
 
 1. ✅ Automatizar agendamiento (admin + portal padres)
 2. ✅ Control financiero completo (ingresos/egresos/inventario)
-3. ⏳ Notificaciones inteligentes (mesversarios automáticos)
+3. ✅ Notificaciones en tiempo real para recepción
 4. ✅ Seguimiento desarrollo bebés (historial + evaluaciones)
-5. ✅ Portal para padres (ver progreso, agendar citas)
+5. ✅ Portal para padres (ver progreso, agendar, cancelar, reagendar citas)
 6. ✅ Inventario productos
 7. ✅ Multiidioma (Español + Portugués Brasil)
 8. ✅ Multi-base de datos (Bolivia y Brasil separadas)
@@ -58,7 +58,13 @@
 11. ✅ Eventos grupales
 12. ✅ Auto-agendado masivo
 13. ✅ Servicios para padres (masajes prenatales/postparto)
-14. ⏳ Sistema Baby Card (fidelización)
+14. ✅ Sistema Baby Card (fidelización)
+15. ✅ Pagos divididos (múltiples métodos de pago)
+16. ✅ Arqueo de caja y control de turnos
+17. ✅ Registro de gastos administrativos
+18. ✅ Pagos a staff con control de adelantos
+19. ✅ Actividad reciente (registro de operaciones)
+20. ✅ Portal de padres mejorado (cancelar/reagendar, saldo, perfil, mesversarios)
 
 ## 1.3 Operación
 
@@ -175,21 +181,24 @@ DOMINGO: Cerrado
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 3.2 Multi-Tenant (2 Bases de Datos)
+## 3.2 Separación por País (2 Bases de Datos)
 
-El sistema usa **2 bases de datos completamente separadas** (NO tenant_id):
+⚠️ **CRÍTICO: El sistema usa 2 bases de datos completamente separadas (NO usa tenant_id)**
+
+- Cada país tiene su **propia base de datos independiente**
 - Cada país tiene su propia configuración, paquetes, precios
 - Las descripciones de paquetes se escriben en el idioma local
 - QR de pago diferente por país
+- **NO existe modelo Tenant ni campo tenantId en ninguna tabla**
 
 ## 3.3 Roles y Permisos
 
 | Rol | Permisos |
 |-----|----------|
 | **ADMIN** | Acceso total a todo el sistema |
-| **RECEPTION** | Calendario, agendar, iniciar/completar sesiones, cobrar, inventario |
+| **RECEPTION** | Calendario, agendar, iniciar/completar sesiones, cobrar, inventario, arqueo de caja |
 | **THERAPIST** | Ver citas asignadas del día, registrar evaluaciones |
-| **PARENT** | Portal: ver historial, agendar citas (solo sus bebés) |
+| **PARENT** | Portal: ver historial, agendar/cancelar/reagendar citas (solo sus bebés) |
 
 ---
 
@@ -295,6 +304,94 @@ enum BabyCardStatus {
   COMPLETED   // Completó todas las sesiones
   REPLACED    // Fue reemplazada por otra card
   CANCELLED   // Cancelada/reembolsada
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  QR
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+// ==========================================
+// ENUMS NUEVOS (Fase 5-8)
+// ==========================================
+
+enum PaymentParentType {
+  SESSION              // Pago de sesión (checkout)
+  BABY_CARD            // Venta de Baby Card
+  EVENT_PARTICIPANT    // Pago de evento
+  APPOINTMENT          // Anticipo de cita
+  PACKAGE_INSTALLMENT  // Cuota de paquete
+  STAFF_PAYMENT        // Pago a empleado
+  EXPENSE              // Gasto administrativo
+}
+
+enum NotificationType {
+  NEW_APPOINTMENT           // Cita agendada desde portal
+  CANCELLED_APPOINTMENT     // Cita cancelada desde portal
+  RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
+}
+
+enum CashRegisterStatus {
+  OPEN              // Turno abierto
+  PENDING_APPROVAL  // Cerrado con diferencia, esperando admin
+  CLOSED            // Cerrado y aprobado
+  REJECTED          // Rechazado por admin, debe revisar
+}
+
+enum CashExpenseCategory {
+  SUPPLIES      // Insumos
+  FOOD          // Comida/Refrigerios
+  OTHER         // Otro
+}
+
+enum StaffPaymentType {
+  SALARY          // Sueldo mensual
+  COMMISSION      // Comisión
+  BONUS           // Bono
+  ADVANCE         // Adelanto (aumenta deuda)
+  ADVANCE_RETURN  // Devolución de adelanto (reduce deuda)
+  DEDUCTION       // Descuento (faltas, etc.)
+  BENEFIT         // Aguinaldo / Beneficios
+  SETTLEMENT      // Liquidación
+}
+
+enum ExpenseCategory {
+  RENT            // Alquiler
+  UTILITIES       // Servicios (agua, luz, internet)
+  SUPPLIES        // Insumos
+  MAINTENANCE     // Mantenimiento / Reparaciones
+  MARKETING       // Marketing / Publicidad
+  TAXES           // Impuestos / Contabilidad
+  INSURANCE       // Seguros
+  EQUIPMENT       // Equipos / Mobiliario
+  OTHER           // Otros
+}
+
+enum ActivityType {
+  SESSION_COMPLETED
+  DISCOUNT_APPLIED
+  APPOINTMENT_CREATED
+  APPOINTMENT_CREATED_PORTAL
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED_PORTAL
+  BABY_CARD_SOLD
+  BABY_CARD_REWARD_DELIVERED
+  INSTALLMENT_PAID
+  CASH_REGISTER_OPENED
+  CASH_REGISTER_CLOSED
+  EVENT_REGISTRATION
+  BABY_CREATED
+  PACKAGE_ASSIGNED
+  CLIENT_UPDATED
 }
 ```
 
@@ -780,6 +877,217 @@ model BabyCardRewardUsage {
 }
 ```
 
+## 4.5 Modelos Nuevos (Fase 5-8)
+
+### PaymentDetail (Pagos Divididos)
+
+```prisma
+model PaymentDetail {
+  id              String            @id @default(cuid())
+  
+  parentType      PaymentParentType
+  parentId        String
+  
+  amount          Decimal           @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  reference       String?
+  
+  createdById     String
+  createdBy       User              @relation(fields: [createdById], references: [id])
+  createdAt       DateTime          @default(now())
+  
+  @@index([parentType, parentId])
+  @@index([createdAt])
+  @@index([paymentMethod, createdAt])
+}
+```
+
+### Notification (Notificaciones en Tiempo Real)
+
+```prisma
+model Notification {
+  id            String           @id @default(cuid())
+  
+  type          NotificationType
+  title         String
+  message       String
+  
+  entityType    String?
+  entityId      String?
+  
+  isRead        Boolean          @default(false)
+  readAt        DateTime?
+  readById      String?
+  readBy        User?            @relation(fields: [readById], references: [id])
+  
+  forRole       Role             @default(RECEPTION)
+  
+  createdAt     DateTime         @default(now())
+  expiresAt     DateTime
+  
+  @@index([isRead, forRole])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+```
+
+### CashRegisterSession (Arqueo de Caja)
+
+```prisma
+model CashRegisterSession {
+  id                String    @id @default(cuid())
+  
+  openedById        String
+  openedBy          User      @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
+  openedAt          DateTime  @default(now())
+  initialFund       Decimal   @db.Decimal(10, 2) @default(0)
+  
+  previousSessionId String?   @unique
+  previousSession   CashRegisterSession? @relation("SessionTransfer", fields: [previousSessionId], references: [id])
+  nextSession       CashRegisterSession? @relation("SessionTransfer")
+  
+  closedAt          DateTime?
+  expectedCash      Decimal?  @db.Decimal(10, 2)
+  actualCash        Decimal?  @db.Decimal(10, 2)
+  difference        Decimal?  @db.Decimal(10, 2)
+  notes             String?   @db.Text
+  
+  status            CashRegisterStatus @default(OPEN)
+  approvedById      String?
+  approvedBy        User?     @relation("CashRegisterApprovedBy", fields: [approvedById], references: [id])
+  approvedAt        DateTime?
+  rejectionReason   String?
+  
+  transferToNext    Boolean   @default(false)
+  transferAmount    Decimal?  @db.Decimal(10, 2)
+  
+  expenses          CashRegisterExpense[]
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([status])
+  @@index([openedAt])
+}
+```
+
+### CashRegisterExpense (Egresos de Caja)
+
+```prisma
+model CashRegisterExpense {
+  id                String    @id @default(cuid())
+  
+  sessionId         String
+  session           CashRegisterSession @relation(fields: [sessionId], references: [id])
+  
+  amount            Decimal   @db.Decimal(10, 2)
+  paymentMethod     PaymentMethod
+  category          CashExpenseCategory
+  description       String
+  
+  createdById       String
+  createdBy         User      @relation(fields: [createdById], references: [id])
+  createdAt         DateTime  @default(now())
+  
+  @@index([sessionId])
+  @@index([createdAt])
+}
+```
+
+### StaffPayment (Pagos a Empleados)
+
+```prisma
+model StaffPayment {
+  id              String            @id @default(cuid())
+  
+  staffId         String
+  staff           User              @relation("StaffPayments", fields: [staffId], references: [id])
+  
+  type            StaffPaymentType
+  grossAmount     Decimal           @db.Decimal(10, 2)
+  netAmount       Decimal           @db.Decimal(10, 2)
+  
+  advanceDeducted Decimal?          @db.Decimal(10, 2)
+  
+  description     String
+  periodMonth     Int?
+  periodYear      Int?
+  
+  paidAt          DateTime          @default(now())
+  
+  createdById     String
+  createdBy       User              @relation("StaffPaymentCreator", fields: [createdById], references: [id])
+  createdAt       DateTime          @default(now())
+  
+  @@index([staffId])
+  @@index([paidAt])
+  @@index([type])
+}
+```
+
+### StaffAdvanceBalance (Control de Adelantos)
+
+```prisma
+model StaffAdvanceBalance {
+  id              String    @id @default(cuid())
+  
+  staffId         String    @unique
+  staff           User      @relation(fields: [staffId], references: [id])
+  
+  currentBalance  Decimal   @db.Decimal(10, 2) @default(0)
+  
+  updatedAt       DateTime  @updatedAt
+}
+```
+
+### Expense (Gastos Administrativos)
+
+```prisma
+model Expense {
+  id              String          @id @default(cuid())
+  
+  category        ExpenseCategory
+  description     String
+  amount          Decimal         @db.Decimal(10, 2)
+  reference       String?
+  
+  expenseDate     DateTime        @default(now())
+  
+  createdById     String
+  createdBy       User            @relation(fields: [createdById], references: [id])
+  createdAt       DateTime        @default(now())
+  
+  @@index([expenseDate])
+  @@index([category])
+}
+```
+
+### Activity (Registro de Actividad)
+
+```prisma
+model Activity {
+  id            String         @id @default(cuid())
+  
+  type          ActivityType
+  title         String
+  description   String?
+  
+  entityType    String?
+  entityId      String?
+  
+  metadata      Json?
+  
+  performedById String?
+  performedBy   User?          @relation(fields: [performedById], references: [id])
+  
+  createdAt     DateTime       @default(now())
+  
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([performedById, createdAt])
+}
+```
+
 ---
 
 # 5. FLUJOS DE NEGOCIO
@@ -1051,158 +1359,226 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 4.1: Sistema de Eventos Grupales
 - [x] Módulo 4.5: Servicios para Padres
 
-## ⏳ Fase 5: Baby Card (EN PROGRESO)
-- [ ] Módulo 5.1: Sistema Baby Card
+## ✅ Fase 5: Baby Card y Pagos Divididos (COMPLETADA)
+- [x] Módulo 5.1: Sistema Baby Card
+- [x] Módulo 5.2: Pagos Divididos (Split Payments)
 
-## ⏳ Fase 6: Portal y Configuración (PENDIENTE)
-- [ ] Módulo 6.1: Portal de Padres Completo
-- [ ] Módulo 6.2: Configuración del Sistema
-- [ ] Módulo 6.3: QR de Pago
+## ⏳ Fase 6: Operaciones (~35 hrs)
+- [ ] Módulo 6.1: Notificaciones en Tiempo Real (~8 hrs)
+- [ ] Módulo 6.2: Arqueo de Caja (~15 hrs)
+- [ ] Módulo 6.3: Actividad Reciente (~12 hrs)
 
-## ⏳ Fase 7: Secundarios (PENDIENTE)
-- [ ] Módulo 7.1: Notificaciones + Cron Jobs
-- [ ] Módulo 7.2: Reportes Financieros
-- [ ] Módulo 7.3: Staff Payments
+## ⏳ Fase 7: Finanzas (~20 hrs)
+- [ ] Módulo 7.1: Staff Payments (~12 hrs)
+- [ ] Módulo 7.2: Gastos Administrativos (~8 hrs)
+
+## ⏳ Fase 8: Portal Padres Mejorado (~22 hrs)
+- [ ] Módulo 8.1: Cancelar/Reagendar Citas
+- [ ] Módulo 8.2: Saldo Financiero
+- [ ] Módulo 8.3: Perfil del Padre
+- [ ] Módulo 8.4: Mesversarios
+- [ ] Módulo 8.5: Dashboard Mejorado
+
+## 🔮 Fase 9: Reportes y Automatización (FUTURO)
+- [ ] Módulo 9.1: Reportes Financieros
+- [ ] Módulo 9.2: Cron Jobs
+- [ ] Módulo 9.3: Notificaciones Push
+- [ ] Módulo 9.4: Configuración del Sistema
+- [ ] Módulo 9.5: QR de Pago
 
 ---
 
 # 8. PLAN DE IMPLEMENTACIÓN
 
-## Fase 5: Sistema Baby Card
+## Fase 6: Operaciones
 
-### Módulo 5.1: Sistema Baby Card
+### Módulo 6.1: Notificaciones en Tiempo Real
 ```
 MODELOS:
-□ Enum RewardType (SERVICE, PRODUCT, EVENT, CUSTOM)
-□ Enum BabyCardStatus (ACTIVE, COMPLETED, REPLACED, CANCELLED)
-□ Modelo BabyCard
-□ Modelo BabyCardSpecialPrice
-□ Modelo BabyCardReward
-□ Modelo BabyCardPurchase
-□ Modelo BabyCardSessionLog
-□ Modelo BabyCardRewardUsage
-□ Relaciones en Baby, Package, Product, Session, User
+□ Enum NotificationType
+□ Modelo Notification
 □ Migración ejecutada
 
-SERVICIOS:
-□ lib/services/baby-card-service.ts completo
+BACKEND:
+□ NotificationService (create, list, markRead, markAllRead)
+□ GET /api/notifications
+□ GET /api/notifications/count
+□ PATCH /api/notifications/:id/read
+□ PATCH /api/notifications/read-all
+□ Integrar creación en appointment-service (cuando viene de portal)
+□ Cron job de limpieza (7 días)
 
-APIS:
-□ CRUD /api/baby-cards
-□ GET/POST /api/baby-cards/purchases
-□ GET /api/baby-cards/purchases/by-baby/[babyId]
-□ POST /api/baby-cards/purchases/[id]/rewards/[rewardId]/use
-□ GET /api/checkout/baby-card-info/[babyId]
-
-UI - ADMIN BABY CARDS:
-□ Página lista /admin/baby-cards
-□ Página crear /admin/baby-cards/new
-□ Página editar /admin/baby-cards/[id]/edit
-□ Formulario con precios especiales dinámicos
-□ Formulario con premios dinámicos
-□ Vista previa de tarjeta (grid de círculos)
-
-UI - VENTA DE BABY CARD:
-□ Modal de venta desde perfil del bebé
-□ Modal de venta desde checkout
-□ Selector de Baby Card
-□ Resumen de beneficios
-□ Opción de agendar primera sesión
-
-UI - PERFIL DEL BEBÉ:
-□ Sección Baby Card con visualización tipo tarjeta
-□ Grid de círculos con progreso
-□ Lista de premios con estados
-□ Botón "Usar Premio"
-□ Historial de sesiones
-□ Historial de cards anteriores
-
-UI - PORTAL DEL PADRE:
-□ Página /portal/baby-card/[babyId]
-□ Visualización de tarjeta
-□ Lista de premios con estados
-□ Información de precio especial
-
-UI - CHECKOUT:
-□ Sección Baby Card si tiene activa
-□ Mostrar premios disponibles
-□ Mostrar "casi premio" si aplica
-□ Mostrar precio especial aplicado
-□ Botón "Usar Premio"
-□ Ofrecer Baby Card si no tiene
-
-INTEGRACIÓN CON SESIONES:
-□ Al completar sesión → incrementar contador
-□ Verificar si desbloqueó premio
-□ Mostrar alerta de nuevo premio
-
-INTEGRACIÓN CON PRECIOS:
-□ Detectar precio especial en checkout
-□ Aplicar automáticamente si aplica
-□ Mostrar ahorro
-
-NAVEGACIÓN:
-□ Link "Baby Cards" en sidebar admin
-□ Icono apropiado
+FRONTEND:
+□ Hook useNotifications (polling cada 5 min)
+□ Componente NotificationBell (campana en header)
+□ Componente NotificationPanel (desplegable)
+□ Componente NotificationToast (stack abajo-derecha)
+□ Archivo de sonido + lógica de reproducción
+□ Integrar en layout del admin
 
 TRADUCCIONES:
 □ es.json completo
 □ pt-BR.json completo
 ```
 
-## Fase 6: Portal y Configuración
+### Módulo 6.2: Arqueo de Caja
+```
+MODELOS:
+□ Enum CashRegisterStatus
+□ Enum CashExpenseCategory
+□ Modelo CashRegisterSession
+□ Modelo CashRegisterExpense
+□ Migración ejecutada
 
-### Módulo 6.1: Portal de Padres Completo
-```
-□ Login con código BSB-XXXXX
-□ Dashboard con bebés y paquetes
-□ Ver saldo pendiente de paquetes
-□ Ver Baby Card y premios
-□ Agendar cita
-□ Ver citas (con estado de pago)
-□ Historial de sesiones (notas externas)
-```
+BACKEND:
+□ CashRegisterService
+□ POST /api/cash-register/open
+□ GET /api/cash-register/current
+□ GET /api/cash-register/summary
+□ POST /api/cash-register/expenses
+□ POST /api/cash-register/close
+□ GET /api/cash-register/history
+□ PATCH /api/cash-register/:id/approve
+□ PATCH /api/cash-register/:id/reject
 
-### Módulo 6.2: Configuración del Sistema
-```
-□ Horarios de trabajo
-□ Días cerrados
-□ Gestión de usuarios
-□ Categorías de paquetes
-```
+FRONTEND:
+□ Página /admin/cash-register
+□ CashRegisterOpenDialog
+□ CashRegisterExpenseDialog
+□ CashRegisterCloseDialog
+□ CashRegisterSummary
+□ CashRegisterHistory (admin)
+□ Indicador en header (turno abierto/cerrado)
 
-### Módulo 6.3: QR de Pago
-```
-□ UI: Subir imagen de QR
-□ UI: Configurar número WhatsApp
-□ UI: Configurar mensaje predeterminado
-□ Lógica: Servir QR en portal de padres
-```
-
-## Fase 7: Secundarios
-
-### Módulo 7.1: Notificaciones
-```
-□ Mesversarios automáticos
-□ Recordatorio de cita 24h antes
-□ Alerta de premio desbloqueado (Baby Card)
-□ Cron jobs
+TRADUCCIONES:
+□ es.json completo
+□ pt-BR.json completo
 ```
 
-### Módulo 7.2: Reportes
+### Módulo 6.3: Actividad Reciente
 ```
-□ Ingresos por período
-□ Deudas pendientes
-□ Ocupación
-□ No-shows
-□ Sesiones por terapeuta
-□ Baby Cards vendidas/activas/completadas
+MODELOS:
+□ Enum ActivityType
+□ Modelo Activity
+□ Migración ejecutada
+
+BACKEND:
+□ ActivityService con helpers por tipo
+□ GET /api/activity (filtros: tipo, usuario, fecha, búsqueda)
+□ Integrar en servicios existentes
+□ Cron job de limpieza (1 año)
+
+FRONTEND:
+□ Página /admin/activity (solo ADMIN)
+□ ActivityFilters
+□ ActivityList con paginación
+□ ActivityCard con botón "Ver"
+□ Link en sidebar
+
+TRADUCCIONES:
+□ es.json completo
+□ pt-BR.json completo
 ```
 
-### Módulo 7.3: Staff Payments
+## Fase 7: Finanzas
+
+### Módulo 7.1: Staff Payments
 ```
-□ Registro de pagos a empleados
-□ Historial por empleado
+MODELOS:
+□ Enum StaffPaymentType
+□ Modelo StaffPayment
+□ Modelo StaffAdvanceBalance
+□ Actualizar PaymentParentType
+□ Migración ejecutada
+
+BACKEND:
+□ StaffPaymentService
+□ StaffAdvanceBalanceService
+□ GET/POST /api/staff-payments
+□ GET /api/staff/:id/payments
+□ GET /api/staff/:id/stats
+□ GET /api/staff/:id/advance-balance
+
+FRONTEND:
+□ Página /admin/staff-payments
+□ StaffPaymentDialog
+□ StaffPaymentList
+□ StaffHistoryView
+□ StaffStatsCard
+□ AdvanceAlert
+
+TRADUCCIONES:
+□ es.json completo
+□ pt-BR.json completo
+```
+
+### Módulo 7.2: Gastos Administrativos
+```
+MODELOS:
+□ Enum ExpenseCategory
+□ Modelo Expense
+□ Migración ejecutada
+
+BACKEND:
+□ ExpenseService
+□ GET/POST /api/expenses
+□ GET /api/expenses/summary
+
+FRONTEND:
+□ Página /admin/expenses
+□ ExpenseDialog
+□ ExpenseList
+□ ExpenseSummaryCard
+
+TRADUCCIONES:
+□ es.json completo
+□ pt-BR.json completo
+```
+
+## Fase 8: Portal Padres Mejorado
+
+### Módulo 8.1-8.5: Portal Completo
+```
+CANCELAR/REAGENDAR:
+□ PATCH /api/portal/appointments/:id/cancel
+□ PATCH /api/portal/appointments/:id/reschedule
+□ Validación de 24h de anticipación
+□ Modal de cancelación con motivo
+□ Modal de reagendar con selector fecha
+□ Integrar con notificaciones
+
+SALDO FINANCIERO:
+□ Página /portal/account
+□ GET /api/portal/financial-summary
+□ GET /api/portal/packages/:id/payments
+□ Resumen de deuda total
+□ Historial de pagos expandible
+
+PERFIL DEL PADRE:
+□ Página /portal/profile
+□ GET/PATCH /api/portal/profile
+□ Formulario editable (nombre, teléfono, email, dirección)
+□ Datos solo lectura (código, fecha registro)
+
+MESVERSARIOS:
+□ Función isMessiversary()
+□ MessiversaryBanner en dashboard
+□ Botón "Agendar Sesión de Cumple Mes"
+□ Confetti animation (opcional)
+
+DASHBOARD MEJORADO:
+□ Banner mesversario
+□ Próxima cita destacada
+□ Sección saldo resumido
+□ Accesos rápidos actualizados
+
+NAVEGACIÓN:
+□ Link "Mi Cuenta" en menú
+□ Link "Mi Perfil" en menú
+
+TRADUCCIONES:
+□ es.json completo
+□ pt-BR.json completo
 ```
 
 ---
@@ -1223,35 +1599,52 @@ Al iniciar cada sesión, Claude Code debe entender:
 ```
 ⚠️ IMPORTANTE - LEER SIEMPRE:
 
-1. PAQUETES:
+1. ARQUITECTURA:
+   - 2 bases de datos separadas por país
+   - NO existe tenant_id en ningún modelo
+   - NO crear modelo Tenant ni relaciones con Tenant
+
+2. PAQUETES:
    - Siempre se selecciona un paquete (no existe "sesión a definir")
    - Default: Paquete Individual (1 sesión)
    - Es provisional hasta el checkout
    - Sesión se descuenta al COMPLETAR, no al agendar
 
-2. SERVICIOS:
+3. SERVICIOS:
    - Package.serviceType = BABY → cita requiere babyId
    - Package.serviceType = PARENT → cita requiere parentId
    - Una cita es para UN bebé O para UN padre (nunca ambos)
 
-3. PAGOS:
+4. PAGOS:
    - Algunos paquetes requieren pago anticipado
    - Citas PENDING_PAYMENT no bloquean slot
    - Cuotas configuradas POR PAQUETE
    - Sistema ALERTA pero NO BLOQUEA por pagos atrasados
+   - Pagos pueden ser divididos (múltiples métodos)
 
-4. EVENTOS:
+5. EVENTOS:
    - Tipos: BABIES o PARENTS
    - Bloqueo configurable: 0-4 terapeutas
    - No tienen evaluaciones
    - Sin penalización por no-show
 
-5. BABY CARD:
+6. BABY CARD:
    - Solo UNA card activa por bebé
    - Contador incrementa al COMPLETAR sesión
    - TODAS las sesiones cuentan
    - Premios son acumulativos (no expiran)
    - Precio especial solo para sesiones individuales
+
+7. ARQUEO DE CAJA:
+   - Una caja abierta a la vez
+   - Diferencia requiere aprobación de admin
+   - Solo egresos en EFECTIVO afectan el arqueo
+   - Recepcionista puede irse con arqueo pendiente
+
+8. PORTAL DE PADRES:
+   - Cancelar/reagendar solo con 24h de anticipación
+   - Genera notificación a recepción
+   - Puede ver saldo financiero pero no pagar online
 ```
 
 ## 9.3 Convenciones de Código
@@ -1321,6 +1714,9 @@ Antes de cada commit:
 □ Probar en /es/ y /pt-BR/
 □ Mobile responsive
 □ Permisos por rol verificados
+□ Actividad registrada (si aplica)
+□ Notificación creada (si aplica)
+□ NO usar tenantId en ningún modelo
 ```
 
 ## 9.6 Archivos de Referencia

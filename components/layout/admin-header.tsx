@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { Menu, LogOut, User, Bell } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 interface AdminHeaderProps {
   onMenuClick?: () => void;
@@ -52,11 +53,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
       {/* Right side actions */}
       <div className="flex items-center gap-2">
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative hover:bg-teal-50">
-          <Bell className="h-5 w-5 text-gray-600" />
-          <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 shadow-sm" />
-          <span className="sr-only">{t("nav.notifications")}</span>
-        </Button>
+        <NotificationBell />
 
         {/* User menu */}
         <DropdownMenu>

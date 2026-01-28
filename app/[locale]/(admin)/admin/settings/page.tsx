@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import {
@@ -15,6 +16,9 @@ import {
   AlertCircle,
   X,
   ImageIcon,
+  Bell,
+  Clock,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +31,8 @@ interface SystemSettings {
   whatsappNumber: string | null;
   whatsappCountryCode: string | null;
   whatsappMessage: string | null;
+  notificationPollingInterval: number;
+  notificationExpirationDays: number;
   defaultPackage?: {
     id: string;
     name: string;
@@ -37,14 +43,17 @@ interface SystemSettings {
 
 export default function SettingsPage() {
   const t = useTranslations();
+  const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isAdmin = session?.user?.role === "ADMIN";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Form state
+  // Form state - Payment
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState("+591");
@@ -52,6 +61,10 @@ export default function SettingsPage() {
   const [whatsappMessage, setWhatsappMessage] = useState(
     "Hola, adjunto mi comprobante de pago para la cita del {fecha} a las {hora}. Bebé: {bebe}"
   );
+
+  // Form state - Notifications (only for ADMIN)
+  const [pollingInterval, setPollingInterval] = useState(5);
+  const [expirationDays, setExpirationDays] = useState(7);
 
   useEffect(() => {
     fetchSettings();
@@ -77,6 +90,13 @@ export default function SettingsPage() {
         }
         if (settings.whatsappMessage) {
           setWhatsappMessage(settings.whatsappMessage);
+        }
+        // Notification settings
+        if (settings.notificationPollingInterval) {
+          setPollingInterval(settings.notificationPollingInterval);
+        }
+        if (settings.notificationExpirationDays) {
+          setExpirationDays(settings.notificationExpirationDays);
         }
       }
     } catch (err) {
@@ -136,6 +156,11 @@ export default function SettingsPage() {
           whatsappCountryCode,
           whatsappNumber,
           whatsappMessage,
+          // Only include notification settings if user is ADMIN
+          ...(isAdmin && {
+            notificationPollingInterval: pollingInterval,
+            notificationExpirationDays: expirationDays,
+          }),
         }),
       });
 
@@ -148,6 +173,10 @@ export default function SettingsPage() {
           setError(t("settings.payment.fileTooLarge"));
         } else if (data.error === "INVALID_WHATSAPP_NUMBER") {
           setError(t("settings.payment.invalidPhone"));
+        } else if (data.error === "INVALID_POLLING_INTERVAL") {
+          setError(t("settings.notifications.invalidPollingInterval"));
+        } else if (data.error === "INVALID_EXPIRATION_DAYS") {
+          setError(t("settings.notifications.invalidExpirationDays"));
         } else {
           setError("Error saving settings");
         }
@@ -313,22 +342,91 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end pt-4">
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="h-12 gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-8 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
-            >
-              {saving ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Save className="h-5 w-5" />
-              )}
-              {t("settings.payment.saveChanges")}
-            </Button>
+        </div>
+      </div>
+
+      {/* Notification Configuration Card - Only for ADMIN */}
+      {isAdmin && (
+        <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
+          <div className="mb-6 flex items-center gap-2">
+            <Bell className="h-5 w-5 text-teal-600" />
+            <h2 className="text-lg font-semibold text-gray-800">
+              {t("settings.notifications.title")}
+            </h2>
+          </div>
+
+          <div className="space-y-6">
+            {/* Polling Interval */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                {t("settings.notifications.pollingInterval")}
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={pollingInterval}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setPollingInterval(Math.min(30, Math.max(1, value)));
+                  }}
+                  className="w-24 rounded-xl border-2 border-teal-100 text-center focus:border-teal-400"
+                />
+                <span className="text-sm text-gray-500">
+                  {t("settings.notifications.minutes")}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {t("settings.notifications.pollingIntervalHelp")}
+              </p>
+            </div>
+
+            {/* Expiration Days */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                {t("settings.notifications.expirationDays")}
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={expirationDays}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setExpirationDays(Math.min(30, Math.max(1, value)));
+                  }}
+                  className="w-24 rounded-xl border-2 border-teal-100 text-center focus:border-teal-400"
+                />
+                <span className="text-sm text-gray-500">
+                  {t("settings.notifications.days")}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {t("settings.notifications.expirationDaysHelp")}
+              </p>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="h-12 gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-8 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
+        >
+          {saving ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Save className="h-5 w-5" />
+          )}
+          {t("settings.payment.saveChanges")}
+        </Button>
       </div>
     </div>
   );

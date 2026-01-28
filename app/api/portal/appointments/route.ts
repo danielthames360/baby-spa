@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseDateToUTCNoon, getStartOfDayUTC } from "@/lib/utils/date-utils";
+import { notificationService } from "@/lib/services/notification-service";
 
 export async function GET() {
   try {
@@ -506,6 +507,34 @@ export async function POST(request: Request) {
 
       return appointment;
     });
+
+    // Create notification for reception staff
+    try {
+      // Get the baby name for notification
+      let babyName: string | undefined;
+      if (!isParentAppointment) {
+        const baby = await prisma.baby.findUnique({
+          where: { id: babyId },
+          select: { name: true },
+        });
+        babyName = baby?.name;
+      }
+
+      await notificationService.createForNewAppointment(
+        {
+          id: result.id,
+          date: appointmentDate,
+          startTime,
+          status: requiresAdvancePayment ? "PENDING_PAYMENT" : "SCHEDULED",
+          baby: babyName ? { name: babyName } : null,
+          parent: isParentAppointment ? { name: parent?.name || "Padre/Madre" } : null,
+        },
+        "es" // Default locale for notifications
+      );
+    } catch (notificationError) {
+      // Log but don't fail the request if notification creation fails
+      console.error("Failed to create notification:", notificationError);
+    }
 
     return NextResponse.json({
       appointment: result,

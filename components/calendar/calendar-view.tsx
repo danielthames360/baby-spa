@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, Calendar, Loader2, CalendarDays, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -138,7 +138,12 @@ export function CalendarView() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
+
+  // Track which params we've already processed to avoid duplicates
+  const lastProcessedParamsRef = useRef<string>("");
+  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Initialize from localStorage if available (client-side only)
@@ -157,6 +162,41 @@ export function CalendarView() {
   useEffect(() => {
     localStorage.setItem("calendar-view-mode", viewMode);
   }, [viewMode]);
+
+  // Handle URL params (date and appointmentId)
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    const appointmentIdParam = searchParams.get("appointmentId");
+
+    // Create a unique key for the current params
+    const paramsKey = `${dateParam || ""}-${appointmentIdParam || ""}`;
+
+    // Skip if we've already processed these exact params (or if no params)
+    if (paramsKey === "-" || paramsKey === lastProcessedParamsRef.current) {
+      return;
+    }
+
+    // Mark these params as processed
+    lastProcessedParamsRef.current = paramsKey;
+
+    if (dateParam) {
+      // Parse the date (format: YYYY-MM-DD)
+      const [year, month, day] = dateParam.split("-").map(Number);
+      if (year && month && day) {
+        const targetDate = new Date(year, month - 1, day);
+
+        // Set the selected date and week
+        setSelectedDate(targetDate);
+        setCurrentWeekStart(getWeekStart(targetDate));
+      }
+    }
+
+    if (appointmentIdParam) {
+      // Store the appointment ID to open after data loads
+      setPendingAppointmentId(appointmentIdParam);
+    }
+  }, [searchParams]);
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
@@ -235,6 +275,26 @@ export function CalendarView() {
     fetchClosedDates();
     fetchEvents();
   }, [fetchAppointments, fetchClosedDates, fetchEvents]);
+
+  // Handle pending appointment ID after appointments are loaded
+  useEffect(() => {
+    if (!pendingAppointmentId || isLoading) return;
+
+    const apt = appointments.find((a) => a.id === pendingAppointmentId);
+
+    if (apt) {
+      // Found the appointment - open modal and clear pending ID
+      setSelectedAppointment(apt);
+      setDetailsDialogOpen(true);
+      setPendingAppointmentId(null);
+
+      // Clear the URL params after opening the modal
+      const url = new URL(window.location.href);
+      url.searchParams.delete("appointmentId");
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+    // If not found, keep pendingAppointmentId and wait for correct data to load
+  }, [pendingAppointmentId, appointments, isLoading, router]);
 
   // Week navigation
   const goToPreviousWeek = () => {

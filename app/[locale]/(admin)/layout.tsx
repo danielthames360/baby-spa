@@ -7,6 +7,7 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { AdminHeader } from "@/components/layout/admin-header";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { FloatingBubbles } from "@/components/ui/floating-bubbles";
+import { NotificationToastContainer } from "@/components/notifications/notification-toast-container";
 import { Loader2 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -94,6 +95,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Toast Notifications */}
+      <NotificationToastContainer />
     </div>
   );
 }
