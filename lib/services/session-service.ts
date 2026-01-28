@@ -1,9 +1,17 @@
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { Prisma, PaymentMethod } from "@prisma/client";
 import { inventoryService } from "./inventory-service";
 import { packageService } from "./package-service";
 import { babyCardService } from "./baby-card-service";
+import { paymentDetailService } from "./payment-detail-service";
 import { normalizeToUTCNoon, getStartOfDayUTC, getEndOfDayUTC } from "@/lib/utils/date-utils";
+
+// Payment detail input type for split payments
+interface PaymentDetailInput {
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+}
 
 // Types for service inputs
 interface StartSessionInput {
@@ -26,8 +34,9 @@ interface CompleteSessionInput {
   sessionId: string;
   packageId?: string; // Package to sell (if baby has no active package)
   packagePurchaseId?: string; // Existing package purchase to use for this session
-  paymentMethod?: "CASH" | "TRANSFER" | "CARD" | "OTHER";
+  paymentMethod?: "CASH" | "TRANSFER" | "CARD" | "OTHER"; // Legacy single method
   paymentNotes?: string;
+  paymentDetails?: PaymentDetailInput[]; // NEW: Split payment support
   discountAmount?: number;
   discountReason?: string;
   useFirstSessionDiscount?: boolean; // Apply Baby Card first session discount
@@ -323,7 +332,7 @@ export const sessionService = {
    * - Mark as COMPLETED
    */
   async completeSession(input: CompleteSessionInput) {
-    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount = 0, discountReason, useFirstSessionDiscount, userId, userName } = input;
+    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, paymentDetails, discountAmount = 0, discountReason, useFirstSessionDiscount, userId, userName } = input;
 
     // Get session with all relations
     const session = await prisma.session.findUnique({
@@ -465,8 +474,17 @@ export const sessionService = {
       let packagePurchaseToDeduct = sessionPackage || activePackage;
 
       // Create payment first if there's a total amount (needed for package purchase link)
+      // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
+      const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
+        paymentMethod: paymentMethod as PaymentMethod | undefined,
+        paymentReference: null,
+        paymentDetails,
+        totalAmount: Number(totalAmount),
+      });
+      const hasPaymentInfo = normalizedPaymentDetails.length > 0;
+
       let payment = null;
-      if (totalAmount.greaterThan(0) && paymentMethod) {
+      if (totalAmount.greaterThan(0) && hasPaymentInfo) {
         // Build payment notes with discount reason if applicable
         let finalPaymentNotes = paymentNotes || "";
         if (discountAmount > 0 && discountReason) {
@@ -481,14 +499,30 @@ export const sessionService = {
             : discountNote;
         }
 
+        // Use the first payment method as the "primary" method for backwards compatibility
+        const primaryMethod = normalizedPaymentDetails[0].paymentMethod;
+
         payment = await tx.payment.create({
           data: {
             sessionId,
             amount: totalAmount,
-            method: paymentMethod,
+            method: primaryMethod,
             notes: finalPaymentNotes || null,
           },
         });
+
+        // Create payment details for split payment tracking
+        if (payment) {
+          await paymentDetailService.createMany(
+            {
+              parentType: "SESSION",
+              parentId: payment.id,
+              details: normalizedPaymentDetails,
+              createdById: userId,
+            },
+            tx
+          );
+        }
       }
 
       // If selling a new package

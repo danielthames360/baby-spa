@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { PaymentMethod } from "@prisma/client";
 import {
   withAuth,
   validateRequest,
@@ -9,6 +10,14 @@ import {
 } from "@/lib/api-utils";
 import { registerInstallmentPaymentSchema } from "@/lib/validations/package";
 import { getNextInstallmentToPay, getPaidInstallmentsCount } from "@/lib/utils/installments";
+import { paymentDetailService } from "@/lib/services/payment-detail-service";
+
+// Payment detail input type for split payments
+interface PaymentDetailInput {
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+}
 
 // POST /api/package-payments - Register an installment payment
 export async function POST(request: NextRequest) {
@@ -73,6 +82,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
+    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
+      paymentMethod: data.paymentMethod as PaymentMethod | undefined,
+      paymentReference: data.reference || null,
+      paymentDetails: data.paymentDetails as PaymentDetailInput[] | undefined,
+      totalAmount: data.amount,
+    });
+
+    // Use the first payment method as the "primary" method for backwards compatibility
+    const primaryMethod = normalizedPaymentDetails.length > 0
+      ? normalizedPaymentDetails[0].paymentMethod
+      : (data.paymentMethod as PaymentMethod);
+
     // Create the payment and update purchase in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create payment record
@@ -81,12 +103,25 @@ export async function POST(request: NextRequest) {
           packagePurchaseId: data.packagePurchaseId,
           installmentNumber: data.installmentNumber,
           amount: data.amount,
-          paymentMethod: data.paymentMethod,
+          paymentMethod: primaryMethod,
           reference: data.reference || null,
           notes: data.notes || null,
           createdById: session.user.id,
         },
       });
+
+      // Create payment details for split payment tracking
+      if (normalizedPaymentDetails.length > 0) {
+        await paymentDetailService.createMany(
+          {
+            parentType: "PACKAGE_INSTALLMENT",
+            parentId: payment.id,
+            details: normalizedPaymentDetails,
+            createdById: session.user.id,
+          },
+          tx
+        );
+      }
 
       // Update purchase paidAmount
       const newPaidAmount = purchase.paidAmount.toNumber() + data.amount;

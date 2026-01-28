@@ -303,6 +303,8 @@
     "chargeable": "Cobrável",
     "notChargeable": "Não cobrável",
     "noProductsAdded": "Nenhum produto adicionado",
+    "summaryAndPayment": "Resumo e Pagamento",
+    "noPaymentRequired": "Nenhum pagamento necessário",
     "totalChargeable": "Total a Cobrar",
     "paymentMethod": "Forma de Pagamento",
     "selectPaymentMethod": "Selecione a forma de pagamento...",
@@ -540,6 +542,7 @@
     "sellPackageFor": "Para {name}",
     "selectPackage": "Selecione um pacote",
     "paymentMethod": "Forma de pagamento",
+    "discounts": "Descontos",
     "addDiscount": "Adicionar desconto",
     "hideDiscount": "Ocultar desconto",
     "discountAmount": "Valor do desconto",
@@ -710,6 +713,21 @@
       "invalidAmount": "O valor inserido não é válido",
       "belowMinimum": "O valor deve ser no mínimo R$ {amount}",
       "generic": "Ocorreu um erro ao registrar o pagamento"
+    },
+    "split": {
+      "title": "Forma de pagamento",
+      "addMethod": "Adicionar outra forma",
+      "removeMethod": "Remover",
+      "totalPaid": "Total pago",
+      "remaining": "Restante",
+      "excess": "Excesso",
+      "amountLabel": "Valor",
+      "errors": {
+        "summismatch": "A soma dos pagamentos deve ser igual ao total",
+        "atleastone": "Deve registrar pelo menos um pagamento",
+        "methodrequired": "Selecione uma forma de pagamento",
+        "amountpositive": "O valor deve ser maior que zero"
+      }
     }
   },
 

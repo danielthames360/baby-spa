@@ -135,6 +135,15 @@ enum BabyCardStatus {
   CANCELLED   // Cancelada/reembolsada
 }
 
+// Tipos de padre para PaymentDetail (referencia polimórfica)
+enum PaymentParentType {
+  SESSION               // Pago de sesión (checkout)
+  BABY_CARD             // Compra de Baby Card
+  EVENT_PARTICIPANT     // Pago de evento
+  APPOINTMENT           // Pago anticipado de cita
+  PACKAGE_INSTALLMENT   // Cuota de paquete
+}
+
 enum Mood {
   CALM
   IRRITABLE
@@ -180,6 +189,7 @@ model User {
   registeredParticipants     EventParticipant[]
   babyCardPurchasesCreated   BabyCardPurchase[]    @relation("BabyCardPurchasesCreated")
   babyCardRewardsApplied     BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
+  paymentDetailsCreated      PaymentDetail[]       @relation("PaymentDetailsCreated")
 
   @@map("users")
 }
@@ -1192,4 +1202,31 @@ model BabyCardRewardUsage {
 
   @@unique([babyCardPurchaseId, babyCardRewardId])  // Un premio solo se usa una vez
   @@map("baby_card_reward_usages")
+}
+
+// ============================================================
+// DETALLES DE PAGO (Split Payments)
+// ============================================================
+
+// Modelo centralizado para registrar cada "línea" de pago
+// Permite pagos divididos: ej. 350 Bs = 200 efectivo + 150 tarjeta
+model PaymentDetail {
+  id              String            @id @default(cuid())
+
+  // Referencia polimórfica al padre
+  parentType      PaymentParentType
+  parentId        String            // ID del Payment, BabyCardPurchase, EventParticipant, etc.
+
+  // Detalle del pago
+  amount          Decimal           @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod     // CASH, TRANSFER, CARD, OTHER
+  reference       String?           // Número de comprobante
+
+  // Auditoría
+  createdAt       DateTime          @default(now())
+  createdById     String?
+  createdBy       User?             @relation("PaymentDetailsCreated", fields: [createdById], references: [id])
+
+  @@index([parentType, parentId])
+  @@map("payment_details")
 }

@@ -303,6 +303,8 @@
     "chargeable": "Cobrable",
     "notChargeable": "No cobrable",
     "noProductsAdded": "No se han agregado productos",
+    "summaryAndPayment": "Resumen y Pago",
+    "noPaymentRequired": "No se requiere pago",
     "totalChargeable": "Total a Cobrar",
     "paymentMethod": "Método de Pago",
     "selectPaymentMethod": "Selecciona método de pago...",
@@ -540,6 +542,7 @@
     "sellPackageFor": "Para {name}",
     "selectPackage": "Selecciona un paquete",
     "paymentMethod": "Método de pago",
+    "discounts": "Descuentos",
     "addDiscount": "Agregar descuento",
     "hideDiscount": "Ocultar descuento",
     "discountAmount": "Monto del descuento",
@@ -710,6 +713,21 @@
       "invalidAmount": "El monto ingresado no es válido",
       "belowMinimum": "El monto debe ser al menos Bs. {amount}",
       "generic": "Ocurrió un error al registrar el pago"
+    },
+    "split": {
+      "title": "Método de pago",
+      "addMethod": "Agregar otro método",
+      "removeMethod": "Eliminar",
+      "totalPaid": "Total pagado",
+      "remaining": "Restante",
+      "excess": "Exceso",
+      "amountLabel": "Monto",
+      "errors": {
+        "summismatch": "La suma de los pagos debe ser igual al total",
+        "atleastone": "Debe registrar al menos un pago",
+        "methodrequired": "Seleccione un método de pago",
+        "amountpositive": "El monto debe ser mayor a cero"
+      }
     }
   },
 

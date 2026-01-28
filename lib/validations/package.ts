@@ -131,6 +131,15 @@ export const sellPackageSchema = z.object({
 
 export type SellPackageFormData = z.infer<typeof sellPackageSchema>;
 
+// Payment detail for split payments
+const paymentDetailSchema = z.object({
+  amount: z.number().min(0.01, "AMOUNT_MIN"),
+  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
+    message: "PAYMENT_METHOD_REQUIRED",
+  }),
+  reference: z.string().max(100).optional().nullable(),
+});
+
 // Register installment payment validation schema
 export const registerInstallmentPaymentSchema = z.object({
   packagePurchaseId: z.string().min(1, "PACKAGE_PURCHASE_REQUIRED"),
@@ -141,9 +150,10 @@ export const registerInstallmentPaymentSchema = z.object({
   amount: z
     .number()
     .min(0.01, "AMOUNT_MIN"),
+  // Legacy single method (optional if paymentDetails is provided)
   paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
     message: "PAYMENT_METHOD_REQUIRED",
-  }),
+  }).optional(),
   reference: z
     .string()
     .max(100, "REFERENCE_TOO_LONG")
@@ -154,6 +164,11 @@ export const registerInstallmentPaymentSchema = z.object({
     .max(500, "NOTES_TOO_LONG")
     .optional()
     .or(z.literal("")),
-});
+  // NEW: Split payment support
+  paymentDetails: z.array(paymentDetailSchema).optional(),
+}).refine(
+  (data) => data.paymentMethod || (data.paymentDetails && data.paymentDetails.length > 0),
+  { message: "PAYMENT_METHOD_REQUIRED", path: ["paymentMethod"] }
+);
 
 export type RegisterInstallmentPaymentData = z.infer<typeof registerInstallmentPaymentSchema>;

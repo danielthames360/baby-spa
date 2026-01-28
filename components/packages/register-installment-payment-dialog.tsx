@@ -1,16 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Loader2,
   CreditCard,
-  Banknote,
-  Building,
-  MoreHorizontal,
   Calendar,
   Sparkles,
 } from "lucide-react";
@@ -28,15 +23,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Prisma } from "@prisma/client";
-import {
-  registerInstallmentPaymentSchema,
-  type RegisterInstallmentPaymentData,
-} from "@/lib/validations/package";
+import { useForm } from "react-hook-form";
 import { getNextInstallmentToPay, parsePayOnSessions } from "@/lib/utils/installments";
+import {
+  SplitPaymentForm,
+  type PaymentDetailInput,
+} from "@/components/payments/split-payment-form";
 
 interface PackagePurchase {
   id: string;
@@ -68,12 +63,9 @@ interface RegisterInstallmentPaymentDialogProps {
   onSuccess: () => void;
 }
 
-const paymentMethods = [
-  { value: "CASH", icon: Banknote, color: "emerald" },
-  { value: "TRANSFER", icon: Building, color: "blue" },
-  { value: "CARD", icon: CreditCard, color: "violet" },
-  { value: "OTHER", icon: MoreHorizontal, color: "gray" },
-] as const;
+interface FormData {
+  notes: string;
+}
 
 export function RegisterInstallmentPaymentDialog({
   open,
@@ -86,6 +78,7 @@ export function RegisterInstallmentPaymentDialog({
   const locale = params.locale as string;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
 
   // Calculate next installment to pay
   const purchaseForCalc = {
@@ -105,14 +98,8 @@ export function RegisterInstallmentPaymentDialog({
     ? Number(purchase.installmentAmount)
     : 0;
 
-  const form = useForm<RegisterInstallmentPaymentData>({
-    resolver: zodResolver(registerInstallmentPaymentSchema),
+  const form = useForm<FormData>({
     defaultValues: {
-      packagePurchaseId: purchase.id,
-      installmentNumber: nextInstallment || 1,
-      amount: installmentAmount,
-      paymentMethod: "CASH",
-      reference: "",
       notes: "",
     },
   });
@@ -124,21 +111,32 @@ export function RegisterInstallmentPaymentDialog({
     }).format(price);
   };
 
-  const translateZodError = (error: string | undefined): string => {
-    if (!error) return "";
-    if (error.includes("_")) {
-      return t(`packages.errors.${error}`);
-    }
-    return error;
-  };
+  const handlePaymentDetailsChange = useCallback(
+    (details: PaymentDetailInput[]) => {
+      setPaymentDetails(details);
+    },
+    []
+  );
 
-  const onSubmit = async (data: RegisterInstallmentPaymentData) => {
+  const onSubmit = async (data: FormData) => {
+    if (paymentDetails.length === 0) {
+      return;
+    }
+
+    const totalPaid = paymentDetails.reduce((sum, d) => sum + d.amount, 0);
+
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/package-payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          packagePurchaseId: purchase.id,
+          installmentNumber: nextInstallment || 1,
+          amount: totalPaid,
+          paymentDetails,
+          notes: data.notes || null,
+        }),
       });
 
       if (!response.ok) {
@@ -158,6 +156,8 @@ export function RegisterInstallmentPaymentDialog({
   if (!nextInstallment) {
     return null; // All installments are paid
   }
+
+  const isValid = paymentDetails.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,8 +197,11 @@ export function RegisterInstallmentPaymentDialog({
                 </span>
               </div>
               {(() => {
-                const payOnSessions = parsePayOnSessions(purchase.installmentsPayOnSessions);
-                const dueOnSession = payOnSessions[nextInstallment ? nextInstallment - 1 : 0];
+                const payOnSessions = parsePayOnSessions(
+                  purchase.installmentsPayOnSessions
+                );
+                const dueOnSession =
+                  payOnSessions[nextInstallment ? nextInstallment - 1 : 0];
                 return dueOnSession ? (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Sparkles className="h-4 w-4 text-amber-500" />
@@ -212,80 +215,19 @@ export function RegisterInstallmentPaymentDialog({
               })()}
             </div>
 
-            {/* Payment Method */}
-            <div>
-              <FormLabel className="text-gray-700 mb-3 block">
-                {t("packages.paymentMethod")}
-              </FormLabel>
-              <div className="grid grid-cols-4 gap-2">
-                {paymentMethods.map((method) => {
-                  const Icon = method.icon;
-                  const isSelected =
-                    form.watch("paymentMethod") === method.value;
-
-                  return (
-                    <button
-                      key={method.value}
-                      type="button"
-                      onClick={() =>
-                        form.setValue("paymentMethod", method.value)
-                      }
-                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
-                        isSelected
-                          ? `border-${method.color}-500 bg-${method.color}-50 ring-2 ring-${method.color}-500`
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      <Icon
-                        className={`h-5 w-5 ${
-                          isSelected
-                            ? `text-${method.color}-600`
-                            : "text-gray-400"
-                        }`}
-                      />
-                      <span
-                        className={`text-xs font-medium ${
-                          isSelected
-                            ? `text-${method.color}-700`
-                            : "text-gray-600"
-                        }`}
-                      >
-                        {t(`payment.${method.value.toLowerCase()}`)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Reference */}
-            <FormField
-              control={form.control}
-              name="reference"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700">
-                    {t("payment.reference")}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder={t("payment.referencePlaceholder")}
-                      className="h-11 rounded-xl border-2 border-gray-200"
-                    />
-                  </FormControl>
-                  <FormMessage>
-                    {translateZodError(fieldState.error?.message)}
-                  </FormMessage>
-                </FormItem>
-              )}
+            {/* Split Payment Form */}
+            <SplitPaymentForm
+              totalAmount={installmentAmount}
+              onPaymentDetailsChange={handlePaymentDetailsChange}
+              disabled={isSubmitting}
+              showReference={true}
             />
 
             {/* Notes */}
             <FormField
               control={form.control}
               name="notes"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-gray-700">
                     {t("packages.paymentNotes")}
@@ -297,9 +239,7 @@ export function RegisterInstallmentPaymentDialog({
                       className="min-h-[80px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
                     />
                   </FormControl>
-                  <FormMessage>
-                    {translateZodError(fieldState.error?.message)}
-                  </FormMessage>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -316,7 +256,7 @@ export function RegisterInstallmentPaymentDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={!isValid || isSubmitting}
                 className="flex-1 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 font-semibold text-white shadow-lg shadow-amber-300/50 transition-all hover:from-amber-600 hover:to-orange-600"
               >
                 {isSubmitting ? (

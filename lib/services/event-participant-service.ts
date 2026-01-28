@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/db";
 import { Prisma, PaymentMethod, ParticipantStatus, DiscountType } from "@prisma/client";
+import { paymentDetailService } from "./payment-detail-service";
+
+// Payment detail input type for split payments
+interface PaymentDetailInput {
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+}
 
 // Types for service inputs
 interface AddBabyParticipantInput {
@@ -42,8 +50,10 @@ interface UpdateParticipantInput {
 interface RegisterPaymentInput {
   participantId: string;
   amount: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod?: PaymentMethod; // Legacy single method
   paymentReference?: string | null;
+  paymentDetails?: PaymentDetailInput[]; // NEW: Split payment support
+  registeredById?: string; // For tracking who registered the payment
 }
 
 // Standard includes for participant queries
@@ -384,6 +394,7 @@ export const eventParticipantService = {
 
   /**
    * Register a payment for a participant
+   * Supports split payments via paymentDetails array
    */
   async registerPayment(input: RegisterPaymentInput) {
     const participant = await prisma.eventParticipant.findUnique({
@@ -394,19 +405,53 @@ export const eventParticipantService = {
       throw new Error("PARTICIPANT_NOT_FOUND");
     }
 
+    // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
+    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
+      paymentMethod: input.paymentMethod,
+      paymentReference: input.paymentReference,
+      paymentDetails: input.paymentDetails,
+      totalAmount: input.amount,
+    });
+
+    // Use the first payment method as the "primary" method for backwards compatibility
+    const primaryMethod = normalizedPaymentDetails.length > 0
+      ? normalizedPaymentDetails[0].paymentMethod
+      : input.paymentMethod;
+    const primaryReference = normalizedPaymentDetails.length > 0
+      ? normalizedPaymentDetails[0].reference
+      : input.paymentReference;
+
     const newAmountPaid = Number(participant.amountPaid) + input.amount;
     const isFullyPaid = newAmountPaid >= Number(participant.amountDue);
 
-    return prisma.eventParticipant.update({
-      where: { id: input.participantId },
-      data: {
-        amountPaid: newAmountPaid,
-        paymentMethod: input.paymentMethod,
-        paymentReference: input.paymentReference,
-        paidAt: new Date(),
-        status: isFullyPaid ? "CONFIRMED" : participant.status,
-      },
-      include: participantInclude,
+    return prisma.$transaction(async (tx) => {
+      // Update participant
+      const updated = await tx.eventParticipant.update({
+        where: { id: input.participantId },
+        data: {
+          amountPaid: newAmountPaid,
+          paymentMethod: primaryMethod,
+          paymentReference: primaryReference,
+          paidAt: new Date(),
+          status: isFullyPaid ? "CONFIRMED" : participant.status,
+        },
+        include: participantInclude,
+      });
+
+      // Create payment details for split payment tracking
+      if (normalizedPaymentDetails.length > 0 && input.amount > 0) {
+        await paymentDetailService.createMany(
+          {
+            parentType: "EVENT_PARTICIPANT",
+            parentId: input.participantId,
+            details: normalizedPaymentDetails,
+            createdById: input.registeredById,
+          },
+          tx
+        );
+      }
+
+      return updated;
     });
   },
 

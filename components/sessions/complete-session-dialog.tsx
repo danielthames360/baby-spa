@@ -49,6 +49,10 @@ import {
   type PackageData,
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
+import {
+  SplitPaymentForm,
+  type PaymentDetailInput,
+} from "@/components/payments/split-payment-form";
 import { getPaymentStatus, getRemainingBalance, type PaymentStatus } from "@/lib/utils/installments";
 import { parseSchedulePreferences, formatPreferencesText } from "@/lib/utils/bulk-scheduling";
 
@@ -223,6 +227,7 @@ export function CompleteSessionDialog({
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
   const [paymentNotes, setPaymentNotes] = useState<string>("");
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
 
   // Discount state
   const [showDiscount, setShowDiscount] = useState(false);
@@ -411,6 +416,7 @@ export function CompleteSessionDialog({
       setSelectedPurchaseName("");
       setPaymentMethod("CASH");
       setPaymentNotes("");
+      setPaymentDetails([]);
       setShowDiscount(false);
       setDiscountAmount(0);
       setDiscountReason("");
@@ -598,6 +604,18 @@ export function CompleteSessionDialog({
     }).format(price);
   };
 
+  // Handle payment details change from SplitPaymentForm
+  const handlePaymentDetailsChange = useCallback(
+    (details: PaymentDetailInput[]) => {
+      setPaymentDetails(details);
+      // Update legacy paymentMethod for backwards compatibility
+      if (details.length > 0) {
+        setPaymentMethod(details[0].paymentMethod);
+      }
+    },
+    []
+  );
+
   // Get unique categories from products
   const categories = Array.from(
     new Set(products.map((p) => p.category).filter(Boolean))
@@ -620,8 +638,8 @@ export function CompleteSessionDialog({
       return;
     }
 
-    // If there's a total, payment method is required
-    if (grandTotal > 0 && !paymentMethod) {
+    // If there's a total, payment details are required
+    if (grandTotal > 0 && paymentDetails.length === 0) {
       setError(t("session.errors.PAYMENT_METHOD_REQUIRED"));
       return;
     }
@@ -638,6 +656,7 @@ export function CompleteSessionDialog({
           packageId: !selectedPurchaseId ? selectedPackageId || undefined : undefined,
           packagePurchaseId: selectedPurchaseId || undefined,
           paymentMethod: grandTotal > 0 ? paymentMethod : undefined,
+          paymentDetails: grandTotal > 0 && paymentDetails.length > 0 ? paymentDetails : undefined,
           paymentNotes: paymentNotes || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
           discountReason: discountAmount > 0 ? discountReason || undefined : undefined,
@@ -715,7 +734,14 @@ export function CompleteSessionDialog({
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200">
               <CheckCircle className="h-6 w-6 text-white" />
             </div>
-            {t("session.completeSession")}
+            <div>
+              <span>{t("session.completeSession")}</span>
+              {session && (
+                <p className="text-base font-medium text-gray-500 mt-0.5">
+                  {session.appointment.baby?.name || session.appointment.parent?.name}
+                </p>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -809,51 +835,6 @@ export function CompleteSessionDialog({
           </div>
         ) : (
           <div className="space-y-6 pt-4">
-            {/* Session info - Full width header */}
-            {(() => {
-              const isParentAppointment = !session.appointment.baby && session.appointment.parent;
-              const clientName = session.appointment.baby?.name || session.appointment.parent?.name || "";
-              return (
-                <div className={`flex items-center gap-3 rounded-xl bg-gradient-to-r px-4 py-3 shadow-sm ${isParentAppointment ? "from-rose-50 to-pink-50" : "from-emerald-50 to-teal-50"}`}>
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br shadow-md ${isParentAppointment ? "from-rose-400 to-pink-500" : "from-emerald-500 to-teal-500"}`}>
-                    {isParentAppointment ? (
-                      <UserRound className="h-5 w-5 text-white" />
-                    ) : (
-                      <Baby className="h-5 w-5 text-white" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-800">
-                        {clientName}
-                      </p>
-                      {isParentAppointment && (
-                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-                          {t("calendar.clientType.parent")}
-                        </span>
-                      )}
-                    </div>
-                    <p className={`text-xs ${isParentAppointment ? "text-rose-600" : "text-emerald-600"}`}>
-                      {t("session.sessionNumber", { number: session.sessionNumber })}
-                    </p>
-                  </div>
-                  {hasLinkedPackage && session.packagePurchase && (
-                    <div className="rounded-lg bg-white/80 px-3 py-1.5 text-right shadow-sm">
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">{t("session.packageUsed")}</p>
-                      <p className="text-sm font-semibold text-emerald-600">
-                        {session.packagePurchase.package.name} ({session.packagePurchase.remainingSessions} {t("common.sessionsUnit")})
-                      </p>
-                    </div>
-                  )}
-                  {needsPackageSelection && (
-                    <div className="rounded-lg bg-blue-50 px-3 py-1.5 text-right shadow-sm border border-blue-200">
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-blue-600">{t("session.pendingPackage")}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
             {/* Installment payment alert - NEVER blocks, just informs */}
             {installmentPaymentStatus && !installmentPaymentStatus.isPaidInFull && (
               <Alert className={installmentPaymentStatus.overdueAmount > 0 ? "border-amber-200 bg-amber-50" : "border-blue-200 bg-blue-50"}>
@@ -1103,426 +1084,424 @@ export function CompleteSessionDialog({
               </div>
             )}
 
-            {/* Two column layout for desktop */}
+            {/* Two column layout for desktop - PROPUESTA A */}
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* LEFT COLUMN: Package Selection OR Linked Package Info */}
-              <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
-                <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
-                  <Package className="h-5 w-5 text-teal-600" />
-                  {t("session.selectPackage")}
-                </h3>
-
-                {/* Package Selection - Always show PackageSelector */}
-                {!isLoadingBabyPackages && (
-                  <PackageSelector
-                    babyId={session.appointment.baby?.id || session.appointment.parent?.id || ""}
-                    packages={packages}
-                    babyPackages={babyPackages}
-                    selectedPackageId={selectedPackageId}
-                    selectedPurchaseId={selectedPurchaseId}
-                    onSelectPackage={(pkgId, purchaseId, purchaseName) => {
-                      setSelectedPackageId(pkgId);
-                      setSelectedPurchaseId(purchaseId);
-                      setSelectedPurchaseName(purchaseName || "");
-                    }}
-                    showCategories={true}
-                    showPrices={true}
-                    showExistingFirst={true}
-                    allowNewPackage={true}
-                    compact={true}
-                    showProvisionalMessage={false}
-                    forceShowCatalog={!!session.appointment.selectedPackageId && !session.packagePurchaseId}
-                    maxHeight="300px"
-                  />
-                )}
-                {isLoadingBabyPackages && (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-                  </div>
-                )}
-              </div>
-
-              {/* RIGHT COLUMN: Products section */}
-              <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
-                <div className="flex items-center justify-between">
+              {/* LEFT COLUMN: Package Selection + Products */}
+              <div className="space-y-5">
+                {/* Package Selection */}
+                <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
                   <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
-                    <Package className="h-5 w-5 text-cyan-600" />
-                    {t("session.productsUsed")}
+                    <Package className="h-5 w-5 text-teal-600" />
+                    {t("session.selectPackage")}
                   </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddProduct(!showAddProduct)}
-                    className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50 font-medium"
-                  >
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    {t("session.addProduct")}
-                  </Button>
+
+                  {!isLoadingBabyPackages && (
+                    <PackageSelector
+                      babyId={session.appointment.baby?.id || session.appointment.parent?.id || ""}
+                      packages={packages}
+                      babyPackages={babyPackages}
+                      selectedPackageId={selectedPackageId}
+                      selectedPurchaseId={selectedPurchaseId}
+                      onSelectPackage={(pkgId, purchaseId, purchaseName) => {
+                        setSelectedPackageId(pkgId);
+                        setSelectedPurchaseId(purchaseId);
+                        setSelectedPurchaseName(purchaseName || "");
+                      }}
+                      showCategories={true}
+                      showPrices={true}
+                      showExistingFirst={true}
+                      allowNewPackage={true}
+                      compact={true}
+                      showProvisionalMessage={false}
+                      forceShowCatalog={!!session.appointment.selectedPackageId && !session.packagePurchaseId}
+                      maxHeight="250px"
+                    />
+                  )}
+                  {isLoadingBabyPackages && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
+                    </div>
+                  )}
                 </div>
 
-                {/* Add product form */}
-                {showAddProduct && (
-                  <div className="space-y-3 rounded-xl bg-white p-4 border border-teal-100 shadow-sm">
-                    {/* Search input */}
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                      <Input
-                        value={productSearchQuery}
-                        onChange={(e) => setProductSearchQuery(e.target.value)}
-                        placeholder={t("session.searchProduct")}
-                        className="h-10 rounded-xl border-2 border-gray-200 pl-10 focus:border-teal-400"
-                      />
-                    </div>
+                {/* Products Section */}
+                <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
+                      <Package className="h-5 w-5 text-cyan-600" />
+                      {t("session.productsUsed")}
+                    </h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddProduct(!showAddProduct)}
+                      className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50 font-medium"
+                    >
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      {t("session.addProduct")}
+                    </Button>
+                  </div>
 
-                    {/* Category filter */}
-                    {categories.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCategory("all")}
-                          className={cn(
-                            "rounded-full px-3 py-1 text-xs font-medium transition-all",
-                            selectedCategory === "all"
-                              ? "bg-teal-500 text-white"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          )}
-                        >
-                          {t("common.all")}
-                        </button>
-                        {categories.map((category) => (
+                  {/* Add product form */}
+                  {showAddProduct && (
+                    <div className="space-y-3 rounded-xl bg-white p-4 border border-teal-100 shadow-sm">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                          value={productSearchQuery}
+                          onChange={(e) => setProductSearchQuery(e.target.value)}
+                          placeholder={t("session.searchProduct")}
+                          className="h-10 rounded-xl border-2 border-gray-200 pl-10 focus:border-teal-400"
+                        />
+                      </div>
+
+                      {categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
                           <button
-                            key={category}
                             type="button"
-                            onClick={() => setSelectedCategory(category)}
+                            onClick={() => setSelectedCategory("all")}
                             className={cn(
                               "rounded-full px-3 py-1 text-xs font-medium transition-all",
-                              selectedCategory === category
+                              selectedCategory === "all"
                                 ? "bg-teal-500 text-white"
                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                             )}
                           >
-                            {category}
+                            {t("common.all")}
                           </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Products grid */}
-                    <div className="max-h-[180px] overflow-y-auto">
-                      {filteredProducts.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {filteredProducts.map((product) => {
-                            const isSelected = selectedProduct === product.id;
-                            const isOutOfStock = product.currentStock < 1;
-
-                            return (
-                              <button
-                                key={product.id}
-                                type="button"
-                                onClick={() => !isOutOfStock && setSelectedProduct(isSelected ? "" : product.id)}
-                                disabled={isOutOfStock}
-                                className={cn(
-                                  "flex flex-col items-start rounded-lg border-2 p-2.5 text-left transition-all",
-                                  isSelected
-                                    ? "border-teal-500 bg-teal-50 ring-1 ring-teal-500"
-                                    : isOutOfStock
-                                    ? "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
-                                    : "border-gray-200 hover:border-teal-300 hover:bg-teal-50/50"
-                                )}
-                              >
-                                <div className="flex w-full items-start justify-between gap-1">
-                                  <span className="text-sm font-medium text-gray-800 line-clamp-1">
-                                    {product.name}
-                                  </span>
-                                  {isSelected && (
-                                    <Check className="h-4 w-4 flex-shrink-0 text-teal-600" />
-                                  )}
-                                </div>
-                                <div className="flex w-full items-center justify-between mt-1">
-                                  <span className="text-xs text-teal-600 font-semibold">
-                                    {formatPrice(Number(product.salePrice))}
-                                  </span>
-                                  <span className={cn(
-                                    "text-xs",
-                                    isOutOfStock ? "text-rose-500" : "text-gray-400"
-                                  )}>
-                                    Stock: {product.currentStock}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
+                          {categories.map((category) => (
+                            <button
+                              key={category}
+                              type="button"
+                              onClick={() => setSelectedCategory(category)}
+                              className={cn(
+                                "rounded-full px-3 py-1 text-xs font-medium transition-all",
+                                selectedCategory === category
+                                  ? "bg-teal-500 text-white"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              )}
+                            >
+                              {category}
+                            </button>
+                          ))}
                         </div>
-                      ) : (
-                        <p className="text-center text-sm text-gray-500 py-4">
-                          {t("common.noResults")}
-                        </p>
+                      )}
+
+                      <div className="max-h-[150px] overflow-y-auto">
+                        {filteredProducts.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            {filteredProducts.map((product) => {
+                              const isSelected = selectedProduct === product.id;
+                              const isOutOfStock = product.currentStock < 1;
+
+                              return (
+                                <button
+                                  key={product.id}
+                                  type="button"
+                                  onClick={() => !isOutOfStock && setSelectedProduct(isSelected ? "" : product.id)}
+                                  disabled={isOutOfStock}
+                                  className={cn(
+                                    "flex flex-col items-start rounded-lg border-2 p-2.5 text-left transition-all",
+                                    isSelected
+                                      ? "border-teal-500 bg-teal-50 ring-1 ring-teal-500"
+                                      : isOutOfStock
+                                      ? "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
+                                      : "border-gray-200 hover:border-teal-300 hover:bg-teal-50/50"
+                                  )}
+                                >
+                                  <div className="flex w-full items-start justify-between gap-1">
+                                    <span className="text-sm font-medium text-gray-800 line-clamp-1">
+                                      {product.name}
+                                    </span>
+                                    {isSelected && (
+                                      <Check className="h-4 w-4 flex-shrink-0 text-teal-600" />
+                                    )}
+                                  </div>
+                                  <div className="flex w-full items-center justify-between mt-1">
+                                    <span className="text-xs text-teal-600 font-semibold">
+                                      {formatPrice(Number(product.salePrice))}
+                                    </span>
+                                    <span className={cn(
+                                      "text-xs",
+                                      isOutOfStock ? "text-rose-500" : "text-gray-400"
+                                    )}>
+                                      Stock: {product.currentStock}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-center text-sm text-gray-500 py-4">
+                            {t("common.noResults")}
+                          </p>
+                        )}
+                      </div>
+
+                      {selectedProduct && (
+                        <div className="flex gap-3 pt-2 border-t border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs text-gray-500">{t("common.quantity")}:</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={productQuantity}
+                              onChange={(e) => setProductQuantity(parseInt(e.target.value) || 1)}
+                              className="h-9 w-16 rounded-lg border-2 border-gray-200 text-center text-sm font-medium"
+                            />
+                          </div>
+                          <Select
+                            value={productChargeable ? "yes" : "no"}
+                            onValueChange={(v) => setProductChargeable(v === "yes")}
+                          >
+                            <SelectTrigger className="h-9 flex-1 rounded-lg border-2 border-gray-200 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="yes">{t("session.chargeable")}</SelectItem>
+                              <SelectItem value="no">{t("session.notChargeable")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            onClick={handleAddProduct}
+                            disabled={!selectedProduct || isAddingProduct}
+                            className="h-9 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500 px-4 text-white text-sm font-medium"
+                          >
+                            {isAddingProduct ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              t("common.add")
+                            )}
+                          </Button>
+                        </div>
                       )}
                     </div>
+                  )}
 
-                    {/* Quantity and chargeable controls */}
-                    {selectedProduct && (
-                      <div className="flex gap-3 pt-2 border-t border-gray-100">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs text-gray-500">{t("common.quantity")}:</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={productQuantity}
-                            onChange={(e) => setProductQuantity(parseInt(e.target.value) || 1)}
-                            className="h-9 w-16 rounded-lg border-2 border-gray-200 text-center text-sm font-medium"
-                          />
-                        </div>
-                        <Select
-                          value={productChargeable ? "yes" : "no"}
-                          onValueChange={(v) => setProductChargeable(v === "yes")}
-                        >
-                          <SelectTrigger className="h-9 flex-1 rounded-lg border-2 border-gray-200 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="yes">{t("session.chargeable")}</SelectItem>
-                            <SelectItem value="no">{t("session.notChargeable")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          onClick={handleAddProduct}
-                          disabled={!selectedProduct || isAddingProduct}
-                          className="h-9 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500 px-4 text-white text-sm font-medium"
-                        >
-                          {isAddingProduct ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            t("common.add")
+                  {/* Products list */}
+                  {session.products.length > 0 ? (
+                    <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                      {session.products.map((sp) => (
+                        <div
+                          key={sp.id}
+                          className={cn(
+                            "flex items-center justify-between rounded-xl p-3 border",
+                            sp.isChargeable ? "bg-emerald-50 border-emerald-200" : "bg-white border-gray-200"
                           )}
-                        </Button>
+                        >
+                          <div>
+                            <p className="font-medium text-gray-800 text-sm">
+                              {sp.product.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {sp.quantity} x {formatPrice(parseFloat(sp.unitPrice))}
+                              {sp.isChargeable && (
+                                <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                  {t("session.chargeable")}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {sp.isChargeable && (
+                              <span className="text-sm font-bold text-emerald-600">
+                                {formatPrice(parseFloat(sp.unitPrice) * sp.quantity)}
+                              </span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveProduct(sp.id)}
+                              className="h-8 w-8 rounded-full p-0 text-rose-500 hover:bg-rose-100"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 mb-2">
+                        <Package className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {t("session.noProductsAdded")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: Summary + Discounts + Payment */}
+              <div className="space-y-5">
+                {/* Summary & Discounts Section */}
+                <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-5">
+                  <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800 mb-4">
+                    <DollarSign className="h-5 w-5 text-emerald-600" />
+                    {t("session.summaryAndPayment")}
+                  </h3>
+
+                  {/* Subtotals */}
+                  <div className="space-y-2 mb-4">
+                    {selectedPurchaseId && selectedPurchaseName && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          {t("session.usingExistingPackage")}
+                        </span>
+                        <span className="text-emerald-600 font-medium">
+                          {selectedPurchaseName}
+                        </span>
                       </div>
                     )}
+                    {selectedPackage && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          {t("session.packageSubtotal")}
+                        </span>
+                        <span className="text-gray-800 font-medium">
+                          {formatPrice(packagePrice)}
+                        </span>
+                      </div>
+                    )}
+                    {productsTotal > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          {t("session.productsSubtotal")}
+                        </span>
+                        <span className="text-gray-800 font-medium">
+                          {formatPrice(productsTotal)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Discounts Section */}
+                  {subtotal > 0 && (
+                    <div className="border-t border-gray-200/50 pt-4 mb-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-3">
+                        {t("packages.discounts")}
+                      </p>
+
+                      {/* First Session Discount - Show only if available and not used */}
+                      {babyCardInfo?.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used && (
+                        <button
+                          type="button"
+                          onClick={() => setUseFirstSessionDiscount(!useFirstSessionDiscount)}
+                          className={cn(
+                            "w-full flex items-center justify-between rounded-xl border-2 p-3 mb-2 transition-all",
+                            useFirstSessionDiscount
+                              ? "border-amber-400 bg-amber-50"
+                              : "border-gray-200 bg-white hover:border-amber-200"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Star className={cn("h-4 w-4", useFirstSessionDiscount ? "text-amber-500" : "text-gray-400")} />
+                            <span className="text-sm font-medium text-gray-700">
+                              {t("babyCard.checkout.firstSessionDiscount")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-amber-600">
+                              -{formatPrice(babyCardInfo.firstSessionDiscount.amount)}
+                            </span>
+                            {useFirstSessionDiscount && <Check className="h-4 w-4 text-amber-500" />}
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Manual Discount Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowDiscount(!showDiscount)}
+                        className={cn(
+                          "w-full flex items-center justify-between rounded-xl border-2 p-3 transition-all",
+                          showDiscount || discountAmount > 0
+                            ? "border-teal-400 bg-teal-50"
+                            : "border-dashed border-gray-300 bg-white hover:border-teal-300"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Percent className={cn("h-4 w-4", discountAmount > 0 ? "text-teal-500" : "text-gray-400")} />
+                          <span className="text-sm font-medium text-gray-700">
+                            {discountAmount > 0 ? t("packages.discount") : t("packages.addDiscount")}
+                          </span>
+                        </div>
+                        {discountAmount > 0 && (
+                          <span className="text-sm font-bold text-rose-600">
+                            -{formatPrice(discountAmount)}
+                          </span>
+                        )}
+                      </button>
+
+                      {showDiscount && (
+                        <div className="mt-3 space-y-3 rounded-xl bg-white p-4 border border-teal-100">
+                          <div>
+                            <Label className="text-gray-700 mb-1.5 block text-sm">
+                              {t("packages.discountAmount")}
+                            </Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={subtotal}
+                              step="0.01"
+                              value={discountAmount || ""}
+                              onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+                              className="h-10 rounded-xl border-2 border-gray-200"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-gray-700 mb-1.5 block text-sm">
+                              {t("packages.discountReason")}
+                            </Label>
+                            <Input
+                              value={discountReason}
+                              onChange={(e) => setDiscountReason(e.target.value)}
+                              placeholder={t("packages.discountReasonPlaceholder")}
+                              className="h-10 rounded-xl border-2 border-gray-200"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="flex justify-between items-center border-t border-emerald-200 pt-4">
+                    <span className="font-semibold text-gray-700">
+                      {t("session.total")}
+                    </span>
+                    <span className="text-2xl font-bold text-emerald-600">
+                      {formatPrice(grandTotal)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Payment Section - Only show when there's an amount to pay */}
+                {grandTotal > 0 && (
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
+                    <SplitPaymentForm
+                      totalAmount={grandTotal}
+                      onPaymentDetailsChange={handlePaymentDetailsChange}
+                      disabled={isSubmitting}
+                      showReference={true}
+                    />
                   </div>
                 )}
 
-                {/* Products list */}
-                {session.products.length > 0 ? (
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {session.products.map((sp) => (
-                      <div
-                        key={sp.id}
-                        className={cn(
-                          "flex items-center justify-between rounded-xl p-4 border",
-                          sp.isChargeable ? "bg-emerald-50 border-emerald-200" : "bg-white border-gray-200"
-                        )}
-                      >
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {sp.product.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {sp.quantity} x {formatPrice(parseFloat(sp.unitPrice))}
-                            {sp.isChargeable && (
-                              <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                {t("session.chargeable")}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {sp.isChargeable && (
-                            <span className="text-lg font-bold text-emerald-600">
-                              {formatPrice(parseFloat(sp.unitPrice) * sp.quantity)}
-                            </span>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveProduct(sp.id)}
-                            className="h-9 w-9 rounded-full p-0 text-rose-500 hover:bg-rose-100"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
-                      <Package className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {t("session.noProductsAdded")}
+                {/* No payment needed message */}
+                {grandTotal === 0 && (selectedPackageId || selectedPurchaseId) && (
+                  <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/50 p-5 text-center">
+                    <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-emerald-700">
+                      {t("session.noPaymentRequired")}
                     </p>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Discount Toggle - Show when there's a subtotal */}
-            {subtotal > 0 && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowDiscount(!showDiscount)}
-                  className="flex items-center gap-2 text-sm text-teal-600 hover:text-teal-700"
-                >
-                  <Percent className="h-4 w-4" />
-                  {showDiscount
-                    ? t("packages.hideDiscount")
-                    : t("packages.addDiscount")}
-                </button>
-
-                {showDiscount && (
-                  <div className="mt-3 space-y-3 rounded-xl bg-gray-50 p-4">
-                    <div>
-                      <Label className="text-gray-700 mb-1.5 block text-sm">
-                        {t("packages.discountAmount")}
-                      </Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={subtotal}
-                        step="0.01"
-                        value={discountAmount || ""}
-                        onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
-                        className="h-10 rounded-xl border-2 border-gray-200"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-gray-700 mb-1.5 block text-sm">
-                        {t("packages.discountReason")}
-                      </Label>
-                      <Input
-                        value={discountReason}
-                        onChange={(e) => setDiscountReason(e.target.value)}
-                        placeholder={t("packages.discountReasonPlaceholder")}
-                        className="h-10 rounded-xl border-2 border-gray-200"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Payment Method - Always show when there's a total */}
-            {grandTotal > 0 && (
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <DollarSign className="h-4 w-4" />
-                  {t("session.paymentMethod")}
-                </Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {paymentMethods.map((method) => {
-                    const Icon = method.icon;
-                    const isSelected = paymentMethod === method.value;
-
-                    return (
-                      <button
-                        key={method.value}
-                        type="button"
-                        onClick={() => setPaymentMethod(method.value)}
-                        className={cn(
-                          "flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all",
-                          isSelected
-                            ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
-                            : "border-gray-200 bg-white hover:border-gray-300"
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            "h-5 w-5",
-                            isSelected ? "text-teal-600" : "text-gray-400"
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            "text-xs font-medium",
-                            isSelected ? "text-teal-700" : "text-gray-600"
-                          )}
-                        >
-                          {t(`payment.${method.value.toLowerCase()}`)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Payment notes */}
-                <Input
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  placeholder={t("session.paymentNotesPlaceholder")}
-                  className="h-10 rounded-lg border-gray-200"
-                />
-              </div>
-            )}
-
-            {/* Total Summary */}
-            {(grandTotal > 0 || selectedPackageId || selectedPurchaseId || discountAmount > 0) && (
-              <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 p-4">
-                <div className="space-y-2">
-                  {/* Show selected existing package (no charge) */}
-                  {selectedPurchaseId && selectedPurchaseName && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        {t("session.usingExistingPackage")}
-                      </span>
-                      <span className="text-emerald-600 font-medium">
-                        {selectedPurchaseName}
-                      </span>
-                    </div>
-                  )}
-                  {productsTotal > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        {t("session.productsSubtotal")}
-                      </span>
-                      <span className="text-gray-800">
-                        {formatPrice(productsTotal)}
-                      </span>
-                    </div>
-                  )}
-                  {selectedPackage && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        {t("session.packageSubtotal")} ({selectedPackage.name})
-                      </span>
-                      <span className="text-gray-800">
-                        {formatPrice(packagePrice)}
-                      </span>
-                    </div>
-                  )}
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        {t("packages.discount")}
-                      </span>
-                      <span className="text-rose-600">
-                        -{formatPrice(discountAmount)}
-                      </span>
-                    </div>
-                  )}
-                  {firstSessionDiscountValue > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-1 text-amber-700">
-                        <Star className="h-3 w-3" />
-                        {t("babyCard.checkout.firstSessionDiscountLabel")}
-                      </span>
-                      <span className="text-amber-600 font-medium">
-                        -{formatPrice(firstSessionDiscountValue)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-teal-200 pt-2">
-                    <span className="font-medium text-gray-700">
-                      {t("session.total")}
-                    </span>
-                    <span className="text-xl font-bold text-emerald-600">
-                      {formatPrice(grandTotal)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Error message */}
             {error && (

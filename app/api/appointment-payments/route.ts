@@ -3,6 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@prisma/client";
+import { paymentDetailService } from "@/lib/services/payment-detail-service";
+
+// Payment detail input type for split payments
+interface PaymentDetailInput {
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+}
 
 // POST - Register a payment for an appointment
 export async function POST(request: Request) {
@@ -14,12 +22,20 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { appointmentId, amount, paymentMethod, paymentType, reference, notes } = body;
+    const { appointmentId, amount, paymentMethod, paymentType, reference, notes, paymentDetails } = body;
 
-    // Validate required fields
-    if (!appointmentId || !amount || !paymentMethod || !paymentType) {
+    // Validate required fields (paymentMethod is optional if paymentDetails is provided)
+    if (!appointmentId || !amount || !paymentType) {
       return NextResponse.json(
         { error: "MISSING_REQUIRED_FIELDS" },
+        { status: 400 }
+      );
+    }
+
+    // Must have either paymentMethod or paymentDetails
+    if (!paymentMethod && (!paymentDetails || paymentDetails.length === 0)) {
+      return NextResponse.json(
+        { error: "MISSING_PAYMENT_INFO" },
         { status: 400 }
       );
     }
@@ -100,6 +116,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
+    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
+      paymentMethod: paymentMethod as PaymentMethod | undefined,
+      paymentReference: reference,
+      paymentDetails: paymentDetails as PaymentDetailInput[] | undefined,
+      totalAmount: amountNum,
+    });
+
+    // Use the first payment method as the "primary" method for backwards compatibility
+    const primaryMethod = normalizedPaymentDetails.length > 0
+      ? normalizedPaymentDetails[0].paymentMethod
+      : (paymentMethod as PaymentMethod);
+
     // Create payment and update appointment in a transaction
     // Return both payment and updated appointment from transaction to avoid redundant fetch
     const result = await prisma.$transaction(async (tx) => {
@@ -108,13 +137,26 @@ export async function POST(request: Request) {
         data: {
           appointmentId,
           amount: amountNum,
-          paymentMethod: paymentMethod as PaymentMethod,
+          paymentMethod: primaryMethod,
           paymentType,
           reference,
           notes,
           createdById: session.user.id,
         },
       });
+
+      // Create payment details for split payment tracking
+      if (normalizedPaymentDetails.length > 0) {
+        await paymentDetailService.createMany(
+          {
+            parentType: "APPOINTMENT",
+            parentId: payment.id,
+            details: normalizedPaymentDetails,
+            createdById: session.user.id,
+          },
+          tx
+        );
+      }
 
       // If this is an advance payment and appointment was pending, confirm it
       if (

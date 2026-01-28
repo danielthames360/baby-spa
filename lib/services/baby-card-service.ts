@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/db";
 import { Prisma, BabyCardStatus, RewardType, PaymentMethod } from "@prisma/client";
+import { paymentDetailService } from "./payment-detail-service";
+
+// Payment detail input type for split payments
+interface PaymentDetailInput {
+  amount: number;
+  paymentMethod: PaymentMethod;
+  reference?: string | null;
+}
 
 // ============================================================
 // TYPES
@@ -59,8 +67,9 @@ interface PurchaseBabyCardInput {
   babyCardId: string;
   babyId: string;
   pricePaid: number;
-  paymentMethod?: PaymentMethod | null;
+  paymentMethod?: PaymentMethod | null; // Legacy single method
   paymentReference?: string | null;
+  paymentDetails?: PaymentDetailInput[]; // NEW: Split payment support
   createdById: string;
 }
 
@@ -409,19 +418,48 @@ export const babyCardService = {
         });
       }
 
+      // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
+      const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
+        paymentMethod: input.paymentMethod,
+        paymentReference: input.paymentReference,
+        paymentDetails: input.paymentDetails,
+        totalAmount: input.pricePaid,
+      });
+
+      // Use the first payment method as the "primary" method for backwards compatibility
+      const primaryMethod = normalizedPaymentDetails.length > 0
+        ? normalizedPaymentDetails[0].paymentMethod
+        : input.paymentMethod;
+      const primaryReference = normalizedPaymentDetails.length > 0
+        ? normalizedPaymentDetails[0].reference
+        : input.paymentReference;
+
       // Create new purchase
       const purchase = await tx.babyCardPurchase.create({
         data: {
           babyCardId: input.babyCardId,
           babyId: input.babyId,
           pricePaid: input.pricePaid,
-          paymentMethod: input.paymentMethod,
-          paymentReference: input.paymentReference,
+          paymentMethod: primaryMethod,
+          paymentReference: primaryReference,
           createdById: input.createdById,
           status: "ACTIVE",
         },
         include: purchaseInclude,
       });
+
+      // Create payment details for split payment tracking
+      if (normalizedPaymentDetails.length > 0 && input.pricePaid > 0) {
+        await paymentDetailService.createMany(
+          {
+            parentType: "BABY_CARD",
+            parentId: purchase.id,
+            details: normalizedPaymentDetails,
+            createdById: input.createdById,
+          },
+          tx
+        );
+      }
 
       // Update the replaced card to reference the new one
       if (existingPurchase) {

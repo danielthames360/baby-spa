@@ -1,16 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import {
   Loader2,
   IdCard,
-  CreditCard,
-  Banknote,
-  Building,
-  MoreHorizontal,
   Check,
   Gift,
   AlertTriangle,
@@ -33,6 +29,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BabyCardVisual } from "./baby-card-visual";
+import {
+  SplitPaymentForm,
+  type PaymentDetailInput,
+} from "@/components/payments/split-payment-form";
 
 interface Reward {
   id: string;
@@ -60,8 +60,6 @@ interface FormData {
   babyCardId: string;
   babyId: string;
   pricePaid: number;
-  paymentMethod: "CASH" | "TRANSFER" | "CARD" | "OTHER";
-  paymentReference: string;
 }
 
 interface SellBabyCardDialogProps {
@@ -72,13 +70,6 @@ interface SellBabyCardDialogProps {
   hasActiveBabyCard?: boolean;
   onSuccess: () => void;
 }
-
-const paymentMethods = [
-  { value: "CASH", icon: Banknote, color: "emerald" },
-  { value: "TRANSFER", icon: Building, color: "blue" },
-  { value: "CARD", icon: CreditCard, color: "violet" },
-  { value: "OTHER", icon: MoreHorizontal, color: "gray" },
-] as const;
 
 export function SellBabyCardDialog({
   open,
@@ -96,14 +87,13 @@ export function SellBabyCardDialog({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
 
   const form = useForm<FormData>({
     defaultValues: {
       babyCardId: "",
       babyId: babyId,
       pricePaid: 0,
-      paymentMethod: "CASH",
-      paymentReference: "",
     },
   });
 
@@ -113,10 +103,9 @@ export function SellBabyCardDialog({
         babyCardId: "",
         babyId: babyId,
         pricePaid: 0,
-        paymentMethod: "CASH",
-        paymentReference: "",
       });
       setSelectedCardId(null);
+      setPaymentDetails([]);
       fetchBabyCards();
     }
   }, [open, babyId, form]);
@@ -145,7 +134,16 @@ export function SellBabyCardDialog({
     if (card) {
       form.setValue("pricePaid", card.price);
     }
+    // Reset payment details when card changes
+    setPaymentDetails([]);
   };
+
+  const handlePaymentDetailsChange = useCallback(
+    (details: PaymentDetailInput[]) => {
+      setPaymentDetails(details);
+    },
+    []
+  );
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
@@ -155,12 +153,21 @@ export function SellBabyCardDialog({
   };
 
   const onSubmit = async (data: FormData) => {
+    if (paymentDetails.length === 0) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/baby-cards/purchases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          babyCardId: data.babyCardId,
+          babyId: data.babyId,
+          pricePaid: data.pricePaid,
+          paymentDetails,
+        }),
       });
 
       if (!response.ok) {
@@ -176,6 +183,9 @@ export function SellBabyCardDialog({
       setIsSubmitting(false);
     }
   };
+
+  const pricePaid = form.watch("pricePaid");
+  const isValid = paymentDetails.length > 0 && selectedCardId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -259,7 +269,9 @@ export function SellBabyCardDialog({
                               {card.firstSessionDiscount > 0 && (
                                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                                   <Gift className="mr-1 h-3 w-3" />
-                                  {t("babyCard.info.firstSessionDiscount", { amount: card.firstSessionDiscount })}
+                                  {t("babyCard.info.firstSessionDiscount", {
+                                    amount: card.firstSessionDiscount,
+                                  })}
                                 </span>
                               )}
                               {card.rewards.length > 0 && (
@@ -349,73 +361,13 @@ export function SellBabyCardDialog({
               />
             )}
 
-            {/* Payment Method */}
-            {selectedCard && (
-              <div>
-                <FormLabel className="text-gray-700 mb-3 block">
-                  {t("packages.paymentMethod")}
-                </FormLabel>
-                <div className="grid grid-cols-4 gap-2">
-                  {paymentMethods.map((method) => {
-                    const Icon = method.icon;
-                    const isSelected =
-                      form.watch("paymentMethod") === method.value;
-
-                    return (
-                      <button
-                        key={method.value}
-                        type="button"
-                        onClick={() =>
-                          form.setValue("paymentMethod", method.value)
-                        }
-                        className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
-                          isSelected
-                            ? `border-${method.color}-500 bg-${method.color}-50 ring-2 ring-${method.color}-500`
-                            : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
-                      >
-                        <Icon
-                          className={`h-5 w-5 ${
-                            isSelected
-                              ? `text-${method.color}-600`
-                              : "text-gray-400"
-                          }`}
-                        />
-                        <span
-                          className={`text-xs font-medium ${
-                            isSelected
-                              ? `text-${method.color}-700`
-                              : "text-gray-600"
-                          }`}
-                        >
-                          {t(`payment.${method.value.toLowerCase()}`)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Payment Reference */}
-            {selectedCard && (
-              <FormField
-                control={form.control}
-                name="paymentReference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700">
-                      {t("babyCard.sell.paymentReference")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder={t("babyCard.sell.paymentReferencePlaceholder")}
-                        className="h-11 rounded-xl border-2 border-gray-200"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+            {/* Split Payment Form */}
+            {selectedCard && pricePaid > 0 && (
+              <SplitPaymentForm
+                totalAmount={pricePaid}
+                onPaymentDetailsChange={handlePaymentDetailsChange}
+                disabled={isSubmitting}
+                showReference={true}
               />
             )}
 
@@ -436,7 +388,7 @@ export function SellBabyCardDialog({
                       {t("packages.total")}
                     </span>
                     <span className="text-xl font-bold text-teal-600">
-                      {formatPrice(form.watch("pricePaid"))}
+                      {formatPrice(pricePaid)}
                     </span>
                   </div>
                 </div>
@@ -455,7 +407,7 @@ export function SellBabyCardDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !selectedCardId}
+                disabled={isSubmitting || !isValid}
                 className="flex-1 h-11 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
               >
                 {isSubmitting ? (

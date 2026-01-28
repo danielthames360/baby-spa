@@ -8,10 +8,17 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+const paymentDetailSchema = z.object({
+  amount: z.number().min(0.01),
+  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+  reference: z.string().optional(),
+});
+
 const completeSessionSchema = z.object({
   packageId: z.string().optional(), // Package to sell (if baby has no active package)
   packagePurchaseId: z.string().optional(), // Existing package purchase to use for this session
   paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]).optional(),
+  paymentDetails: z.array(paymentDetailSchema).optional(), // Split payment support
   paymentNotes: z.string().optional(),
   discountAmount: z.number().min(0).optional(),
   discountReason: z.string().optional(),
@@ -44,13 +51,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount, discountReason, useFirstSessionDiscount } = validationResult.data;
+    const { packageId, packagePurchaseId, paymentMethod, paymentDetails, paymentNotes, discountAmount, discountReason, useFirstSessionDiscount } = validationResult.data;
 
     const result = await sessionService.completeSession({
       sessionId,
       packageId,
       packagePurchaseId,
       paymentMethod,
+      paymentDetails,
       paymentNotes,
       discountAmount,
       discountReason,
