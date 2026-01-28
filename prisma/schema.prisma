@@ -117,6 +117,24 @@ enum MuscleTone {
   TENSE
 }
 
+// ============================================================
+// ENUMS PARA BABY CARD (Sistema de Fidelización)
+// ============================================================
+
+enum RewardType {
+  SERVICE   // Un paquete/servicio gratis
+  PRODUCT   // Un producto físico gratis
+  EVENT     // Acceso gratis a evento
+  CUSTOM    // Premio personalizado (solo texto/diploma/etc.)
+}
+
+enum BabyCardStatus {
+  ACTIVE      // En progreso
+  COMPLETED   // Completó todas las sesiones
+  REPLACED    // Fue reemplazada por otra card
+  CANCELLED   // Cancelada/reembolsada
+}
+
 enum Mood {
   CALM
   IRRITABLE
@@ -151,15 +169,17 @@ model User {
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
-  sessionsAsTherapist     Session[]
-  appointmentsAssigned    Appointment[]
-  registrationLinks       RegistrationLink[]
-  babyNotes               BabyNote[]
-  staffPayments           StaffPayment[]
-  appointmentPayments     AppointmentPayment[]
-  packagePayments         PackagePayment[]
-  createdEvents           Event[]
-  registeredParticipants  EventParticipant[]
+  sessionsAsTherapist        Session[]
+  appointmentsAssigned       Appointment[]
+  registrationLinks          RegistrationLink[]
+  babyNotes                  BabyNote[]
+  staffPayments              StaffPayment[]
+  appointmentPayments        AppointmentPayment[]
+  packagePayments            PackagePayment[]
+  createdEvents              Event[]
+  registeredParticipants     EventParticipant[]
+  babyCardPurchasesCreated   BabyCardPurchase[]    @relation("BabyCardPurchasesCreated")
+  babyCardRewardsApplied     BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
 
   @@map("users")
 }
@@ -258,6 +278,7 @@ model Baby {
   notifications         NotificationLog[]
   notes                 BabyNote[]
   eventParticipations   EventParticipant[]
+  babyCardPurchases     BabyCardPurchase[]
 
   @@map("babies")
 }
@@ -384,14 +405,17 @@ model Package {
   installmentsPayOnSessions   String?                           // En qué sesiones pagar: "1,3,5"
 
   isActive       Boolean @default(true)
+  isPublic       Boolean @default(true)  // false = solo para premios Baby Card y uso interno
   sortOrder      Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  purchases       PackagePurchase[]
-  appointments    Appointment[]       // Citas que tienen este paquete pre-seleccionado
-  systemSettings  SystemSettings[]    @relation("DefaultPackage")
+  purchases             PackagePurchase[]
+  appointments          Appointment[]       // Citas que tienen este paquete pre-seleccionado
+  systemSettings        SystemSettings[]    @relation("DefaultPackage")
+  babyCardSpecialPrices BabyCardSpecialPrice[]
+  babyCardRewards       BabyCardReward[]
 
   @@map("packages")
 }
@@ -604,9 +628,10 @@ model Session {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  evaluation Evaluation?
-  products   SessionProduct[]
-  payment    Payment?
+  evaluation         Evaluation?
+  products           SessionProduct[]
+  payment            Payment?
+  babyCardSessionLog BabyCardSessionLog?
 
   @@map("sessions")
 }
@@ -684,9 +709,10 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movements     InventoryMovement[]
-  sessionUsages SessionProduct[]
-  eventUsages   EventProductUsage[]
+  movements       InventoryMovement[]
+  sessionUsages   SessionProduct[]
+  eventUsages     EventProductUsage[]
+  babyCardRewards BabyCardReward[]
 
   @@map("products")
 }
@@ -1005,4 +1031,165 @@ model EventProductUsage {
   createdAt   DateTime  @default(now())
 
   @@map("event_product_usages")
+}
+
+// ============================================================
+// BABY CARD - SISTEMA DE FIDELIZACIÓN
+// ============================================================
+
+// Plantilla/Catálogo de Baby Cards
+model BabyCard {
+  id                    String    @id @default(cuid())
+  name                  String    // "Baby Spa Card Premium"
+  description           String?   @db.Text
+
+  // Precio y configuración
+  price                 Decimal   @db.Decimal(10, 2)  // Precio de la tarjeta
+  totalSessions         Int       // Total de sesiones para completar
+  firstSessionDiscount  Decimal   @default(0) @db.Decimal(10, 2)  // Monto de descuento en primera sesión
+
+  // Estado
+  isActive              Boolean   @default(true)
+  sortOrder             Int       @default(0)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relaciones
+  specialPrices         BabyCardSpecialPrice[]
+  rewards               BabyCardReward[]
+  purchases             BabyCardPurchase[]
+
+  @@map("baby_cards")
+}
+
+// Precios especiales por paquete/servicio
+model BabyCardSpecialPrice {
+  id              String    @id @default(cuid())
+  babyCardId      String
+  packageId       String    // Paquete al que aplica (ej: Sesión Individual)
+  specialPrice    Decimal   @db.Decimal(10, 2)  // Precio con Baby Card
+
+  babyCard        BabyCard  @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
+  package         Package   @relation(fields: [packageId], references: [id])
+
+  @@unique([babyCardId, packageId])
+  @@map("baby_card_special_prices")
+}
+
+// Premios configurados en cada Baby Card
+model BabyCardReward {
+  id              String          @id @default(cuid())
+  babyCardId      String
+  sessionNumber   Int             // En qué sesión se desbloquea (3, 7, 10, etc.)
+
+  // Tipo de premio
+  rewardType      RewardType      // SERVICE | PRODUCT | EVENT | CUSTOM
+
+  // Referencias según tipo
+  packageId       String?         // Si rewardType = SERVICE
+  productId       String?         // Si rewardType = PRODUCT
+
+  // Para premios personalizados (CUSTOM)
+  customName      String?         // "Diploma de Graduación"
+  customDescription String?       @db.Text
+
+  // Display
+  displayName     String          // "Sesión de Fotos Gratis"
+  displayIcon     String?         // Emoji o nombre de icono lucide
+
+  createdAt       DateTime        @default(now())
+
+  babyCard        BabyCard        @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
+  package         Package?        @relation(fields: [packageId], references: [id])
+  product         Product?        @relation(fields: [productId], references: [id])
+
+  usages          BabyCardRewardUsage[]
+
+  @@unique([babyCardId, sessionNumber])
+  @@map("baby_card_rewards")
+}
+
+// Compra/Asignación de Baby Card a un bebé
+model BabyCardPurchase {
+  id                    String          @id @default(cuid())
+  babyCardId            String
+  babyId                String
+
+  // Pago
+  pricePaid             Decimal         @db.Decimal(10, 2)
+  paymentMethod         PaymentMethod?
+  paymentReference      String?
+
+  // Progreso
+  completedSessions     Int             @default(0)
+
+  // Estado
+  status                BabyCardStatus  @default(ACTIVE)
+
+  // Descuento primera sesión
+  firstSessionDiscountUsed    Boolean         @default(false)
+  firstSessionDiscountAmount  Decimal?        @db.Decimal(10, 2)  // Monto realmente descontado
+  firstSessionDiscountAppliedTo String?       // ID de la cita/paquete donde se aplicó
+  firstSessionDiscountDate    DateTime?
+
+  // Fechas
+  purchaseDate          DateTime        @default(now())
+  completedDate         DateTime?       // Cuando completó todas las sesiones
+  replacedDate          DateTime?       // Si fue reemplazada por otra card
+  replacedByPurchaseId  String?         // ID de la card que la reemplazó
+
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  createdById           String?
+
+  // Relaciones
+  babyCard              BabyCard        @relation(fields: [babyCardId], references: [id])
+  baby                  Baby            @relation(fields: [babyId], references: [id])
+  createdBy             User?           @relation("BabyCardPurchasesCreated", fields: [createdById], references: [id])
+
+  rewardUsages          BabyCardRewardUsage[]
+  sessionLogs           BabyCardSessionLog[]
+
+  @@map("baby_card_purchases")
+}
+
+// Registro de sesiones completadas en Baby Card
+model BabyCardSessionLog {
+  id                  String    @id @default(cuid())
+  babyCardPurchaseId  String
+  sessionId           String    @unique  // La sesión que contó
+  sessionNumber       Int       // Número de sesión en la card (1, 2, 3...)
+
+  createdAt           DateTime  @default(now())
+
+  babyCardPurchase    BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
+  session             Session          @relation(fields: [sessionId], references: [id])
+
+  @@map("baby_card_session_logs")
+}
+
+// Uso de premios de Baby Card
+model BabyCardRewardUsage {
+  id                  String    @id @default(cuid())
+  babyCardPurchaseId  String
+  babyCardRewardId    String
+
+  // Cuándo se usó
+  usedAt              DateTime  @default(now())
+  usedById            String    // Staff que lo aplicó
+
+  // Referencia a dónde se aplicó
+  appointmentId       String?   // Si se usó en una cita
+  eventParticipantId  String?   // Si se usó en un evento
+  productSaleId       String?   // Si se usó para un producto
+
+  notes               String?
+
+  babyCardPurchase    BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
+  babyCardReward      BabyCardReward   @relation(fields: [babyCardRewardId], references: [id])
+  usedBy              User             @relation("BabyCardRewardsApplied", fields: [usedById], references: [id])
+
+  @@unique([babyCardPurchaseId, babyCardRewardId])  // Un premio solo se usa una vez
+  @@map("baby_card_reward_usages")
 }

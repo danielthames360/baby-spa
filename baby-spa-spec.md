@@ -2,7 +2,7 @@
 ## Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
 
 **Última actualización:** Enero 2026  
-**Versión:** 3.0
+**Versión:** 4.0
 
 ---
 
@@ -30,7 +30,8 @@
 - Fisioterapia infantil
 - Vacunas
 - Cumple Mes (celebraciones)
-- Eventos grupales
+- Eventos grupales (Hora de Juego, Babython, Talleres)
+- **Servicios para padres** (Masaje Prenatal, Masaje Postparto)
 
 ### Ubicaciones:
 - **Bolivia** (existente) - Dominio: `bo.babyspa.online`
@@ -40,6 +41,7 @@
 - **65-70%**: Clientes esporádicos (1 sesión única)
 - **30-35%**: Clientes recurrentes (paquetes 4-20 sesiones)
 - **Casos especiales**: Bebés con condiciones terapéuticas (hipotonía, retraso psicomotor, prematuros)
+- **Padres LEAD**: Madres embarazadas que asisten a talleres prenatales (potenciales clientes)
 
 ## 1.2 Objetivos del Sistema
 
@@ -47,21 +49,23 @@
 2. ✅ Control financiero completo (ingresos/egresos/inventario)
 3. ⏳ Notificaciones inteligentes (mesversarios automáticos)
 4. ✅ Seguimiento desarrollo bebés (historial + evaluaciones)
-5. ⏳ Portal para padres (ver progreso, agendar citas)
+5. ✅ Portal para padres (ver progreso, agendar citas)
 6. ✅ Inventario productos
 7. ✅ Multiidioma (Español + Portugués Brasil)
 8. ✅ Multi-base de datos (Bolivia y Brasil separadas)
 9. ✅ Sistema de penalización por no-shows
-10. ⏳ Pagos anticipados y financiamiento
-11. ⏳ Eventos grupales
-12. ⏳ Auto-agendado masivo
+10. ✅ Pagos anticipados y financiamiento
+11. ✅ Eventos grupales
+12. ✅ Auto-agendado masivo
+13. ✅ Servicios para padres (masajes prenatales/postparto)
+14. ⏳ Sistema Baby Card (fidelización)
 
 ## 1.3 Operación
 
 ### Capacidad:
 - **Hasta 5 citas por slot de 30 min** (para staff)
 - **2 citas por slot** (para padres en portal)
-- **2 terapeutas simultáneos**
+- **4 terapeutas simultáneos** (configurable para eventos)
 
 ### Horarios:
 ```
@@ -82,6 +86,8 @@ DOMINGO: Cerrado
 
 ## 1.4 Paquetes y Servicios
 
+### Servicios para Bebés (ServiceType = BABY)
+
 | Categoría | Paquete | Sesiones | Duración | Pago Único | Cuotas | Precio Cuotas |
 |-----------|---------|----------|----------|------------|--------|---------------|
 | Hidroterapia | Individual | 1 | 60 min | 350 Bs | - | - |
@@ -90,6 +96,13 @@ DOMINGO: Cerrado
 | Hidroterapia | Plan Integral | 20 | 60 min | 6,200 Bs | 5 | 6,300 Bs |
 | Cumple Mes | Individual | 1 | 90 min | 250 Bs | - | Requiere anticipo |
 | Vacunas | Individual | 1 | 30 min | 180 Bs | - | Requiere anticipo |
+
+### Servicios para Padres (ServiceType = PARENT)
+
+| Categoría | Paquete | Sesiones | Duración | Precio |
+|-----------|---------|----------|----------|--------|
+| Servicios Maternos | Masaje Prenatal | 1 | 60 min | 200 Bs |
+| Servicios Maternos | Masaje Postparto | 1 | 60 min | 180 Bs |
 
 **Reglas de Paquetes:**
 - Los paquetes **NO vencen** (válidos hasta que bebé cumpla 3 años)
@@ -186,8 +199,8 @@ El sistema usa **2 bases de datos completamente separadas** (NO tenant_id):
 
 ```
 ┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
-│   Package   │◄──────│ PackagePurchase │──────►│    Baby     │
-│  (catálogo) │       │   (compra)      │       │             │
+│   Package   │◄──────│ PackagePurchase │──────►│  Baby/Parent│
+│  (catálogo) │       │   (compra)      │       │  (cliente)  │
 └─────────────┘       └────────┬────────┘       └──────┬──────┘
                                │                       │
                                │                       │
@@ -202,151 +215,32 @@ El sistema usa **2 bases de datos completamente separadas** (NO tenant_id):
         ┌──────────┐   ┌────────────┐   ┌─────────┐  
         │Evaluation│   │SessionProd.│   │ Payment │  
         └──────────┘   └────────────┘   └─────────┘  
+
+
+┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
+│  BabyCard   │◄──────│BabyCardPurchase │──────►│    Baby     │
+│ (plantilla) │       │   (compra)      │       │             │
+└─────────────┘       └────────┬────────┘       └─────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+     ┌──────────────┐  ┌─────────────┐  ┌────────────────┐
+     │SpecialPrice  │  │   Reward    │  │  SessionLog    │
+     └──────────────┘  └─────────────┘  └────────────────┘
 ```
 
-## 4.2 Modelos Clave
-
-### Package (Catálogo de Paquetes)
+## 4.2 Enums del Sistema
 
 ```prisma
-model Package {
-  id                      String    @id @default(cuid())
-  name                    String
-  description             String?   // Descripción detallada
-  categoryId              String?   // Relación con Category
-  sessionCount            Int       // Número de sesiones
-  basePrice               Decimal   // Precio pago único
-  duration                Int       @default(60) // Duración en minutos
-  
-  // Pago anticipado
-  requiresAdvancePayment  Boolean   @default(false)
-  advancePaymentAmount    Decimal?  // Monto del anticipo requerido
-  
-  // Configuración de cuotas (NUEVO)
-  allowInstallments           Boolean   @default(false)  // ¿Permite cuotas?
-  installmentsCount           Int?      // Cantidad de cuotas
-  installmentsTotalPrice      Decimal?  // Precio total en cuotas (puede ser > basePrice)
-  installmentsPayOnSessions   String?   // En qué sesiones pagar: "1,3,5"
-  
-  isActive                Boolean   @default(true)
-  sortOrder               Int       @default(0)
-  
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  
-  // Relaciones
-  category                Category? @relation(fields: [categoryId], references: [id])
-}
-```
-
-### PackagePurchase (Compra de Paquete)
-
-```prisma
-model PackagePurchase {
-  id                String    @id @default(cuid())
-  babyId            String
-  packageId         String
-  
-  // Precios
-  basePrice         Decimal
-  discountAmount    Decimal   @default(0)
-  discountReason    String?
-  finalPrice        Decimal   // Precio sin financiamiento
-  
-  // Plan de pago
-  paymentPlan               String    @default("SINGLE")  // SINGLE | INSTALLMENTS
-  installmentsCount         Int       @default(1)
-  totalPrice                Decimal   // Precio final a pagar (único o con financiamiento)
-  installmentAmount         Decimal?  // Monto por cuota (calculado: totalPrice / installmentsCount)
-  paidAmount                Decimal   @default(0)
-  installmentsPayOnSessions String?   // Copiado del Package: "1,3,5"
-  // pendingAmount = totalPrice - paidAmount (calculado)
-
-   // Preferencia de horario del padre (para auto-agendado)
-  // Formato JSON: [{"dayOfWeek": 1, "time": "09:00"}, {"dayOfWeek": 4, "time": "15:00"}]
-  schedulePreferences       String?   @db.Text
-  
-  // Sesiones
-  totalSessions     Int
-  usedSessions      Int       @default(0)
-  remainingSessions Int       // Calculado: totalSessions - usedSessions
-  
-  isActive          Boolean   @default(true)
-  purchaseDate      DateTime  @default(now())
-  
-  // Relaciones
-  baby              Baby      @relation(fields: [babyId], references: [id])
-  package           Package   @relation(fields: [packageId], references: [id])
-  payments          PackagePayment[]
-  sessions          Session[]
-  appointments      Appointment[]
-}
-```
-
-
-### Parent (Padre/Madre)
-
-```prisma
-model Parent {
-  id                  String    @id @default(cuid())
-  name                String
-  email               String?
-  phone               String
-  
-  // Para padres potenciales (LEADS de talleres prenatales)
-  status              ParentStatus  @default(ACTIVE)
-  pregnancyWeeks      Int?          // Semanas de embarazo al registrar
-  leadSource          String?       // "EVENTO_TALLER", "INSTAGRAM", "REFERIDO", etc.
-  leadNotes           String?       // Notas del lead
-  convertedAt         DateTime?     // Fecha cuando se convirtió en cliente
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  
-  // Relaciones
-  babies              Baby[]
-  eventParticipations EventParticipant[]
+enum ServiceType {
+  BABY      // Servicio para bebés (hidroterapia, vacunas, etc.)
+  PARENT    // Servicio para padres (masaje prenatal, postparto, etc.)
 }
 
 enum ParentStatus {
   LEAD      // Padre potencial (embarazada sin bebé aún)
   ACTIVE    // Cliente activo (tiene bebé registrado)
   INACTIVE  // Cliente inactivo
-}
-```
-
-### Event (Evento Grupal)
-
-```prisma
-model Event {
-  id                  String        @id @default(cuid())
-  name                String
-  description         String?
-  eventType           EventType     // BABIES | PARENTS
-  
-  date                DateTime      @db.Date
-  startTime           String
-  endTime             String
-  
-  maxParticipants     Int?
-  minAgeMonths        Int?
-  maxAgeMonths        Int?
-  
-  basePrice           Decimal       @db.Decimal(10, 2)
-  
-  blocksCalendar      Boolean       @default(false)
-  blockedTherapists   Int           @default(0)  // 0-4
-  
-  status              EventStatus   @default(DRAFT)
-  notes               String?
-  
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  createdById         String
-  
-  createdBy           User          @relation(fields: [createdById], references: [id])
-  participants        EventParticipant[]
-  productUsages       EventProductUsage[]
 }
 
 enum EventType {
@@ -361,43 +255,6 @@ enum EventStatus {
   COMPLETED
   CANCELLED
 }
-```
-### EventParticipant (Inscripción a Evento)
-
-```prisma
-model EventParticipant {
-  id                  String            @id @default(cuid())
-  eventId             String
-  babyId              String?           // Si eventType = BABIES
-  parentId            String?           // Si eventType = PARENTS
-  
-  status              ParticipantStatus @default(REGISTERED)
-  
-  originalPrice       Decimal           @db.Decimal(10, 2)
-  discountType        DiscountType?
-  discountAmount      Decimal           @default(0)
-  discountReason      String?
-  finalPrice          Decimal           @db.Decimal(10, 2)
-  
-  paymentStatus       PaymentStatus     @default(PENDING)
-  paidAmount          Decimal           @default(0)
-  paymentMethod       PaymentMethod?
-  paidAt              DateTime?
-  
-  attended            Boolean?
-  notes               String?
-  
-  registeredAt        DateTime          @default(now())
-  registeredById      String
-  
-  event               Event             @relation(...)
-  baby                Baby?             @relation(...)
-  parent              Parent?           @relation(...)
-  registeredBy        User              @relation(...)
-  
-  @@unique([eventId, babyId])
-  @@unique([eventId, parentId])
-}
 
 enum ParticipantStatus {
   REGISTERED
@@ -410,39 +267,209 @@ enum DiscountType {
   COURTESY      // 100% gratis
   FIXED         // Monto fijo
 }
+
+enum AppointmentStatus {
+  SCHEDULED      // Agendada, esperando
+  PENDING_PAYMENT // Esperando pago anticipado (no bloquea slot)
+  IN_PROGRESS    // En curso
+  COMPLETED      // Completada
+  CANCELLED      // Cancelada
+  NO_SHOW        // No asistió
+}
+
+enum SessionStatus {
+  PENDING    // Iniciada, esperando evaluación
+  EVALUATED  // Terapeuta completó evaluación
+  COMPLETED  // Recepción cobró y cerró
+}
+
+enum RewardType {
+  SERVICE   // Un paquete/servicio gratis
+  PRODUCT   // Un producto físico gratis
+  EVENT     // Acceso gratis a evento
+  CUSTOM    // Premio personalizado (solo texto/diploma/etc.)
+}
+
+enum BabyCardStatus {
+  ACTIVE      // En progreso
+  COMPLETED   // Completó todas las sesiones
+  REPLACED    // Fue reemplazada por otra card
+  CANCELLED   // Cancelada/reembolsada
+}
 ```
-### EventProductUsage (Productos usados en evento)
+
+## 4.3 Modelos Clave
+
+### Package (Catálogo de Paquetes)
 
 ```prisma
-model EventProductUsage {
-  id          String    @id @default(cuid())
-  eventId     String
-  productId   String
-  quantity    Int
-  notes       String?
-  createdAt   DateTime  @default(now())
+model Package {
+  id                      String      @id @default(cuid())
+  name                    String
+  description             String?     // Descripción detallada
+  categoryId              String?     // Relación con Category
+  sessionCount            Int         // Número de sesiones
+  basePrice               Decimal     // Precio pago único
+  duration                Int         @default(60) // Duración en minutos
+
+  // Tipo de servicio
+  serviceType             ServiceType @default(BABY)  // BABY | PARENT
   
-  event       Event     @relation(...)
-  product     Product   @relation(...)
+  // Pago anticipado
+  requiresAdvancePayment  Boolean     @default(false)
+  advancePaymentAmount    Decimal?    // Monto del anticipo requerido
+  
+  // Configuración de cuotas
+  allowInstallments           Boolean   @default(false)
+  installmentsCount           Int?
+  installmentsTotalPrice      Decimal?
+  installmentsPayOnSessions   String?   // "1,3,5"
+  
+  isActive                Boolean     @default(true)
+  sortOrder               Int         @default(0)
+  
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  
+  // Relaciones
+  category                Category?   @relation(fields: [categoryId], references: [id])
+  babyCardSpecialPrices   BabyCardSpecialPrice[]
+  babyCardRewards         BabyCardReward[]
+}
+```
+
+### PackagePurchase (Compra de Paquete)
+
+```prisma
+model PackagePurchase {
+  id                String    @id @default(cuid())
+  
+  // Cliente: bebé O padre (uno u otro, nunca ambos)
+  babyId            String?   // Para paquetes de bebés
+  parentId          String?   // Para paquetes de padres
+  
+  packageId         String
+  
+  // Precios
+  basePrice         Decimal
+  discountAmount    Decimal   @default(0)
+  discountReason    String?
+  finalPrice        Decimal   // Precio sin financiamiento
+  
+  // Plan de pago
+  paymentPlan               String    @default("SINGLE")  // SINGLE | INSTALLMENTS
+  installmentsCount         Int       @default(1)
+  totalPrice                Decimal   // Precio final a pagar
+  installmentAmount         Decimal?
+  paidAmount                Decimal   @default(0)
+  installmentsPayOnSessions String?
+  
+  // Preferencia de horario del padre (para auto-agendado)
+  schedulePreferences       String?   @db.Text
+  
+  // Sesiones
+  totalSessions     Int
+  usedSessions      Int       @default(0)
+  remainingSessions Int       // Calculado
+  
+  isActive          Boolean   @default(true)
+  purchaseDate      DateTime  @default(now())
+  
+  // Relaciones
+  baby              Baby?     @relation(fields: [babyId], references: [id])
+  parent            Parent?   @relation(fields: [parentId], references: [id])
+  package           Package   @relation(fields: [packageId], references: [id])
+  payments          PackagePayment[]
+  sessions          Session[]
+  appointments      Appointment[]
+}
+```
+
+### Parent (Padre/Madre)
+
+```prisma
+model Parent {
+  id                  String        @id @default(cuid())
+  name                String
+  email               String?
+  phone               String
+  
+  // Para padres potenciales (LEADS de talleres prenatales)
+  status              ParentStatus  @default(ACTIVE)
+  pregnancyWeeks      Int?          // Semanas de embarazo al registrar
+  leadSource          String?       // "EVENTO_TALLER", "INSTAGRAM", "REFERIDO", etc.
+  leadNotes           String?       // Notas del lead
+  convertedAt         DateTime?     // Fecha cuando se convirtió en cliente
+  
+  // Control de no-shows
+  noShowCount         Int           @default(0)
+  requiresPrepayment  Boolean       @default(false)
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  
+  // Relaciones
+  babies              Baby[]
+  eventParticipations EventParticipant[]
+  appointments        Appointment[]
+  packagePurchases    PackagePurchase[]
+}
+```
+
+### Baby (Bebé)
+
+```prisma
+model Baby {
+  id                  String    @id @default(cuid())
+  name                String
+  birthDate           DateTime  @db.Date
+  gender              String    // M | F
+  
+  // Datos adicionales
+  birthWeeks          Int?      // Semanas de gestación
+  birthWeight         Decimal?  // Peso al nacer
+  currentWeight       Decimal?  // Peso actual
+  medicalNotes        String?   @db.Text
+  
+  // Código de acceso al portal
+  accessCode          String    @unique  // BSB-XXXXX
+  
+  isActive            Boolean   @default(true)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relaciones
+  parents             Parent[]
+  appointments        Appointment[]
+  sessions            Session[]
+  packagePurchases    PackagePurchase[]
+  eventParticipations EventParticipant[]
+  babyCardPurchases   BabyCardPurchase[]
 }
 ```
 
 ### Appointment (Cita)
+
 ```prisma
 model Appointment {
   id                  String            @id @default(cuid())
-  babyId              String
+  
+  // Cliente: bebé O padre (uno u otro según serviceType del paquete)
+  babyId              String?           // Para servicios de bebés
+  parentId            String?           // Para servicios de padres
+  
   date                DateTime          @db.Date
   startTime           String            // "09:00"
   endTime             String            // "10:00"
   
   // Paquete provisional (puede cambiar hasta el checkout)
-  selectedPackageId   String?           // Paquete seleccionado (provisional)
-  packagePurchaseId   String?           // Si usa paquete existente
+  selectedPackageId   String?
+  packagePurchaseId   String?
   
   // Estado
   status              AppointmentStatus @default(SCHEDULED)
-  isPendingPayment    Boolean           @default(false) // Esperando pago anticipado
+  isPendingPayment    Boolean           @default(false)
   
   // Asignación
   therapistId         String?
@@ -455,32 +482,25 @@ model Appointment {
   createdById         String?
   
   // Relaciones
-  baby                Baby              @relation(fields: [babyId], references: [id])
+  baby                Baby?             @relation(fields: [babyId], references: [id])
+  parent              Parent?           @relation(fields: [parentId], references: [id])
   therapist           User?             @relation(fields: [therapistId], references: [id])
   selectedPackage     Package?          @relation(fields: [selectedPackageId], references: [id])
   packagePurchase     PackagePurchase?  @relation(fields: [packagePurchaseId], references: [id])
   session             Session?
   payments            AppointmentPayment[]
 }
-
-enum AppointmentStatus {
-  SCHEDULED      // Agendada, esperando
-  PENDING_PAYMENT // Esperando pago anticipado (no bloquea slot)
-  IN_PROGRESS    // En curso
-  COMPLETED      // Completada
-  CANCELLED      // Cancelada
-  NO_SHOW        // No asistió
-}
 ```
 
 ### Session (Sesión)
+
 ```prisma
 model Session {
   id                String        @id @default(cuid())
   appointmentId     String        @unique
   babyId            String
   therapistId       String
-  packagePurchaseId String?       // Paquete final confirmado
+  packagePurchaseId String?
   
   status            SessionStatus @default(PENDING)
   isEvaluated       Boolean       @default(false)
@@ -499,67 +519,264 @@ model Session {
   evaluation        Evaluation?
   products          SessionProduct[]
   payment           Payment?
-}
-
-enum SessionStatus {
-  PENDING    // Iniciada, esperando evaluación
-  EVALUATED  // Terapeuta completó evaluación
-  COMPLETED  // Recepción cobró y cerró
+  babyCardSessionLog BabyCardSessionLog?
 }
 ```
 
-### Event (Eventos Grupales)
+### Event (Evento Grupal)
+
 ```prisma
 model Event {
-  id                      String    @id @default(cuid())
-  name                    String
-  description             String?
-  date                    DateTime  @db.Date
-  startTime               String
-  endTime                 String
-  location                String?
+  id                  String        @id @default(cuid())
+  name                String
+  description         String?       @db.Text
+  eventType           EventType     // BABIES | PARENTS
   
-  maxParticipants         Int
-  pricePerBaby            Decimal
+  date                DateTime      @db.Date
+  startTime           String
+  endTime             String
   
-  requiresAdvancePayment  Boolean   @default(false)
-  advancePaymentAmount    Decimal?
+  maxParticipants     Int?
+  minAgeMonths        Int?          // Solo para BABIES
+  maxAgeMonths        Int?          // Solo para BABIES
   
-  status                  EventStatus @default(DRAFT)
+  basePrice           Decimal       @db.Decimal(10, 2)
   
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  createdById             String
+  // Bloqueo de calendario
+  blockedTherapists   Int           @default(0)  // 0, 1, 2, 3, o 4
+  
+  status              EventStatus   @default(DRAFT)
+  notes               String?       @db.Text
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  createdById         String
   
   // Relaciones
-  participants            EventParticipant[]
+  createdBy           User          @relation(fields: [createdById], references: [id])
+  participants        EventParticipant[]
+  productUsages       EventProductUsage[]
 }
+```
 
-enum EventStatus {
-  DRAFT       // Borrador
-  OPEN        // Abierto para inscripciones
-  CLOSED      // Cerrado (completo o fecha pasada)
-  COMPLETED   // Finalizado
-  CANCELLED   // Cancelado
-}
+### EventParticipant (Inscripción a Evento)
 
+```prisma
 model EventParticipant {
-  id                String    @id @default(cuid())
-  eventId           String
-  babyId            String
+  id                  String            @id @default(cuid())
+  eventId             String
+  babyId              String?           // Si eventType = BABIES
+  parentId            String?           // Si eventType = PARENTS (leads)
   
-  registeredAt      DateTime  @default(now())
-  paidAmount        Decimal   @default(0)
-  isPaid            Boolean   @default(false)
-  paymentMethod     String?
-  paymentReference  String?
+  status              ParticipantStatus @default(REGISTERED)
   
-  attended          Boolean   @default(false)
-  notes             String?
+  // Pago
+  originalPrice       Decimal           @db.Decimal(10, 2)
+  discountType        DiscountType?
+  discountAmount      Decimal           @default(0) @db.Decimal(10, 2)
+  discountReason      String?
+  finalPrice          Decimal           @db.Decimal(10, 2)
+  
+  paymentStatus       PaymentStatus     @default(PENDING)
+  paidAmount          Decimal           @default(0) @db.Decimal(10, 2)
+  paymentMethod       PaymentMethod?
+  paidAt              DateTime?
+  
+  attended            Boolean?
+  notes               String?
+  
+  registeredAt        DateTime          @default(now())
+  registeredById      String
   
   // Relaciones
-  event             Event     @relation(fields: [eventId], references: [id])
-  baby              Baby      @relation(fields: [babyId], references: [id])
+  event               Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  baby                Baby?             @relation(fields: [babyId], references: [id])
+  parent              Parent?           @relation(fields: [parentId], references: [id])
+  registeredBy        User              @relation(fields: [registeredById], references: [id])
+  
+  @@unique([eventId, babyId])
+  @@unique([eventId, parentId])
+}
+```
+
+### EventProductUsage (Productos usados en evento)
+
+```prisma
+model EventProductUsage {
+  id          String    @id @default(cuid())
+  eventId     String
+  productId   String
+  quantity    Int
+  notes       String?
+  createdAt   DateTime  @default(now())
+  
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id])
+}
+```
+
+## 4.4 Modelos Baby Card
+
+### BabyCard (Plantilla/Catálogo)
+
+```prisma
+model BabyCard {
+  id                    String    @id @default(cuid())
+  name                  String    // "Baby Spa Card Premium"
+  description           String?   @db.Text
+  
+  // Precio y configuración
+  price                 Decimal   @db.Decimal(10, 2)  // 600 Bs
+  totalSessions         Int       // 24 sesiones para completar
+  includesFirstFree     Boolean   @default(true)  // Primera sesión gratis
+  
+  // Estado
+  isActive              Boolean   @default(true)
+  sortOrder             Int       @default(0)
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Relaciones
+  specialPrices         BabyCardSpecialPrice[]
+  rewards               BabyCardReward[]
+  purchases             BabyCardPurchase[]
+}
+```
+
+### BabyCardSpecialPrice (Precios Especiales)
+
+```prisma
+model BabyCardSpecialPrice {
+  id              String    @id @default(cuid())
+  babyCardId      String
+  packageId       String    // Paquete al que aplica (ej: Sesión Individual)
+  specialPrice    Decimal   @db.Decimal(10, 2)  // 290 Bs en lugar de 350
+  
+  babyCard        BabyCard  @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
+  package         Package   @relation(fields: [packageId], references: [id])
+  
+  @@unique([babyCardId, packageId])
+}
+```
+
+### BabyCardReward (Premios Configurados)
+
+```prisma
+model BabyCardReward {
+  id              String          @id @default(cuid())
+  babyCardId      String
+  sessionNumber   Int             // En qué sesión se desbloquea (3, 7, 10, etc.)
+  
+  // Tipo de premio
+  rewardType      RewardType      // SERVICE | PRODUCT | EVENT | CUSTOM
+  
+  // Referencias según tipo
+  packageId       String?         // Si rewardType = SERVICE
+  productId       String?         // Si rewardType = PRODUCT
+  
+  // Para premios personalizados (CUSTOM)
+  customName      String?
+  customDescription String?       @db.Text
+  
+  // Display
+  displayName     String          // "📸 Sesión de Fotos Gratis"
+  displayIcon     String?
+  
+  createdAt       DateTime        @default(now())
+  
+  babyCard        BabyCard        @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
+  package         Package?        @relation(fields: [packageId], references: [id])
+  product         Product?        @relation(fields: [productId], references: [id])
+  
+  usages          BabyCardRewardUsage[]
+  
+  @@unique([babyCardId, sessionNumber])
+}
+```
+
+### BabyCardPurchase (Compra/Asignación a Bebé)
+
+```prisma
+model BabyCardPurchase {
+  id                    String          @id @default(cuid())
+  babyCardId            String
+  babyId                String
+  
+  // Pago
+  pricePaid             Decimal         @db.Decimal(10, 2)
+  paymentMethod         PaymentMethod?
+  paymentReference      String?
+  
+  // Progreso
+  completedSessions     Int             @default(0)
+  
+  // Estado
+  status                BabyCardStatus  @default(ACTIVE)
+  
+  // Primera sesión gratis
+  firstFreeSessionUsed  Boolean         @default(false)
+  firstFreeSessionId    String?
+  firstFreeSessionDate  DateTime?
+  
+  // Fechas
+  purchaseDate          DateTime        @default(now())
+  completedDate         DateTime?
+  replacedDate          DateTime?
+  replacedByPurchaseId  String?
+  
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  createdById           String?
+  
+  // Relaciones
+  babyCard              BabyCard        @relation(fields: [babyCardId], references: [id])
+  baby                  Baby            @relation(fields: [babyId], references: [id])
+  createdBy             User?           @relation(fields: [createdById], references: [id])
+  
+  rewardUsages          BabyCardRewardUsage[]
+  sessionLogs           BabyCardSessionLog[]
+}
+```
+
+### BabyCardSessionLog (Registro de Sesiones Completadas)
+
+```prisma
+model BabyCardSessionLog {
+  id                  String    @id @default(cuid())
+  babyCardPurchaseId  String
+  sessionId           String    @unique
+  sessionNumber       Int       // Número de sesión en la card (1, 2, 3...)
+  
+  createdAt           DateTime  @default(now())
+  
+  babyCardPurchase    BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
+  session             Session          @relation(fields: [sessionId], references: [id])
+}
+```
+
+### BabyCardRewardUsage (Uso de Premios)
+
+```prisma
+model BabyCardRewardUsage {
+  id                  String    @id @default(cuid())
+  babyCardPurchaseId  String
+  babyCardRewardId    String
+  
+  usedAt              DateTime  @default(now())
+  usedById            String
+  
+  appointmentId       String?
+  eventParticipantId  String?
+  productSaleId       String?
+  
+  notes               String?
+  
+  babyCardPurchase    BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
+  babyCardReward      BabyCardReward   @relation(fields: [babyCardRewardId], references: [id])
+  usedBy              User             @relation(fields: [usedById], references: [id])
+  
+  @@unique([babyCardPurchaseId, babyCardRewardId])
 }
 ```
 
@@ -593,266 +810,158 @@ SCHEDULED ──────────► IN_PROGRESS ────────
 
 **Desde Portal de Padres:**
 1. Padre selecciona bebé
-2. Sistema muestra:
-   - Paquetes existentes con sesiones disponibles
-   - Opción "Seleccionar otro paquete" → muestra catálogo completo
+2. Sistema muestra paquetes existentes + catálogo
 3. Padre selecciona paquete (provisional)
-4. Padre puede guardar preferencia de horario (opcional, para auto-agenda futura)
-5. Padre selecciona fecha y hora
-6. Si paquete requiere pago anticipado:
-   - Se muestra QR de pago + botón WhatsApp
-   - Cita queda en estado PENDING_PAYMENT
-   - NO bloquea el slot
-7. Si no requiere pago → se crea cita SCHEDULED
+4. Padre selecciona fecha y hora
+5. Si paquete requiere pago anticipado → muestra QR + WhatsApp
+6. Si no requiere pago → cita SCHEDULED
 
 **Desde Staff:**
-1. Staff busca bebé
-2. Selecciona paquete (existente o nuevo del catálogo)
-3. Si requiere pago anticipado → staff ya recibió el pago, marca como pagado
+1. Staff busca bebé o padre (según tipo de servicio)
+2. Selecciona paquete
+3. Si requiere pago anticipado → registra pago
 4. Se crea cita SCHEDULED
 
-### 5.1.2 Paquete Provisional
+### 5.1.2 Agendamiento para Padres (Servicios PARENT)
 
-El paquete seleccionado puede cambiar en cualquier momento:
-- En el detalle de la cita (botón "Cambiar paquete")
-- En el modal de iniciar sesión
-- En el checkout (última oportunidad)
+Cuando el paquete tiene `serviceType = PARENT`:
+1. Staff selecciona padre/madre en lugar de bebé
+2. El padre puede ser LEAD (sin bebés) o cliente activo
+3. Resto del flujo igual
+4. En calendario se muestra con icono diferente:
+   - 👶 = Cita de bebé
+   - 👩 = Cita de padre activo
+   - 🤰 = Cita de padre LEAD
 
-**Ejemplo:**
-```
-Padre agenda: Individual (1 sesión) 
-    ↓
-Staff inicia: Puede cambiar a Premium (20 sesiones) 
-    ↓
-Checkout: Confirma Premium → Se crea PackagePurchase → Se descuenta 1 sesión
-```
-
-### 5.1.3 Inicio de Sesión (Staff)
-
-1. Staff abre cita SCHEDULED
-2. Asigna terapeuta
-3. Puede cambiar paquete si es necesario
-4. Marca como IN_PROGRESS
-5. Se crea registro Session
-6. La cita aparece en la lista del terapeuta
-
-### 5.1.4 Evaluación (Terapeuta)
-
-1. Terapeuta ve sus citas del día (SCHEDULED asignadas, IN_PROGRESS, COMPLETED)
-2. NO ve: NO_SHOW, CANCELLED
-3. Puede evaluar citas IN_PROGRESS o COMPLETED (si no evaluadas)
-4. Completa formulario de evaluación
-5. Una vez evaluada → No puede modificar
-6. Badge: 🟡 "Pendiente" / 🟢 "Evaluada"
-
-**Campos de Evaluación:**
-- Actividades: hidroterapia, masaje, estimulación motora/sensorial, relajación
-- Desarrollo sensorial: seguimiento visual, contacto visual, respuesta auditiva
-- Tono muscular: bajo/normal/tenso
-- Hitos: se sienta, gatea, camina
-- Estado de ánimo: tranquilo/irritable
-- Notas internas (solo staff)
-- Notas externas (visibles para padres)
-
-### 5.1.5 Checkout (Staff/Recepción)
+### 5.1.3 Checkout
 
 1. Staff abre sesión IN_PROGRESS
-2. Ve evaluación (si existe) - solo informativo
+2. Ve evaluación (si existe)
 3. Puede cambiar paquete (última oportunidad)
 4. Agrega productos usados
-5. Sistema calcula:
-   - Si paquete nuevo → precio del paquete
-   - Si paquete existente → $0 por sesión
-   - + Productos cobrables
-   - - Pagos anticipados ya realizados
+5. **Si bebé tiene Baby Card activa:**
+   - Aplica precio especial automáticamente
+   - Muestra premios disponibles
+   - Incrementa contador de sesiones
+   - Verifica si desbloqueó nuevo premio
 6. Registra pago
 7. Se descuenta sesión del paquete
-8. Se descuenta inventario
-9. Cambia a COMPLETED
-10. Resetea noShowCount del padre = 0
+8. Cambia a COMPLETED
 
-### 5.1.6 No-Show
+## 5.2 Flujo de Eventos Grupales
 
-1. Staff marca cita como NO_SHOW
-2. parent.noShowCount += 1
-3. Si noShowCount >= 3 → parent.requiresPrepayment = true
-4. Si había paquete existente → devuelve sesión al paquete
-5. Si había pago anticipado → NO se reembolsa (se pierde)
+### Tipos de Eventos
 
-## 5.2 Flujo de Pagos
+| Tipo | Participantes | Ejemplo |
+|------|---------------|---------|
+| BABIES | Bebés registrados | Hora de Juego, Babython |
+| PARENTS | Padres (pueden ser LEADS) | Taller Prenatal |
 
-### 5.2.1 Pagos Anticipados (Por Cita)
-
-Algunos paquetes requieren pago anticipado:
+### Estados del Evento
 ```
-Package {
-  requiresAdvancePayment: true
-  advancePaymentAmount: 100  // Bs o R$
-}
+DRAFT ──► PUBLISHED ──► IN_PROGRESS ──► COMPLETED
+                │
+                └──► CANCELLED
 ```
 
-**Flujo:**
-1. Padre selecciona paquete que requiere pago
-2. Sistema muestra QR + botón WhatsApp
-3. Padre paga (mínimo o más) y envía comprobante
-4. Staff recibe comprobante, verifica
-5. Staff registra pago anticipado en sistema
-6. Cita cambia de PENDING_PAYMENT → SCHEDULED
-7. En checkout: el anticipo se descuenta del total
+### Flujo Completo
 
-**Opciones de pago anticipado:**
-- Monto mínimo requerido
-- Monto mayor al mínimo (abono extra)
-- Pago completo
+1. **Admin crea evento:**
+   - Nombre, descripción, tipo
+   - Fecha, horario
+   - Capacidad máxima, rango de edad (si aplica)
+   - Precio base
+   - Terapeutas bloqueados (0-4)
 
-### 5.2.2 Paquetes en Cuotas (Financiamiento)
+2. **Staff inscribe participantes:**
+   - Busca bebé/padre existente
+   - O registra nuevo cliente completo
+   - Configura descuento si aplica (cortesía o fijo)
+   - Registra pago
 
-**Configuración al vender:**
-```
-Paquete Premium (20 sesiones) = 2000 Bs
-├── 1 cuota: 2000 Bs (pago único)
-├── 2 cuotas: 1000 Bs c/u
-├── 4 cuotas: 500 Bs c/u
-└── Personalizado
-```
+3. **Día del evento:**
+   - Marca asistencia
+   - Registra productos usados
+   - Finaliza evento
 
-**Lógica de tramos:**
-```
-Paquete 20 sesiones en 4 cuotas:
-├── Cuota 1 (500 Bs) → Habilita sesiones 1-5
-├── Cuota 2 (500 Bs) → Habilita sesiones 6-10
-├── Cuota 3 (500 Bs) → Habilita sesiones 11-15
-└── Cuota 4 (500 Bs) → Habilita sesiones 16-20
-```
+### Bloqueo de Calendario
 
-**Alertas:**
-- Si intenta usar sesión #6 sin pagar cuota 2 → Alerta: "Debe pagar cuota 2"
-- Staff puede permitir pago 1x1 como excepción
-- Reporte de deudas pendientes
+- `blockedTherapists = 0` → No afecta citas normales
+- `blockedTherapists = 2` → Solo 2 terapeutas disponibles para citas
+- `blockedTherapists = 4` → No se pueden agendar citas durante el evento
 
-### 5.2.3 QR de Pago
+## 5.3 Flujo Baby Card (Fidelización)
 
-**Configuración (Settings):**
-```
-PaymentSettings {
-  qrImageUrl: string        // Imagen del QR
-  whatsappNumber: string    // "+591..."
-  whatsappMessage: string   // Mensaje predeterminado
-}
-```
+### Concepto
 
-- QR estático (se actualiza manualmente en configuración)
-- Un QR por base de datos (Bolivia ≠ Brasil)
-- Al pagar, padre envía comprobante por WhatsApp
-- Staff registra número de referencia (no imagen)
+La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
+1. **Primera sesión GRATIS**
+2. **Precio preferencial** en sesiones individuales (ej: 290 Bs en lugar de 350)
+3. **Premios desbloqueables** al completar cierta cantidad de sesiones
 
-## 5.3 Auto-Agendado Masivo
-
-**Cuándo se usa:**
-- Paquetes de múltiples sesiones (4, 8, 10, 20)
-- Cliente quiere horario fijo
-- Cliente paga anticipadamente y quiere dejar todo agendado
-
-### 5.3.1 Puntos de Acceso al Auto-Agendado
-
-El staff puede generar múltiples citas desde **3 lugares diferentes**:
-
-| # | Ubicación | Escenario |
-|---|-----------|-----------|
-| 1 | **Checkout de Sesión** | Cliente compra paquete al completar su primera cita |
-| 2 | **Venta de Paquete (Perfil Bebé)** | Cliente paga anticipadamente (sin cita inmediata) |
-| 3 | **Paquete Existente (Perfil Bebé)** | Cliente con paquete activo decide cambiar a horario fijo |
-
-### 5.3.2 Flujo desde Checkout
-
-1. Staff confirma venta de paquete con N sesiones
-2. Sistema pregunta: "¿Horario fijo o agenda después?"
-3. Si horario fijo → abre configurador de auto-agenda
-4. Se crean N citas de una vez
-
-### 5.3.3 Flujo desde Venta de Paquete (Perfil Bebé)
-
-**Escenario:** Padre llama, paga por transferencia un paquete de 20 sesiones, y quiere dejar agendados todos los jueves.
-
-1. Staff va al perfil del bebé
-2. Click en "Vender Paquete"
-3. Selecciona paquete, cuotas, registra pago
-4. Opción: "¿Agendar sesiones ahora?"
-   - No → Solo crea el paquete
-   - Sí → Abre configurador de auto-agenda
-5. Se crean las N citas con el paquete vinculado
-
-### 5.3.4 Flujo desde Paquete Existente (Perfil Bebé)
-
-**Escenario:** Cliente con paquete de 20 sesiones (8 usadas, 12 restantes) que venía esporádicamente, ahora quiere venir todos los martes.
-
-1. Staff va al perfil del bebé → Tab Paquetes
-2. En la card del paquete activo, click en "Agendar Sesiones"
-3. Sistema muestra: "12 sesiones disponibles para agendar"
-4. Opciones:
-   - "Una sola cita" → Ir al calendario normal
-   - "Horario fijo (múltiples citas)" → Configurador
-5. Configurador permite agendar las 12 sesiones restantes
-
-### 5.3.5 Configurador de Auto-Agenda
+### Flujo de Venta
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ 📅 Agendar Sesiones - Paquete Premium (12 disponibles)     │
-│                                                             │
-│ Día(s): [✓] Lunes [ ] Martes [✓] Jueves [ ] Viernes       │
-│ Hora: [10:00 ▼]                                            │
-│ Cantidad: [12 ▼]                                           │
-│                                                             │
-│ Vista previa:                                               │
-│ ├── Lun 27/01 10:00                                        │
-│ ├── Jue 30/01 10:00                                        │
-│ ├── Lun 03/02 10:00                                        │
-│ └── ... (12 citas hasta Mar 20/03)                         │
-│                                                             │
-│ ⚠️ 2 slots tienen conflictos (se agendarán igual)          │
-│                                                             │
-│                              [Cancelar] [Agendar 12 Citas]  │
-└─────────────────────────────────────────────────────────────┘
+1. Staff vende Baby Card al padre
+2. Cobra precio de la card (ej: 600 Bs)
+3. Opcionalmente agenda primera sesión gratis
+4. Sistema crea BabyCardPurchase con status ACTIVE
+5. Bebé tiene Baby Card activa
 ```
 
-### 5.3.6 Reglas del Auto-Agendado
+### Flujo de Progreso
 
-- Puede seleccionar múltiples días (ej: Lunes y Jueves)
-- Si un slot está lleno → agenda igual (staff revisa después)
-- Respeta horarios de trabajo (no agenda domingos ni fuera de horario)
-- Todas las citas quedan con el paquete vinculado
-- Las citas son provisionales (pueden reagendarse individualmente)
+```
+1. Bebé completa cualquier sesión (hidro, vacunas, etc.)
+2. Al completar (checkout):
+   - Sistema detecta Baby Card activa
+   - Incrementa contador de sesiones
+   - Crea registro en BabyCardSessionLog
+   - Verifica si desbloqueó premio
+3. Si desbloqueó premio → alerta al staff
+4. Premios quedan disponibles para usar
+```
 
-### 5.3.7 Preferencia del Padre (Portal)
+### Flujo de Uso de Premio
 
-- En portal, padre puede guardar preferencia: "Viernes 10:00"
-- Esto NO crea citas, solo guarda la preferencia
-- Cuando staff vende/agenda, ve la preferencia como sugerencia
+```
+1. Staff ve que bebé tiene premio disponible
+2. Click "Usar Premio"
+3. Premio aplica 100% descuento en:
+   - Servicio (si tipo = SERVICE)
+   - Producto (si tipo = PRODUCT)
+   - Evento (si tipo = EVENT)
+4. Se marca premio como usado
+5. No se puede usar dos veces
+```
 
-## 5.4 Eventos Grupales
+### Reglas de Baby Card
 
-**Concepto:**
-- Eventos masivos (Babyton, talleres, etc.)
-- 15-30 bebés participantes
-- Duración de varias horas
-- Cada bebé paga individualmente
-- NO tienen evaluaciones (solo asistencia + pago)
+```
+1. PROGRESO:
+   - Contador incrementa al COMPLETAR sesión (checkout)
+   - TODAS las sesiones cuentan (hidro, vacunas, cumple mes, etc.)
+   - Primera sesión gratis cuenta como sesión #1
 
-**Flujo:**
-1. Admin crea evento (nombre, fecha, horario, precio, max participantes)
-2. Evento aparece en pantalla de Eventos y en calendario como bloque
-3. El día del evento se bloquea para citas normales
-4. Staff registra bebés participantes:
-   - Busca bebé existente o crea nuevo
-   - Registra pago (anticipado o en el momento)
-5. Día del evento: marcar asistencia
-6. Al finalizar: completar evento
+2. CARDS POR BEBÉ:
+   - Solo UNA card activa a la vez
+   - Si activa nueva → anterior se marca REPLACED
+   - El contador se reinicia
 
-**Vista en Calendario:**
-- Card especial que muestra el evento
-- Click → ir a pantalla de detalle del evento
-- El día completo queda bloqueado para citas normales
+3. PRECIO ESPECIAL:
+   - Aplica SOLO a sesiones individuales
+   - NO aplica a paquetes múltiples
+   - Se acumula con otros descuentos
+
+4. PREMIOS:
+   - Son ACUMULATIVOS (no expiran)
+   - Se usan cuando el padre quiera
+   - Al usar → 100% descuento
+
+5. DURACIÓN:
+   - La card es INDEFINIDA (no expira)
+   - Precios especiales aplican hasta completar todas las sesiones
+```
 
 ---
 
@@ -866,93 +975,50 @@ El staff puede generar múltiples citas desde **3 lugares diferentes**:
 
 ## 6.2 Padres
 - Identificables por teléfono (único)
-- Login portal SOLO con código BSB-XXXXX
+- Login portal SOLO con código BSB-XXXXX del bebé
 - noShowCount se resetea cuando asiste a cita
 - requiresPrepayment = true si noShowCount >= 3
-- Padres con requiresPrepayment → solo staff puede agendar
+- Padres con status = LEAD no tienen acceso al portal
+- Padres LEAD se convierten en ACTIVE cuando registran bebé
 
-## 6.3 Paquetes
+## 6.3 Servicios para Padres
+- Paquetes con `serviceType = PARENT` son para padres, no bebés
+- Si `serviceType = BABY` → cita requiere `babyId`
+- Si `serviceType = PARENT` → cita requiere `parentId`
+- Una cita es para UN bebé O para UN padre (nunca ambos)
+- Ejemplos: Masaje Prenatal, Masaje Postparto
+
+## 6.4 Paquetes
 - **NO vencen** (válidos hasta bebé cumpla 3 años)
 - Sesiones **NO transferibles** entre bebés
-- Siempre se selecciona paquete al agendar (no existe "sesión a definir")
+- Siempre se selecciona paquete al agendar
 - El paquete es **provisional** hasta el checkout
 - Sesión se **descuenta al completar**, NO al agendar
-- Pueden pagarse en **cuotas** (financiamiento)
-- Algunos requieren **pago anticipado**
 - Tienen **duración configurable** (30, 60, 90, 120 min)
 
-## 6.4 Agendamiento
-- Máximo 5 citas por slot de 30 min (staff)
-- Máximo 2 citas por slot (portal padres)
-- Citas ocupan slots según duración del paquete
-- 1 bebé solo 1 cita por día
-- Citas PENDING_PAYMENT no bloquean slot
-- Padres con requiresPrepayment no pueden agendar desde portal
-
-## 6.5 Sesiones
-- Solo **THERAPIST** puede registrar evaluaciones
-- Solo **RECEPTION/ADMIN** puede completar sesión (checkout)
-- Una cita puede completarse **sin evaluación** (el terapeuta puede evaluar después)
-- Evaluación solo se puede hacer **una vez** por cita
-- Productos siempre descuentan inventario
-- Productos con isChargeable suman al cobro
-
-## 6.6 Evaluaciones
-- Notas internas: solo staff ve
-- Notas externas: visibles en portal padres
-- Campo isEvaluated en Appointment indica si ya se evaluó
-
-## 6.7 Eventos
-- Bloquean el día completo para citas normales
+## 6.5 Eventos
+- Tipos: BABIES (para bebés) o PARENTS (para padres/leads)
+- Bloqueo configurable: 0, 1, 2, 3, o 4 terapeutas
 - No tienen evaluaciones (solo asistencia + pago)
-- Bebés deben estar registrados en sistema
-- Pagos son individuales por participante
+- Descuentos: COURTESY (gratis) o FIXED (monto fijo)
+- Sin penalización por no-show en eventos
 
-## 6.8 Reglas de Cuotas (Financiamiento)
+## 6.6 Baby Card
+- Solo UNA card activa por bebé
+- Precios especiales solo para sesiones individuales
+- Contador incrementa al COMPLETAR sesión
+- TODAS las sesiones cuentan para el progreso
+- Primera sesión gratis cuenta como #1
+- Premios son acumulativos (no expiran)
+- Card es indefinida (no expira)
 
-### Configuración por Paquete
+## 6.7 Cuotas (Financiamiento)
+- Configuradas POR PAQUETE (cliente no elige cantidad)
+- Precio en cuotas puede ser MAYOR al pago único
+- Se define EN QUÉ SESIONES se paga cada cuota
+- Sistema ALERTA pero NO BLOQUEA por pagos atrasados
+- Pagos flexibles (cualquier monto en cualquier momento)
 
-Las cuotas se configuran en el catálogo de paquetes, NO las elige el cliente:
-```
-Paquete "Programa Continuidad":
-├── Precio pago único: 2,640 Bs
-├── Permite cuotas: SÍ
-├── Cantidad de cuotas: 3
-├── Precio en cuotas: 2,700 Bs (+60 Bs financiamiento)
-├── Monto por cuota: 900 Bs (calculado)
-└── Pagar en sesiones: 1, 3, 5
-```
-
-
-### Flujo de Venta
-
-1. Staff selecciona paquete
-2. Elige: Pago único (2,640 Bs) o Cuotas (3 x 900 Bs = 2,700 Bs)
-3. Si elige cuotas, el sistema muestra: "Se cobra en sesión 1, 3 y 5"
-4. Staff registra primera cuota
-5. Se crea PackagePurchase con plan de cuotas
-
-### Sistema de Alertas (NO Bloqueo)
-
-```typescript
-// Paquete 8 sesiones, cuotas en sesiones [1, 3, 5]
-
-Sesión 1: Debe haber pagado 900 Bs (cuota 1)
-Sesión 3: Debe haber pagado 1,800 Bs (cuotas 1-2)
-Sesión 5: Debe haber pagado 2,700 Bs (cuotas 1-3)
-
-// Si usa sesión 4 habiendo pagado solo 900 Bs:
-→ ALERTA: "Cuota 2 pendiente (900 Bs)"
-→ Staff puede: [Registrar Pago] o [Continuar sin Pagar]
-```
-
-### Pagos Flexibles
-
-- Puede pagar **más** de una cuota a la vez
-- Puede pagar **menos** de una cuota (pago parcial)
-- Puede pagar **todo el saldo** en cualquier momento
-- El sistema siempre calcula: pendingAmount = totalPrice - paidAmount
-```
 ---
 
 # 7. MÓDULOS IMPLEMENTADOS
@@ -968,220 +1034,136 @@ Sesión 5: Debe haber pagado 2,700 Bs (cuotas 1-3)
 
 ## ✅ Fase 2: Core (COMPLETADA)
 - [x] Módulo 1: Bebés y Padres (CRUD completo)
-- [x] Módulo 2: Link Registro Temporal (formulario público)
+- [x] Módulo 2: Link Registro Temporal
 - [x] Módulo 3: Paquetes y Ventas
 - [x] Módulo 4: Calendario y Agendamiento
 - [x] Módulo 5: Inventario
-- [x] Módulo 6: Sesiones y Evaluaciones (checkout)
+- [x] Módulo 6: Sesiones y Evaluaciones
 
-## ⏳ Fase 3: Pagos y Financiamiento (PENDIENTE)
-- [ ] Módulo 3.1: Refactorización de Paquetes
-- [ ] Módulo 3.2: Sistema de Pagos Anticipados
-- [ ] Módulo 3.3: Paquetes en Cuotas
-- [ ] Módulo 3.4: Alertas de Deuda
-- [ ] Módulo 3.5: Auto-Agendado Masivo
+## ✅ Fase 3: Pagos y Financiamiento (COMPLETADA)
+- [x] Módulo 3.1: Refactorización de Paquetes
+- [x] Módulo 3.2: Sistema de Pagos Anticipados
+- [x] Módulo 3.3: Paquetes en Cuotas
+- [x] Módulo 3.4: Alertas de Deuda
+- [x] Módulo 3.5: Auto-Agendado Masivo
 
-## ⏳ Fase 4: Eventos y Portal (PENDIENTE)
-- [ ] Módulo 4.1: Sistema de Eventos Grupales
-- [ ] Módulo 4.2: Preferencias de Horario (Padres)
-- [ ] Módulo 4.3: Portal de Padres Completo
+## ✅ Fase 4: Eventos y Servicios (COMPLETADA)
+- [x] Módulo 4.1: Sistema de Eventos Grupales
+- [x] Módulo 4.5: Servicios para Padres
 
-## ⏳ Fase 5: Configuración y Reportes (PENDIENTE)
-- [ ] Módulo 5.1: Configuración del Sistema
-- [ ] Módulo 5.2: QR de Pago
-- [ ] Módulo 5.3: Reportes Financieros
+## ⏳ Fase 5: Baby Card (EN PROGRESO)
+- [ ] Módulo 5.1: Sistema Baby Card
 
-## ⏳ Fase 6: Secundarios (PENDIENTE)
-- [ ] Notificaciones + Cron Jobs
-- [ ] Staff Payments
+## ⏳ Fase 6: Portal y Configuración (PENDIENTE)
+- [ ] Módulo 6.1: Portal de Padres Completo
+- [ ] Módulo 6.2: Configuración del Sistema
+- [ ] Módulo 6.3: QR de Pago
+
+## ⏳ Fase 7: Secundarios (PENDIENTE)
+- [ ] Módulo 7.1: Notificaciones + Cron Jobs
+- [ ] Módulo 7.2: Reportes Financieros
+- [ ] Módulo 7.3: Staff Payments
 
 ---
 
 # 8. PLAN DE IMPLEMENTACIÓN
 
-## Fase 1: Fundamentos ✅ COMPLETADA
-## Fase 2: Core ✅ COMPLETADA
+## Fase 5: Sistema Baby Card
 
-## Fase 3: Pagos y Financiamiento (7-10 días)
-
-### Módulo 3.1: Refactorización de Paquetes
-```
-□ Eliminar concepto "sesión a definir" de todo el sistema
-□ Agregar campo description a Package
-□ Agregar campo duration a Package (minutos)
-□ Actualizar calendario para respetar duración
-□ Agregar campos de pago anticipado:
-  - requiresAdvancePayment: boolean
-  - advancePaymentAmount: Decimal
-□ UI: Selector de paquetes mejorado (con descripción)
-□ UI: Badge "Requiere pago anticipado" en paquetes
-□ Mensaje para padres: "Este paquete es provisional"
-□ Default al agendar: Paquete Individual
-```
-
-### Módulo 3.2: Sistema de Pagos Anticipados
-```
-□ Nuevo estado de cita: PENDING_PAYMENT
-□ Modelo AppointmentPayment (pagos por cita)
-□ UI: Modal de pago anticipado (staff)
-□ UI: Pantalla QR + WhatsApp (portal padres)
-□ Configuración: QR image upload
-□ Lógica: Cita no bloquea slot si PENDING_PAYMENT
-□ UI: Visualización en calendario (estilo diferente)
-□ Flujo: confirmar pago → cambiar a SCHEDULED
-```
-
-### Módulo 3.3: Paquetes en Cuotas
-```
-□ Campos de cuotas en Package:
-  - allowInstallments, installmentsCount
-  - installmentsTotalPrice, installmentsPayOnSessions
-□ Actualizar PackagePurchase con campos de plan de pago
-□ Modelo PackagePayment
-□ Migración de base de datos
-□ Componente SessionPaymentSelector (admin)
-□ UI: Configurar cuotas en package-form-dialog
-□ UI: Venta con selector único/cuotas
-□ UI: Mostrar "se cobra en sesión X"
-□ UI: Card de paquete con estado de cuotas
-□ UI: Modal registrar pago flexible
-□ Función getPaymentStatus() (alertas)
-□ Alertas en start-session-dialog (NO bloqueo)
-□ Alertas en complete-session-dialog
-□ APIs de pagos
-□ Seed con paquetes reales del negocio
-□ Traducciones
-□ Probar: pagos normales, adelantados, atrasados, parciales
-```
-
-### Módulo 3.4: Alertas de Deuda
-```
-□ Alerta inteligente (según tramo de sesiones)
-□ Badge en perfil del bebé
-□ Badge en detalle de cita
-□ Opción pago 1x1 (excepciones)
-□ Reporte: Bebés con saldo pendiente
-□ Reporte: Paquetes con cuotas atrasadas
-```
-
-### Módulo 3.5: Auto-Agendado Masivo
-```
-MODELO:
-□ Campo schedulePreferences en PackagePurchase (JSON)
-□ Migración de base de datos
-
-COMPONENTES:
-□ SchedulePreferenceSelector (selector de horarios reutilizable)
-□ BulkSchedulingDialog (generar citas masivas)
-
-PORTAL PADRES:
-□ Paso en wizard: "¿Cómo quieres agendar tus sesiones?"
-□ Opción 1: Cita única (decide después)
-□ Opción 2: Definir horario fijo (1 o más horarios)
-□ Guardar preferencia en la cita/paquete (NO genera citas)
-
-STAFF:
-□ Ver preferencia del padre en detalle de cita
-□ Ver preferencia del padre en checkout
-□ Opción: usar preferencia o definir horario diferente
-□ BulkSchedulingDialog con preferencia pre-cargada
-
-PUNTOS DE ACCESO:
-□ Checkout (después de confirmar pago)
-□ Venta de paquete (perfil del bebé)
-□ Paquete existente (botón "Agendar Sesiones")
-
-UTILIDADES:
-□ lib/utils/bulk-scheduling.ts
-□ Función generateBulkSchedule (alterna entre múltiples horarios)
-□ Verificación de horarios de trabajo
-□ Saltar domingos y días cerrados
-
-APIS:
-□ POST /api/appointments/bulk
-□ GET /api/appointments/check-conflicts
-□ PUT /api/package-purchases/[id]/preferences
-
-TRADUCCIONES:
-□ Claves para ES y PT-BR
-```
-```
-
-## Fase 4: Eventos y Portal (5-7 días)
-
-### Módulo 4.1: Sistema de Eventos Grupales
+### Módulo 5.1: Sistema Baby Card
 ```
 MODELOS:
-□ Agregar campos LEAD a modelo Parent (status, pregnancyWeeks, leadSource, convertedAt)
-□ Crear modelo Event (EventType: BABIES | PARENTS)
-□ Crear modelo EventParticipant (con descuentos y pagos)
-□ Crear modelo EventProductUsage (inventario)
-□ Migración de base de datos
+□ Enum RewardType (SERVICE, PRODUCT, EVENT, CUSTOM)
+□ Enum BabyCardStatus (ACTIVE, COMPLETED, REPLACED, CANCELLED)
+□ Modelo BabyCard
+□ Modelo BabyCardSpecialPrice
+□ Modelo BabyCardReward
+□ Modelo BabyCardPurchase
+□ Modelo BabyCardSessionLog
+□ Modelo BabyCardRewardUsage
+□ Relaciones en Baby, Package, Product, Session, User
+□ Migración ejecutada
 
-UI - PÁGINAS:
-□ /admin/events - Lista de eventos con filtros
-□ /admin/events/new - Crear evento
-□ /admin/events/[id] - Detalle con participantes
-□ /admin/events/[id]/edit - Editar evento
-
-UI - COMPONENTES:
-□ EventList, EventCard, EventForm
-□ EventDetails con lista de participantes
-□ AddParticipantDialog (bebé registrado o nuevo cliente)
-□ AddParentLeadDialog (para talleres prenatales)
-□ MarkAttendanceDialog
-□ EventProductsSection
-□ EventCalendarCard (visualización en calendario)
-
-FUNCIONALIDADES:
-□ Inscribir bebés registrados
-□ Registrar nuevos clientes desde evento (no walk-in parcial)
-□ Inscribir padres LEAD en talleres prenatales
-□ Descuentos: Cortesía (100%) o Fijo (-X Bs)
-□ Pagos por participante
-□ Marcar asistencia (sin penalización no-show)
-□ Registrar productos usados del inventario
-□ Estados: DRAFT → PUBLISHED → IN_PROGRESS → COMPLETED
-
-BLOQUEO DE CALENDARIO:
-□ Configurable por evento: 0, 1, 2, 3, o 4 terapeutas bloqueados
-□ Mostrar evento en calendario con indicador visual
-□ Reducir capacidad de slots durante horario del evento
-□ Mostrar alerta de capacidad reducida
-
-TIPOS DE EVENTOS:
-□ BABIES - Hora de Juego, Babython, eventos masivos
-□ PARENTS - Talleres prenatales (captar leads)
+SERVICIOS:
+□ lib/services/baby-card-service.ts completo
 
 APIS:
-□ CRUD /api/events
-□ GET/POST /api/events/[id]/participants
-□ PUT /api/events/[id]/participants/[id] (pago, asistencia)
-□ GET/POST /api/events/[id]/products
+□ CRUD /api/baby-cards
+□ GET/POST /api/baby-cards/purchases
+□ GET /api/baby-cards/purchases/by-baby/[babyId]
+□ POST /api/baby-cards/purchases/[id]/rewards/[rewardId]/use
+□ GET /api/checkout/baby-card-info/[babyId]
+
+UI - ADMIN BABY CARDS:
+□ Página lista /admin/baby-cards
+□ Página crear /admin/baby-cards/new
+□ Página editar /admin/baby-cards/[id]/edit
+□ Formulario con precios especiales dinámicos
+□ Formulario con premios dinámicos
+□ Vista previa de tarjeta (grid de círculos)
+
+UI - VENTA DE BABY CARD:
+□ Modal de venta desde perfil del bebé
+□ Modal de venta desde checkout
+□ Selector de Baby Card
+□ Resumen de beneficios
+□ Opción de agendar primera sesión
+
+UI - PERFIL DEL BEBÉ:
+□ Sección Baby Card con visualización tipo tarjeta
+□ Grid de círculos con progreso
+□ Lista de premios con estados
+□ Botón "Usar Premio"
+□ Historial de sesiones
+□ Historial de cards anteriores
+
+UI - PORTAL DEL PADRE:
+□ Página /portal/baby-card/[babyId]
+□ Visualización de tarjeta
+□ Lista de premios con estados
+□ Información de precio especial
+
+UI - CHECKOUT:
+□ Sección Baby Card si tiene activa
+□ Mostrar premios disponibles
+□ Mostrar "casi premio" si aplica
+□ Mostrar precio especial aplicado
+□ Botón "Usar Premio"
+□ Ofrecer Baby Card si no tiene
+
+INTEGRACIÓN CON SESIONES:
+□ Al completar sesión → incrementar contador
+□ Verificar si desbloqueó premio
+□ Mostrar alerta de nuevo premio
+
+INTEGRACIÓN CON PRECIOS:
+□ Detectar precio especial en checkout
+□ Aplicar automáticamente si aplica
+□ Mostrar ahorro
+
+NAVEGACIÓN:
+□ Link "Baby Cards" en sidebar admin
+□ Icono apropiado
 
 TRADUCCIONES:
-□ Sección "events" en es.json y pt-BR.json
+□ es.json completo
+□ pt-BR.json completo
 ```
 
+## Fase 6: Portal y Configuración
 
-## Fase 5: Portal Padres + Configuración (4-5 días)
-
-### Módulo 5.1: Portal de Padres Completo
+### Módulo 6.1: Portal de Padres Completo
 ```
 □ Login con código BSB-XXXXX
 □ Dashboard con bebés y paquetes
 □ Ver saldo pendiente de paquetes
-□ Agendar cita:
-  - Mostrar paquetes existentes
-  - Opción "Seleccionar otro paquete"
-  - Definir preferencia de horario al agendar paquetes múltiples
-  - Mostrar QR si requiere pago anticipado
+□ Ver Baby Card y premios
+□ Agendar cita
 □ Ver citas (con estado de pago)
 □ Historial de sesiones (notas externas)
-□ Mensaje si requiresPrepayment = true
 ```
 
-### Módulo 5.2: Configuración del Sistema
+### Módulo 6.2: Configuración del Sistema
 ```
 □ Horarios de trabajo
 □ Días cerrados
@@ -1189,7 +1171,7 @@ TRADUCCIONES:
 □ Categorías de paquetes
 ```
 
-### Módulo 5.3: QR de Pago
+### Módulo 6.3: QR de Pago
 ```
 □ UI: Subir imagen de QR
 □ UI: Configurar número WhatsApp
@@ -1197,25 +1179,27 @@ TRADUCCIONES:
 □ Lógica: Servir QR en portal de padres
 ```
 
-## Fase 6: Secundarios (4-5 días)
+## Fase 7: Secundarios
 
-### Módulo 6.1: Notificaciones
+### Módulo 7.1: Notificaciones
 ```
 □ Mesversarios automáticos
 □ Recordatorio de cita 24h antes
+□ Alerta de premio desbloqueado (Baby Card)
 □ Cron jobs
 ```
 
-### Módulo 6.2: Reportes
+### Módulo 7.2: Reportes
 ```
 □ Ingresos por período
 □ Deudas pendientes
 □ Ocupación
 □ No-shows
 □ Sesiones por terapeuta
+□ Baby Cards vendidas/activas/completadas
 ```
 
-### Módulo 6.3: Staff Payments
+### Módulo 7.3: Staff Payments
 ```
 □ Registro de pagos a empleados
 □ Historial por empleado
@@ -1231,7 +1215,7 @@ Al iniciar cada sesión, Claude Code debe entender:
 - Sistema de gestión para spa de bebés
 - Next.js 14 App Router + TypeScript
 - 2 bases de datos separadas (Bolivia/Brasil)
-- Multiidioma (ES/PT-BR) - cada BD tiene su idioma
+- Multiidioma (ES/PT-BR)
 - 4 roles: Admin, Reception, Therapist, Parent
 
 ## 9.2 Reglas Críticas
@@ -1245,27 +1229,29 @@ Al iniciar cada sesión, Claude Code debe entender:
    - Es provisional hasta el checkout
    - Sesión se descuenta al COMPLETAR, no al agendar
 
-2. PAGOS:
+2. SERVICIOS:
+   - Package.serviceType = BABY → cita requiere babyId
+   - Package.serviceType = PARENT → cita requiere parentId
+   - Una cita es para UN bebé O para UN padre (nunca ambos)
+
+3. PAGOS:
    - Algunos paquetes requieren pago anticipado
    - Citas PENDING_PAYMENT no bloquean slot
-   
-   CUOTAS:
-   - Configuradas POR PAQUETE (cliente no elige cantidad)
-   - Precio en cuotas puede ser MAYOR al pago único
-   - Se define EN QUÉ SESIONES se paga cada cuota
+   - Cuotas configuradas POR PAQUETE
    - Sistema ALERTA pero NO BLOQUEA por pagos atrasados
-   - Pagos flexibles (cualquier monto en cualquier momento)
-
-3. EVALUACIONES:
-   - Solo terapeuta evalúa
-   - Cita puede completarse sin evaluación
-   - Una vez evaluada, no se puede modificar
-   - Notas internas ≠ notas externas
 
 4. EVENTOS:
-   - Bloquean día completo
+   - Tipos: BABIES o PARENTS
+   - Bloqueo configurable: 0-4 terapeutas
    - No tienen evaluaciones
-   - Pagos individuales por participante
+   - Sin penalización por no-show
+
+5. BABY CARD:
+   - Solo UNA card activa por bebé
+   - Contador incrementa al COMPLETAR sesión
+   - TODAS las sesiones cuentan
+   - Premios son acumulativos (no expiran)
+   - Precio especial solo para sesiones individuales
 ```
 
 ## 9.3 Convenciones de Código
@@ -1309,24 +1295,6 @@ export async function GET(request: Request) {
   // Lógica...
   
   return NextResponse.json(data);
-}
-```
-
-### Componentes
-```typescript
-// components/[feature]/[component].tsx
-'use client';
-
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
-
-interface Props {
-  // ...
-}
-
-export function ComponentName({ ...props }: Props) {
-  const t = useTranslations('namespace');
-  // ...
 }
 ```
 

@@ -12,17 +12,23 @@
 export function translateError(
   error: string | undefined,
   t: (key: string) => string,
-  namespace: string = "common.errors"
+  namespace: string = "errors"
 ): string {
   if (!error) return "";
 
   // If error contains underscore, it's likely a translation key
   if (error.includes("_")) {
-    // Try to translate the error key
+    // Try to translate the error key with namespace
     const translated = t(`${namespace}.${error}`);
-    // If translation returns the key itself, try without namespace
-    if (translated === `${namespace}.${error}`) {
-      return t(error);
+    // If translation returns the key itself, return a generic message
+    if (translated === `${namespace}.${error}` || translated.includes("MISSING_MESSAGE")) {
+      // Try without namespace
+      const directTranslation = t(error);
+      if (directTranslation === error || directTranslation.includes("MISSING_MESSAGE")) {
+        // Return the original error formatted
+        return error.replace(/_/g, " ").toLowerCase();
+      }
+      return directTranslation;
     }
     return translated;
   }

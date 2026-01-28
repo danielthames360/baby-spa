@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatAge, AgeResult } from "@/lib/utils/age";
 import Link from "next/link";
 import {
   Calendar,
@@ -17,10 +18,15 @@ import {
   History,
   Loader2,
   Plus,
+  CreditCard,
+  Gift,
+  Star,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScheduleDialog, ScheduleBabyData } from "./portal-appointments";
+import { BabyCardVisual } from "@/components/baby-cards/baby-card-visual";
 
 interface BabyPackage {
   id: string;
@@ -35,13 +41,31 @@ interface BabyPackage {
   };
 }
 
+interface BabyCardReward {
+  id: string;
+  sessionNumber: number;
+  displayName: string;
+  displayIcon: string | null;
+  rewardType: string;
+}
+
+interface BabyCardInfo {
+  purchaseId: string;
+  name: string;
+  totalSessions: number;
+  completedSessions: number;
+  progressPercent: number;
+  rewards: BabyCardReward[];
+  usedRewardIds: string[];
+}
+
 interface BabyData {
   id: string;
   name: string;
   gender: "MALE" | "FEMALE" | "OTHER";
   birthDate: string;
   ageMonths: number;
-  ageDisplay: string;
+  age: AgeResult;
   relationship: string;
   remainingSessions: number;
   packages: BabyPackage[];
@@ -51,6 +75,7 @@ interface BabyData {
     startTime: string;
     endTime: string;
   } | null;
+  babyCard: BabyCardInfo | null;
 }
 
 interface NextAppointment {
@@ -74,12 +99,32 @@ interface DashboardData {
   nextAppointment: NextAppointment | null;
 }
 
+// Payment settings interface for WhatsApp
+interface PaymentSettings {
+  whatsappNumber: string | null;
+  whatsappCountryCode: string | null;
+}
+
+// Mock rewards for the promo Baby Card preview (24 sessions)
+const MOCK_PROMO_REWARDS = [
+  { id: "promo-1", sessionNumber: 1, displayName: "Aceite Relajante", displayIcon: "🎁", rewardType: "PRODUCT" },
+  { id: "promo-2", sessionNumber: 4, displayName: "Sesión Gratis", displayIcon: "📸", rewardType: "FREE_SESSION" },
+  { id: "promo-3", sessionNumber: 7, displayName: "Foto Profesional", displayIcon: "🎂", rewardType: "OTHER" },
+  { id: "promo-4", sessionNumber: 10, displayName: "Kit de Baño", displayIcon: "🌈", rewardType: "PRODUCT" },
+  { id: "promo-5", sessionNumber: 13, displayName: "Masaje Especial", displayIcon: "👶🏼", rewardType: "OTHER" },
+  { id: "promo-5", sessionNumber: 16, displayName: "Masaje Especial", displayIcon: "🎉 j", rewardType: "OTHER" },
+  { id: "promo-5", sessionNumber: 17, displayName: "Masaje Especial", displayIcon: "👨🏼‍⚕️", rewardType: "OTHER" },
+  { id: "promo-5", sessionNumber: 20, displayName: "Masaje Especial", displayIcon: "🎈", rewardType: "OTHER" },
+  { id: "promo-6", sessionNumber: 24, displayName: "Diploma + Regalo", displayIcon: "🎓", rewardType: "OTHER" },
+];
+
 export function PortalDashboard() {
   const t = useTranslations();
   const locale = useLocale();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
 
   // Schedule dialog state
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -100,9 +145,33 @@ export function PortalDashboard() {
     }
   };
 
+  const fetchPaymentSettings = async () => {
+    try {
+      const response = await fetch("/api/settings/payment");
+      if (response.ok) {
+        const result = await response.json();
+        setPaymentSettings(result.settings);
+      }
+    } catch (err) {
+      console.error("Error fetching payment settings:", err);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchPaymentSettings();
   }, []);
+
+  // Generate WhatsApp URL for Baby Card inquiry
+  const getBabyCardWhatsAppUrl = () => {
+    if (!paymentSettings?.whatsappNumber) return "";
+
+    const countryCode = (paymentSettings.whatsappCountryCode || "+591").replace("+", "");
+    const phone = countryCode + paymentSettings.whatsappNumber.replace(/\D/g, "");
+
+    const message = t("portal.babyCardPromo.whatsappMessage");
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  };
 
   // Handler to open schedule dialog for a specific baby
   const handleScheduleClick = (babyId: string) => {
@@ -235,6 +304,59 @@ export function PortalDashboard() {
         </div>
       </div>
 
+      {/* Baby Card Section - Only show if any baby has an active card */}
+      {data.babies.some((b) => b.babyCard) && (
+        <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-200">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-700">
+                {t("babyCard.portal.myCard")}
+              </h2>
+            </div>
+            {(() => {
+              const babyWithCard = data.babies.find((b) => b.babyCard);
+              if (babyWithCard) {
+                return (
+                  <Link
+                    href={`/portal/baby-card/${babyWithCard.id}`}
+                    className="text-sm font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
+                  >
+                    {t("common.seeMore")}
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
+          {data.babies
+            .filter((baby) => baby.babyCard)
+            .map((baby) => (
+              <Link
+                key={baby.id}
+                href={`/portal/baby-card/${baby.id}`}
+                className="block max-w-md mx-auto"
+              >
+                <div className="mb-2 text-sm text-gray-600 text-center">
+                  {t("babyCard.portal.cardFor", { babyName: baby.name })}
+                </div>
+                <BabyCardVisual
+                  name={baby.babyCard!.name}
+                  totalSessions={baby.babyCard!.totalSessions}
+                  completedSessions={baby.babyCard!.completedSessions}
+                  rewards={baby.babyCard!.rewards}
+                  usedRewardIds={baby.babyCard!.usedRewardIds}
+                  variant="preview"
+                />
+              </Link>
+            ))}
+        </div>
+      )}
+
       {/* My Babies Section */}
       <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
@@ -271,6 +393,104 @@ export function PortalDashboard() {
           </div>
         )}
       </div>
+
+      {/* Baby Card Promo Section - Only show if NO baby has an active card */}
+      {data.babies.length > 0 && !data.babies.some((b) => b.babyCard) && (
+        <div className="overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-lg backdrop-blur-sm">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                <CreditCard className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  {t("portal.babyCardPromo.title")}
+                </h3>
+                <p className="text-sm text-white/80">
+                  {t("portal.babyCardPromo.subtitle")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Baby Card Preview */}
+          <div className="p-6 space-y-5">
+            {/* Mock Baby Card Visual */}
+            <div className="max-w-md mx-auto">
+              <BabyCardVisual
+                name="Baby Card"
+                totalSessions={24}
+                completedSessions={0}
+                rewards={MOCK_PROMO_REWARDS}
+                usedRewardIds={[]}
+                variant="preview"
+              />
+            </div>
+
+            {/* Benefits Grid */}
+            <div className="grid gap-3">
+              {/* Benefit 1: Rewards */}
+              <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-400 shadow-md">
+                  <Gift className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {t("portal.babyCardPromo.benefit1Title")}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {t("portal.babyCardPromo.benefit1Desc")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Benefit 2: Special Prices */}
+              <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-400 shadow-md">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {t("portal.babyCardPromo.benefit2Title")}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {t("portal.babyCardPromo.benefit2Desc")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Benefit 3: First Session Discount */}
+              <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-3 border border-teal-100">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-400 to-pink-400 shadow-md">
+                  <Star className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {t("portal.babyCardPromo.benefit3Title")}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {t("portal.babyCardPromo.benefit3Desc")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            {paymentSettings?.whatsappNumber && (
+              <a
+                href={getBabyCardWhatsAppUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-teal-200 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl"
+              >
+                <MessageCircle className="h-5 w-5" />
+                {t("portal.babyCardPromo.cta")}
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -388,7 +608,7 @@ function BabyCard({ baby, requiresPrepayment, onScheduleClick }: BabyCardProps) 
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-gray-800">{baby.name}</h3>
-              <p className="text-sm text-gray-500">{baby.ageDisplay}</p>
+              <p className="text-sm text-gray-500">{formatAge(baby.age, t)}</p>
             </div>
 
             {/* Sessions Badge */}
@@ -435,9 +655,9 @@ function BabyCard({ baby, requiresPrepayment, onScheduleClick }: BabyCardProps) 
             <div className="mt-3">
               <button
                 onClick={onScheduleClick}
-                className="inline-flex items-center gap-1 text-xs font-medium text-teal-600 hover:text-teal-700"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-md shadow-teal-200/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
               >
-                <Plus className="h-3 w-3" />
+                <Calendar className="h-4 w-4" />
                 {t("portal.dashboard.scheduleNow")}
               </button>
             </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { calculateExactAge } from "@/lib/utils/age";
 
 export async function GET() {
   try {
@@ -49,6 +50,23 @@ export async function GET() {
                   ],
                   take: 1,
                 },
+                // Include active Baby Card purchase
+                babyCardPurchases: {
+                  where: {
+                    status: "ACTIVE",
+                  },
+                  include: {
+                    babyCard: {
+                      include: {
+                        rewards: {
+                          orderBy: { sessionNumber: "asc" },
+                        },
+                      },
+                    },
+                    rewardUsages: true,
+                  },
+                  take: 1,
+                },
               },
             },
           },
@@ -75,37 +93,49 @@ export async function GET() {
 
       totalRemainingSessions += babyRemainingSessions;
 
-      // Calculate age in months
-      const birthDate = new Date(baby.birthDate);
-      const now = new Date();
-      const ageMonths =
-        (now.getFullYear() - birthDate.getFullYear()) * 12 +
-        (now.getMonth() - birthDate.getMonth());
-
-      // Format age display
-      let ageDisplay: string;
-      if (ageMonths < 12) {
-        ageDisplay = `${ageMonths} meses`;
-      } else {
-        const years = Math.floor(ageMonths / 12);
-        const months = ageMonths % 12;
-        if (months > 0) {
-          ageDisplay = `${years} año${years > 1 ? "s" : ""} y ${months} mes${months > 1 ? "es" : ""}`;
-        } else {
-          ageDisplay = `${years} año${years > 1 ? "s" : ""}`;
-        }
-      }
+      // Calculate exact age using utility
+      const exactAge = calculateExactAge(baby.birthDate);
 
       // Get next appointment for this baby
       const nextAppointment = baby.appointments[0] || null;
+
+      // Get active Baby Card
+      const activeBabyCard = baby.babyCardPurchases[0] || null;
+      const babyCardInfo = activeBabyCard
+        ? {
+            purchaseId: activeBabyCard.id,
+            name: activeBabyCard.babyCard.name,
+            totalSessions: activeBabyCard.babyCard.totalSessions,
+            completedSessions: activeBabyCard.completedSessions,
+            progressPercent:
+              (activeBabyCard.completedSessions /
+                activeBabyCard.babyCard.totalSessions) *
+              100,
+            rewards: activeBabyCard.babyCard.rewards.map((r) => ({
+              id: r.id,
+              sessionNumber: r.sessionNumber,
+              displayName: r.displayName,
+              displayIcon: r.displayIcon,
+              rewardType: r.rewardType,
+            })),
+            usedRewardIds: activeBabyCard.rewardUsages.map(
+              (u) => u.babyCardRewardId
+            ),
+          }
+        : null;
 
       return {
         id: baby.id,
         name: baby.name,
         gender: baby.gender,
         birthDate: baby.birthDate,
-        ageMonths,
-        ageDisplay,
+        ageMonths: exactAge.totalMonths,
+        age: {
+          years: exactAge.years,
+          months: exactAge.months,
+          days: exactAge.days,
+          totalMonths: exactAge.totalMonths,
+        },
         relationship: bp.relationship,
         remainingSessions: babyRemainingSessions,
         packages: baby.packagePurchases.map((pkg) => ({
@@ -128,6 +158,7 @@ export async function GET() {
               endTime: nextAppointment.endTime,
             }
           : null,
+        babyCard: babyCardInfo,
       };
     });
 

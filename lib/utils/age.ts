@@ -16,6 +16,10 @@ export interface AgeResult {
 
 /**
  * Calculate exact age from birth date
+ * Uses pure date arithmetic (no timestamps) to avoid timezone issues.
+ * Birth dates are stored at UTC noon, so we use UTC methods for birth date
+ * and local date for "today" to get accurate day counts.
+ *
  * @param birthDate - Date of birth (Date object or string)
  * @returns AgeResult object with detailed age breakdown
  */
@@ -23,13 +27,22 @@ export function calculateExactAge(birthDate: Date | string): AgeResult {
   const birth = new Date(birthDate);
   const now = new Date();
 
-  // Calculate total months
-  let totalMonths =
-    (now.getFullYear() - birth.getFullYear()) * 12 +
-    (now.getMonth() - birth.getMonth());
+  // Extract date components only (no time/timezone issues)
+  // Birth date: use UTC because dates are stored at UTC noon (12:00:00Z)
+  const birthYear = birth.getUTCFullYear();
+  const birthMonth = birth.getUTCMonth();
+  const birthDay = birth.getUTCDate();
 
-  // Adjust if current day is before birth day
-  if (now.getDate() < birth.getDate()) {
+  // Today: use local date
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth();
+  const nowDay = now.getDate();
+
+  // Calculate total months
+  let totalMonths = (nowYear - birthYear) * 12 + (nowMonth - birthMonth);
+
+  // Adjust if current day is before birth day in the month
+  if (nowDay < birthDay) {
     totalMonths--;
   }
 
@@ -39,31 +52,30 @@ export function calculateExactAge(birthDate: Date | string): AgeResult {
   const years = Math.floor(totalMonths / 12);
   const months = totalMonths % 12;
 
-  // Calculate remaining days
+  // Calculate remaining days using pure arithmetic (no timestamps)
   let days: number;
   if (totalMonths < 1) {
-    // Less than a month - just count days
-    days = Math.floor(
-      (now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    // Less than a month - count days directly
+    // Create dates at midnight for accurate day count
+    const birthDate = new Date(birthYear, birthMonth, birthDay);
+    const todayDate = new Date(nowYear, nowMonth, nowDay);
+    days = Math.round((todayDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24));
     if (days < 0) days = 0;
   } else {
     // Calculate days since last month anniversary
-    const lastMonthAnniversary = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      birth.getDate()
-    );
+    if (nowDay >= birthDay) {
+      // Anniversary already passed this month
+      days = nowDay - birthDay;
+    } else {
+      // Anniversary hasn't happened yet - count from last month
+      // Get the number of days in the previous month
+      const lastMonth = nowMonth === 0 ? 11 : nowMonth - 1;
+      const lastMonthYear = nowMonth === 0 ? nowYear - 1 : nowYear;
+      const daysInLastMonth = new Date(lastMonthYear, lastMonth + 1, 0).getDate();
 
-    // If the anniversary hasn't happened this month yet, go back a month
-    if (lastMonthAnniversary > now) {
-      lastMonthAnniversary.setMonth(lastMonthAnniversary.getMonth() - 1);
+      // Days from birth day to end of last month + days into current month
+      days = (daysInLastMonth - birthDay) + nowDay;
     }
-
-    days = Math.floor(
-      (now.getTime() - lastMonthAnniversary.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (days < 0) days = 0;
   }
 
   return { totalMonths, years, months, days };

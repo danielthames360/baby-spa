@@ -11,6 +11,7 @@ import {
   Loader2,
   User,
   UserRound,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,16 @@ export interface BabySearchResult {
       name: string;
       categoryId: string | null;
       duration: number;
+    };
+  }[];
+  babyCardPurchases?: {
+    id: string;
+    status: string;
+    completedSessions: number;
+    babyCard: {
+      id: string;
+      name: string;
+      totalSessions: number;
     };
   }[];
 }
@@ -313,6 +324,7 @@ export function ClientSelector({
                 .filter((p) => p.isActive && p.remainingSessions > 0)
                 .reduce((sum, p) => sum + p.remainingSessions, 0);
               const primaryParent = baby.parents.find((p) => p.isPrimary);
+              const activeBabyCard = baby.babyCardPurchases?.[0];
 
               return (
                 <button
@@ -336,6 +348,11 @@ export function ClientSelector({
                   {totalRemainingSessions > 0 ? (
                     <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
                       {totalRemainingSessions} {t("common.sessionsUnit")}
+                    </span>
+                  ) : activeBabyCard ? (
+                    <span className="flex items-center gap-1 rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-700">
+                      <CreditCard className="h-3 w-3" />
+                      {activeBabyCard.babyCard.name}
                     </span>
                   ) : (
                     <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">

@@ -85,6 +85,16 @@ export interface BabyWithRelations {
     sessions: number;
     appointments: number;
   };
+  babyCardPurchases?: {
+    id: string;
+    status: string;
+    completedSessions: number;
+    babyCard: {
+      id: string;
+      name: string;
+      totalSessions: number;
+    };
+  }[];
 }
 
 export interface BabyListItem {
@@ -119,6 +129,16 @@ export interface BabyListItem {
   _count: {
     sessions: number;
   };
+  babyCardPurchases?: {
+    id: string;
+    status: string;
+    completedSessions: number;
+    babyCard: {
+      id: string;
+      name: string;
+      totalSessions: number;
+    };
+  }[];
 }
 
 export interface BabyCreateInput {
@@ -265,6 +285,23 @@ export const babyService = {
           _count: {
             select: { sessions: true },
           },
+          babyCardPurchases: {
+            where: { status: "ACTIVE" },
+            select: {
+              id: true,
+              status: true,
+              completedSessions: true,
+              babyCard: {
+                select: {
+                  id: true,
+                  name: true,
+                  totalSessions: true,
+                },
+              },
+            },
+            orderBy: { purchaseDate: "desc" },
+            take: 1,
+          },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -337,6 +374,23 @@ export const babyService = {
             sessions: true,
             appointments: true,
           },
+        },
+        babyCardPurchases: {
+          where: { status: "ACTIVE" },
+          select: {
+            id: true,
+            status: true,
+            completedSessions: true,
+            babyCard: {
+              select: {
+                id: true,
+                name: true,
+                totalSessions: true,
+              },
+            },
+          },
+          orderBy: { purchaseDate: "desc" },
+          take: 1, // Only the most recent active card
         },
       },
     });

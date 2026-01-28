@@ -22,12 +22,15 @@ import {
   CreditCard,
   AlertTriangle,
   UserRound,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PackageSelector,
   type PackageData,
   type PackagePurchaseData,
+  type SpecialPriceInfo,
 } from "@/components/packages/package-selector";
 import {
   ClientSelector,
@@ -40,6 +43,38 @@ const RegisterPaymentDialog = dynamic(
   () => import("@/components/appointments/register-payment-dialog").then((m) => m.RegisterPaymentDialog),
   { ssr: false }
 );
+
+// Baby Card checkout info interface
+interface BabyCardCheckoutInfo {
+  hasActiveCard: boolean;
+  purchase: {
+    id: string;
+    babyCardName: string;
+    completedSessions: number;
+    totalSessions: number;
+    progressPercent: number;
+    status: string;
+  } | null;
+  firstSessionDiscount: {
+    amount: number;
+    used: boolean;
+  } | null;
+  availableRewards: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+    sessionNumber: number;
+  }[];
+  nextReward: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    sessionNumber: number;
+    sessionsUntilUnlock: number;
+  } | null;
+  specialPrices: SpecialPriceInfo[];
+}
 
 interface AppointmentDialogProps {
   open: boolean;
@@ -72,6 +107,9 @@ export function AppointmentDialog({
   );
   const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
+  // Baby Card info state
+  const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
+  const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
   // Advance payment flow states
   const [showAdvancePaymentConfirm, setShowAdvancePaymentConfirm] = useState(false);
   const [createdAppointment, setCreatedAppointment] = useState<{
@@ -112,8 +150,25 @@ export function AppointmentDialog({
       setShowAdvancePaymentConfirm(false);
       setCreatedAppointment(null);
       setShowPaymentDialog(false);
+      setBabyCardInfo(null);
     }
   }, [open]);
+
+  // Fetch Baby Card info for the selected baby
+  const fetchBabyCardInfo = useCallback(async (babyId: string) => {
+    setLoadingBabyCardInfo(true);
+    try {
+      const response = await fetch(`/api/checkout/baby-card-info/${babyId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setBabyCardInfo(data);
+      }
+    } catch (error) {
+      console.error("Error fetching baby card info:", error);
+    } finally {
+      setLoadingBabyCardInfo(false);
+    }
+  }, []);
 
   // Fetch package catalog filtered by client type
   const fetchCatalog = useCallback(async (serviceType?: "BABY" | "PARENT") => {
@@ -215,6 +270,15 @@ export function AppointmentDialog({
       }
     }
   }, [selectedClient]);
+
+  // Fetch Baby Card info when baby is selected
+  useEffect(() => {
+    if (selectedClient?.type === "BABY" && selectedClient.baby) {
+      fetchBabyCardInfo(selectedClient.baby.id);
+    } else {
+      setBabyCardInfo(null);
+    }
+  }, [selectedClient, fetchBabyCardInfo]);
 
   // Auto-scroll to bottom when advance payment confirmation appears
   useEffect(() => {
@@ -395,6 +459,82 @@ export function AppointmentDialog({
             onClientSelect={setSelectedClient}
           />
 
+          {/* Baby Card info - shown when baby is selected and has info */}
+          {selectedClient?.type === "BABY" && babyCardInfo && (
+            <div className="rounded-xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+                  <CreditCard className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  {babyCardInfo.hasActiveCard && babyCardInfo.purchase ? (
+                    <>
+                      <p className="font-semibold text-gray-800">{babyCardInfo.purchase.babyCardName}</p>
+                      <p className="text-sm text-violet-600">
+                        {t("babyCard.checkout.sessionNumber", {
+                          number: babyCardInfo.purchase.completedSessions + 1,
+                          total: babyCardInfo.purchase.totalSessions,
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-gray-800">{t("babyCard.checkout.noCard")}</p>
+                      <p className="text-sm text-violet-600">{t("babyCard.checkout.offerCardDesc")}</p>
+                    </>
+                  )}
+                </div>
+                {babyCardInfo.hasActiveCard && babyCardInfo.purchase && (
+                  <div className="text-right">
+                    <div className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1">
+                      <Sparkles className="h-4 w-4 text-violet-600 mr-1.5" />
+                      <span className="text-sm font-bold text-violet-700">
+                        {Math.round(babyCardInfo.purchase.progressPercent)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              {babyCardInfo.hasActiveCard && babyCardInfo.purchase && (
+                <div className="mt-3">
+                  <div className="h-2 w-full rounded-full bg-violet-200/50">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
+                      style={{ width: `${babyCardInfo.purchase.progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* First Session Discount Available - Info only (applied at checkout) */}
+              {babyCardInfo.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                  <Star className="h-4 w-4 text-amber-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800">
+                      {t("babyCard.checkout.firstSessionDiscount")}
+                    </p>
+                    <p className="text-xs text-amber-600">
+                      {t("babyCard.checkout.firstSessionDiscountValue", {
+                        amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Special prices badge */}
+              {babyCardInfo.specialPrices.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-violet-700">
+                  <Sparkles className="h-4 w-4" />
+                  <span>{t("babyCard.checkout.hasSpecialPrices")}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Package selection - shown when client is selected */}
           {selectedClient && (
             <div className="space-y-4">
@@ -413,6 +553,7 @@ export function AppointmentDialog({
                     babyId={selectedClient.type === "BABY" ? selectedClient.baby?.id : undefined}
                     packages={catalogPackages}
                     babyPackages={getClientPackagesForSelector()}
+                    specialPrices={babyCardInfo?.specialPrices}
                     selectedPackageId={selectedPackageId}
                     selectedPurchaseId={selectedPurchaseId}
                     onSelectPackage={handlePackageSelect}

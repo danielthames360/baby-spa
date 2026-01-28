@@ -22,6 +22,7 @@ import {
   ListTodo,
   PartyPopper,
   ChevronLeft,
+  IdCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -41,6 +42,7 @@ const navigation = [
   { key: "sessions", href: "/admin/sessions", icon: ClipboardList },
   { key: "waitlist", href: "/admin/waitlist", icon: ListTodo },
   { key: "events", href: "/admin/events", icon: PartyPopper },
+  { key: "babyCards", href: "/admin/baby-cards", icon: IdCard },
   { key: "notifications", href: "/admin/notifications", icon: Bell },
   { key: "inventory", href: "/admin/inventory", icon: Warehouse },
 ];

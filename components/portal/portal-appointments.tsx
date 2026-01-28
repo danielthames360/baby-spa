@@ -55,6 +55,9 @@ import {
   Download,
   QrCode,
   UserRound,
+  Sparkles,
+  Gift,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,7 +74,9 @@ import {
   PackageSelector,
   type PackageData,
   type PackagePurchaseData,
+  type SpecialPriceInfo,
 } from "@/components/packages/package-selector";
+import confetti from "canvas-confetti";
 import { SchedulePreferenceSelector } from "@/components/appointments/schedule-preference-selector";
 import { SchedulePreference } from "@/lib/types/scheduling";
 
@@ -682,6 +687,33 @@ interface PaymentSettings {
   whatsappMessage: string | null;
 }
 
+// Baby Card checkout info for portal
+interface BabyCardPortalInfo {
+  hasActiveCard: boolean;
+  purchase: {
+    id: string;
+    babyCardName: string;
+    completedSessions: number;
+    totalSessions: number;
+    progressPercent: number;
+  } | null;
+  nextReward: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    sessionNumber: number;
+    sessionsUntilUnlock: number;
+  } | null;
+  // Reward for the next session (triggers confetti)
+  rewardForNextSession: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    sessionNumber: number;
+  } | null;
+  specialPrices: SpecialPriceInfo[];
+}
+
 export interface ScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -726,6 +758,15 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
   // Animation trigger for button
   const [buttonAnimated, setButtonAnimated] = useState(false);
 
+  // Baby Card info state
+  const [babyCardInfo, setBabyCardInfo] = useState<BabyCardPortalInfo | null>(null);
+  const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+  // Track if this session will unlock a reward (calculated when cita is confirmed)
+  const [unlockedReward, setUnlockedReward] = useState<{
+    displayName: string;
+    displayIcon: string | null;
+  } | null>(null);
+
   // Ref for scrollable container (auto-scroll on mobile)
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -733,7 +774,7 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
   const fetchCatalog = useCallback(async (serviceType: "BABY" | "PARENT" = "BABY") => {
     setLoadingCatalog(true);
     try {
-      const response = await fetch(`/api/packages?active=true&serviceType=${serviceType}`);
+      const response = await fetch(`/api/packages?active=true&publicOnly=true&serviceType=${serviceType}`);
       const data = await response.json();
       if (response.ok) {
         setCatalogPackages(data.packages || []);
@@ -743,6 +784,54 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
     } finally {
       setLoadingCatalog(false);
     }
+  }, []);
+
+  // Fetch Baby Card info for the selected baby
+  const fetchBabyCardInfo = useCallback(async (babyId: string) => {
+    setLoadingBabyCardInfo(true);
+    try {
+      const response = await fetch(`/api/portal/baby-card/${babyId}`);
+      const data = await response.json();
+      if (response.ok && data.hasActiveCard) {
+        setBabyCardInfo(data);
+      } else {
+        setBabyCardInfo(null);
+      }
+    } catch (error) {
+      console.error("Error fetching baby card info:", error);
+      setBabyCardInfo(null);
+    } finally {
+      setLoadingBabyCardInfo(false);
+    }
+  }, []);
+
+  // Trigger confetti celebration
+  const triggerConfetti = useCallback(() => {
+    const duration = 1000;
+    const end = Date.now() + duration;
+
+    const colors = ["#8b5cf6", "#a855f7", "#d946ef", "#f472b6", "#fbbf24"];
+
+    (function frame() {
+      confetti({
+        particleCount: 2,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors,
+      });
+      confetti({
+        particleCount: 2,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors,
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    })();
   }, []);
 
   // Initialize wizard when dialog opens
@@ -808,6 +897,31 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
       fetchCatalog(clientType === 'self' ? "PARENT" : "BABY");
     }
   }, [step, fetchCatalog, catalogPackages.length, clientType]);
+
+  // Fetch Baby Card info when a baby is selected
+  useEffect(() => {
+    if (clientType === 'baby' && selectedBaby) {
+      fetchBabyCardInfo(selectedBaby.id);
+    } else {
+      setBabyCardInfo(null);
+    }
+  }, [clientType, selectedBaby, fetchBabyCardInfo]);
+
+  // Calculate if the next session has a reward (for confetti)
+  const calculateUnlockedReward = useCallback(() => {
+    if (!babyCardInfo?.hasActiveCard || !babyCardInfo.purchase) return null;
+
+    // Use rewardForNextSession which is pre-calculated by the API
+    // This is the reward at session (completedSessions + 1) if any
+    if (babyCardInfo.rewardForNextSession) {
+      return {
+        displayName: babyCardInfo.rewardForNextSession.displayName,
+        displayIcon: babyCardInfo.rewardForNextSession.displayIcon,
+      };
+    }
+
+    return null;
+  }, [babyCardInfo]);
 
   // Generate next 14 days
   const getAvailableDates = () => {
@@ -918,6 +1032,13 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
         await fetchPaymentSettings();
         setStep('payment');
       } else {
+        // Calculate if this session unlocks a reward
+        const reward = calculateUnlockedReward();
+        setUnlockedReward(reward);
+        if (reward) {
+          // Delay confetti slightly for dramatic effect
+          setTimeout(() => triggerConfetti(), 300);
+        }
         setStep('success');
       }
 
@@ -1024,6 +1145,13 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
         await fetchPaymentSettings();
         setStep('payment');
       } else {
+        // Calculate if this session unlocks a reward
+        const reward = calculateUnlockedReward();
+        setUnlockedReward(reward);
+        if (reward) {
+          // Delay confetti slightly for dramatic effect
+          setTimeout(() => triggerConfetti(), 300);
+        }
         setStep('success');
       }
       // Don't call onSuccess here - will be called when user closes success screen
@@ -1122,6 +1250,8 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
     setRequiresPayment(false);
     setAdvanceAmount(null);
     setPaymentSettings(null);
+    setBabyCardInfo(null);
+    setUnlockedReward(null);
     onOpenChange(false);
   };
 
@@ -1527,17 +1657,17 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
                   babyId={clientType === 'self' ? undefined : selectedBaby?.id}
                   packages={catalogPackages}
                   babyPackages={getPackagesForSelector()}
+                  specialPrices={babyCardInfo?.specialPrices}
                   selectedPackageId={selectedPackageId}
                   selectedPurchaseId={selectedPurchaseId}
                   onSelectPackage={handlePackageSelect}
                   showCategories={true}
-                  showPrices={false}
+                  showPrices={true}
                   showExistingFirst={true}
                   allowNewPackage={true}
                   compact={true}
                   showProvisionalMessage={false}
                   maxHeight="none"
-                  defaultCategoryId={catalogPackages[0]?.categoryId || undefined}
                 />
               )}
             </div>
@@ -1913,15 +2043,44 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
                 <X className="h-5 w-5" />
               </button>
 
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 shadow-lg shadow-emerald-100">
-                <CheckCircle className="h-10 w-10 text-emerald-500" />
-              </div>
-              <h3 className="mt-6 text-xl font-bold text-gray-800">
-                {t("portal.appointments.appointmentConfirmed")}
-              </h3>
-              <p className="mt-2 text-sm text-gray-500">
-                {t("portal.appointments.wizard.successMessage")}
-              </p>
+              {/* Reward unlocked celebration */}
+              {unlockedReward ? (
+                <>
+                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 via-purple-500 to-fuchsia-500 shadow-xl shadow-purple-200 animate-pulse">
+                    <Gift className="h-12 w-12 text-white" />
+                  </div>
+                  <h3 className="mt-6 text-2xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+                    {t("babyCard.portal.rewardUnlocked")}
+                  </h3>
+                  <div className="mt-4 rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-4 shadow-lg">
+                    <div className="flex items-center justify-center gap-3">
+                      {unlockedReward.displayIcon ? (
+                        <span className="text-3xl">{unlockedReward.displayIcon}</span>
+                      ) : (
+                        <Star className="h-8 w-8 text-amber-500" />
+                      )}
+                      <span className="text-lg font-bold text-violet-800">
+                        {unlockedReward.displayName}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-violet-600">
+                      {t("babyCard.portal.rewardUnlockedDesc")}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 shadow-lg shadow-emerald-100">
+                    <CheckCircle className="h-10 w-10 text-emerald-500" />
+                  </div>
+                  <h3 className="mt-6 text-xl font-bold text-gray-800">
+                    {t("portal.appointments.appointmentConfirmed")}
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {t("portal.appointments.wizard.successMessage")}
+                  </p>
+                </>
+              )}
 
               {/* Summary */}
               <div className="mt-6 w-full max-w-xs space-y-2 rounded-xl bg-gray-50 p-4">
@@ -1953,10 +2112,83 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
                 </div>
               </div>
 
+              {/* Baby Card progress - show if has card but no reward unlocked */}
+              {babyCardInfo?.hasActiveCard && babyCardInfo.purchase && !unlockedReward && (
+                <div className="mt-4 w-full max-w-xs rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+                      <CreditCard className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-semibold text-violet-800">
+                        {babyCardInfo.purchase.babyCardName}
+                      </p>
+                      <p className="text-xs text-violet-600">
+                        {t("babyCard.portal.sessionProgress", {
+                          current: babyCardInfo.purchase.completedSessions + 1,
+                          total: babyCardInfo.purchase.totalSessions,
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="h-4 w-4 text-violet-500" />
+                      <span className="text-sm font-bold text-violet-700">
+                        {Math.round(((babyCardInfo.purchase.completedSessions + 1) / babyCardInfo.purchase.totalSessions) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-3 h-2 w-full rounded-full bg-violet-200/50">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
+                      style={{ width: `${((babyCardInfo.purchase.completedSessions + 1) / babyCardInfo.purchase.totalSessions) * 100}%` }}
+                    />
+                  </div>
+
+                  {/* Next reward teaser */}
+                  {babyCardInfo.nextReward && babyCardInfo.nextReward.sessionsUntilUnlock > 0 && (
+                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/50 p-2">
+                      <Gift className="h-4 w-4 text-violet-500" />
+                      <p className="text-xs text-violet-700">
+                        {t("babyCard.portal.nextRewardIn", {
+                          sessions: babyCardInfo.nextReward.sessionsUntilUnlock,
+                          reward: babyCardInfo.nextReward.displayName,
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Baby Card Promo - Show if baby appointment and NO active card */}
+              {clientType === 'baby' && (!babyCardInfo || !babyCardInfo.hasActiveCard) && (
+                <div className="mt-4 w-full max-w-xs rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-400 to-fuchsia-400 shadow-md">
+                      <Gift className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-semibold text-violet-800">
+                        {t("portal.babyCardPromo.successTeaser")}
+                      </p>
+                      <p className="text-xs text-violet-600">
+                        {t("portal.babyCardPromo.successTeaserDesc")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Close button at bottom */}
               <Button
                 onClick={() => resetAndClose(true)}
-                className="mt-6 h-12 w-full max-w-xs gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-base font-semibold text-white shadow-lg shadow-teal-200"
+                className={cn(
+                  "mt-6 h-12 w-full max-w-xs gap-2 rounded-xl text-base font-semibold text-white shadow-lg transition-all",
+                  unlockedReward
+                    ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-violet-200 hover:from-violet-600 hover:to-fuchsia-600"
+                    : "bg-gradient-to-r from-teal-500 to-cyan-500 shadow-teal-200 hover:from-teal-600 hover:to-cyan-600"
+                )}
               >
                 {t("common.close")}
               </Button>

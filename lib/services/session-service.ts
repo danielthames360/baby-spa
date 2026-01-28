@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { inventoryService } from "./inventory-service";
 import { packageService } from "./package-service";
+import { babyCardService } from "./baby-card-service";
 import { normalizeToUTCNoon, getStartOfDayUTC, getEndOfDayUTC } from "@/lib/utils/date-utils";
 
 // Types for service inputs
@@ -29,6 +30,7 @@ interface CompleteSessionInput {
   paymentNotes?: string;
   discountAmount?: number;
   discountReason?: string;
+  useFirstSessionDiscount?: boolean; // Apply Baby Card first session discount
   userId: string;
   userName: string;
 }
@@ -321,7 +323,7 @@ export const sessionService = {
    * - Mark as COMPLETED
    */
   async completeSession(input: CompleteSessionInput) {
-    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount = 0, discountReason, userId, userName } = input;
+    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount = 0, discountReason, useFirstSessionDiscount, userId, userName } = input;
 
     // Get session with all relations
     const session = await prisma.session.findUnique({
@@ -411,14 +413,39 @@ export const sessionService = {
         where: { id: packageId },
       });
       if (packageToSell) {
-        packageAmount = new Prisma.Decimal(packageToSell.basePrice.toString());
+        // Check for Baby Card special price if baby has active card
+        let effectivePrice = new Prisma.Decimal(packageToSell.basePrice.toString());
+        if (babyId) {
+          const babyCardSpecialPrice = await babyCardService.getSpecialPriceForBaby(babyId, packageId);
+          if (babyCardSpecialPrice) {
+            effectivePrice = new Prisma.Decimal(babyCardSpecialPrice.specialPrice);
+          }
+        }
+        packageAmount = effectivePrice;
       }
     }
 
     const subtotalAmount = productsAmount.add(packageAmount);
+
+    // Check for Baby Card first session discount
+    let firstSessionDiscountAmount = new Prisma.Decimal(0);
+    let babyCardPurchaseIdForDiscount: string | null = null;
+    if (useFirstSessionDiscount && babyId && subtotalAmount.greaterThan(0)) {
+      const discountInfo = await babyCardService.getFirstSessionDiscountInfo(babyId);
+      if (discountInfo.hasDiscount && discountInfo.discountAmount && discountInfo.purchaseId) {
+        // Apply discount (max = subtotal)
+        firstSessionDiscountAmount = Prisma.Decimal.min(
+          new Prisma.Decimal(discountInfo.discountAmount),
+          subtotalAmount
+        );
+        babyCardPurchaseIdForDiscount = discountInfo.purchaseId;
+      }
+    }
+
     const discountDecimal = new Prisma.Decimal(discountAmount);
-    const totalAmount = subtotalAmount.sub(discountDecimal).greaterThan(0)
-      ? subtotalAmount.sub(discountDecimal)
+    const totalDiscounts = discountDecimal.add(firstSessionDiscountAmount);
+    const totalAmount = subtotalAmount.sub(totalDiscounts).greaterThan(0)
+      ? subtotalAmount.sub(totalDiscounts)
       : new Prisma.Decimal(0);
 
     // Deduct products from inventory in parallel (outside transaction to avoid nested transactions)
@@ -446,6 +473,12 @@ export const sessionService = {
           finalPaymentNotes = finalPaymentNotes
             ? `${finalPaymentNotes} | Descuento: ${discountReason}`
             : `Descuento: ${discountReason}`;
+        }
+        if (firstSessionDiscountAmount.greaterThan(0)) {
+          const discountNote = `Descuento Baby Card 1ra sesión: ${firstSessionDiscountAmount.toString()}`;
+          finalPaymentNotes = finalPaymentNotes
+            ? `${finalPaymentNotes} | ${discountNote}`
+            : discountNote;
         }
 
         payment = await tx.payment.create({
@@ -593,13 +626,67 @@ export const sessionService = {
         session: updatedSession,
         payment,
         packagePurchase: finalPackagePurchase,
+        newPackagePurchase, // Track if new package was sold
         productsAmount,
         packageAmount,
         totalAmount,
       };
     });
 
-    return result;
+    // Apply Baby Card first session discount if used
+    let firstSessionDiscountApplied = null;
+    if (babyCardPurchaseIdForDiscount && firstSessionDiscountAmount.greaterThan(0)) {
+      try {
+        const discountResult = await babyCardService.applyFirstSessionDiscount(
+          babyCardPurchaseIdForDiscount,
+          sessionId,
+          Number(subtotalAmount)
+        );
+        firstSessionDiscountApplied = {
+          amount: discountResult.discountApplied,
+          purchaseId: babyCardPurchaseIdForDiscount,
+        };
+      } catch (error) {
+        console.error("Error applying Baby Card first session discount:", error);
+      }
+    }
+
+    // After completing the session, increment Baby Card progress if baby has active card
+    let babyCardInfo = null;
+    if (babyId) {
+      try {
+        // If a new package was sold, increment by the full package session count
+        // Otherwise, increment by 1 for single session
+        const sessionsToAdd = result.newPackagePurchase
+          ? result.newPackagePurchase.totalSessions
+          : 1;
+
+        const babyCardResult = sessionsToAdd > 1
+          ? await babyCardService.incrementSessionCountByAmount(babyId, sessionsToAdd)
+          : await babyCardService.incrementSessionCount(babyId, sessionId);
+
+        if (babyCardResult.purchase) {
+          babyCardInfo = {
+            purchaseId: babyCardResult.purchase.id,
+            cardName: babyCardResult.purchase.babyCard.name,
+            completedSessions: babyCardResult.purchase.completedSessions,
+            totalSessions: babyCardResult.purchase.babyCard.totalSessions,
+            isCompleted: babyCardResult.purchase.status === "COMPLETED",
+            newRewards: babyCardResult.newRewards.map((r) => ({
+              id: r.id,
+              displayName: r.displayName,
+              displayIcon: r.displayIcon,
+              rewardType: r.rewardType,
+            })),
+          };
+        }
+      } catch (error) {
+        // Don't fail the session completion if Baby Card tracking fails
+        console.error("Error updating Baby Card progress:", error);
+      }
+    }
+
+    return { ...result, babyCardInfo, firstSessionDiscountApplied };
   },
 
   /**

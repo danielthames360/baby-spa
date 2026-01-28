@@ -10,24 +10,64 @@ import {
   LayoutDashboard,
   Calendar,
   History,
+  CreditCard,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-const navigation = [
+const baseNavigation = [
   { key: "dashboard", href: "/portal/dashboard", icon: LayoutDashboard },
   { key: "appointments", href: "/portal/appointments", icon: Calendar },
   { key: "history", href: "/portal/history", icon: History },
 ];
+
+interface NavItem {
+  key: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+}
 
 export function PortalNav() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const t = useTranslations();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [babyCardBabyId, setBabyCardBabyId] = useState<string | null>(null);
+
+  // Check if user has any baby with active Baby Card
+  useEffect(() => {
+    const checkBabyCards = async () => {
+      try {
+        const response = await fetch("/api/portal/dashboard");
+        if (response.ok) {
+          const data = await response.json();
+          const babyWithCard = data.babies?.find((b: { babyCard?: unknown }) => b.babyCard);
+          if (babyWithCard) {
+            setBabyCardBabyId(babyWithCard.id);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking baby cards:", error);
+      }
+    };
+
+    if (status === "authenticated") {
+      checkBabyCards();
+    }
+  }, [status]);
+
+  // Build navigation dynamically - include Baby Card link if available
+  const navigation: NavItem[] = babyCardBabyId
+    ? [
+        baseNavigation[0],
+        baseNavigation[1],
+        { key: "babyCard", href: `/portal/baby-card/${babyCardBabyId}`, icon: CreditCard },
+        baseNavigation[2],
+      ]
+    : baseNavigation;
 
   const isActive = (href: string) => {
     const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");

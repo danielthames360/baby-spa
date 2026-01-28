@@ -32,6 +32,7 @@ import {
   XCircle,
   AlertTriangle,
   ShieldAlert,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -50,6 +51,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import dynamic from "next/dynamic";
 import { calculateExactAge, formatAge } from "@/lib/utils/age";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import { SessionHistoryCard } from "@/components/sessions/session-history-card";
 import { PackageInstallmentsCard } from "@/components/packages/package-installments-card";
 import { Prisma } from "@prisma/client";
@@ -73,6 +75,18 @@ const RegisterInstallmentPaymentDialog = dynamic(
 );
 const BulkSchedulingDialog = dynamic(
   () => import("@/components/appointments/bulk-scheduling-dialog").then((mod) => mod.BulkSchedulingDialog),
+  { ssr: false }
+);
+const SellBabyCardDialog = dynamic(
+  () => import("@/components/baby-cards/sell-baby-card-dialog").then((mod) => mod.SellBabyCardDialog),
+  { ssr: false }
+);
+const UseRewardDialog = dynamic(
+  () => import("@/components/baby-cards/use-reward-dialog").then((mod) => mod.UseRewardDialog),
+  { ssr: false }
+);
+const BabyCardProfileSection = dynamic(
+  () => import("@/components/baby-cards/baby-card-profile-section").then((mod) => mod.BabyCardProfileSection),
   { ssr: false }
 );
 
@@ -152,6 +166,16 @@ interface BabyWithRelations {
     sessions: number;
     appointments: number;
   };
+  babyCardPurchases?: {
+    id: string;
+    status: string;
+    completedSessions: number;
+    babyCard: {
+      id: string;
+      name: string;
+      totalSessions: number;
+    };
+  }[];
 }
 
 interface Note {
@@ -262,6 +286,15 @@ export default function BabyProfilePage() {
     packageDuration: number;
     schedulePreferences: string | null;
   } | null>(null);
+  // State for Baby Card dialogs
+  const [showSellBabyCardDialog, setShowSellBabyCardDialog] = useState(false);
+  const [useRewardDialog, setUseRewardDialog] = useState<{
+    open: boolean;
+    purchaseId: string;
+    rewardId: string;
+    rewardName: string;
+  }>({ open: false, purchaseId: "", rewardId: "", rewardName: "" });
+  const [babyCardRefreshKey, setBabyCardRefreshKey] = useState(0);
 
   const fetchBaby = useCallback(async () => {
     try {
@@ -541,6 +574,11 @@ export default function BabyProfilePage() {
                   <Package className="mr-1 h-3 w-3" />
                   {totalRemainingSessions} {t("babyProfile.packages.sessionsRemaining")}
                 </Badge>
+              ) : baby.babyCardPurchases && baby.babyCardPurchases.length > 0 ? (
+                <Badge className="rounded-full bg-violet-100 text-violet-700">
+                  <CreditCard className="mr-1 h-3 w-3" />
+                  {baby.babyCardPurchases[0].babyCard.name}
+                </Badge>
               ) : (
                 <Badge className="rounded-full bg-amber-100 text-amber-700">
                   {t("babyProfile.packages.noActivePackage")}
@@ -591,7 +629,7 @@ export default function BabyProfilePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="info" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white/70 p-1 backdrop-blur-md">
+        <TabsList className="grid w-full grid-cols-6 rounded-2xl bg-white/70 p-1 backdrop-blur-md">
           <TabsTrigger
             value="info"
             className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
@@ -603,6 +641,12 @@ export default function BabyProfilePage() {
             className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
           >
             {t("babyProfile.tabs.packages")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="babycard"
+            className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white"
+          >
+            {t("babyCard.profile.sectionTitle")}
           </TabsTrigger>
           <TabsTrigger
             value="appointments"
@@ -635,7 +679,10 @@ export default function BabyProfilePage() {
               <div>
                 <p className="text-sm text-gray-500">{t("babyProfile.info.birthDate")}</p>
                 <p className="font-medium text-gray-800">
-                  {new Date(baby.birthDate).toLocaleDateString()}
+                  {formatDateForDisplay(
+                    baby.birthDate,
+                    locale === "pt-BR" ? "pt-BR" : "es-ES"
+                  )}
                 </p>
               </div>
               <div>
@@ -989,6 +1036,34 @@ export default function BabyProfilePage() {
                 </div>
               </div>
             </Card>
+          ) : baby.babyCardPurchases && baby.babyCardPurchases.length > 0 ? (
+            <Card className="rounded-2xl border border-violet-200 bg-violet-50/50 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100">
+                    <CreditCard className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">
+                      {t("babyProfile.packages.hasBabyCard")}
+                    </p>
+                    <p className="text-sm text-violet-600">
+                      {baby.babyCardPurchases[0].babyCard.name} •{" "}
+                      {baby.babyCardPurchases[0].completedSessions}/{baby.babyCardPurchases[0].babyCard.totalSessions}{" "}
+                      {t("common.sessionsUnit")}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowSellPackageDialog(true)}
+                  variant="outline"
+                  className="rounded-xl border-violet-300 text-violet-700 hover:bg-violet-100"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("babyProfile.packages.sellPackage")}
+                </Button>
+              </div>
+            </Card>
           ) : (
             <Card className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6">
               <div className="flex items-center justify-between">
@@ -1159,6 +1234,18 @@ export default function BabyProfilePage() {
           </Card>
         </TabsContent>
 
+        {/* Baby Card Tab */}
+        <TabsContent value="babycard" className="space-y-4">
+          <BabyCardProfileSection
+            key={babyCardRefreshKey}
+            babyId={baby.id}
+            onSellCard={() => setShowSellBabyCardDialog(true)}
+            onUseReward={(purchaseId, rewardId, rewardName) =>
+              setUseRewardDialog({ open: true, purchaseId, rewardId, rewardName })
+            }
+          />
+        </TabsContent>
+
         {/* Appointments Tab */}
         <TabsContent value="appointments" className="space-y-4">
           {/* Schedule Button */}
@@ -1214,7 +1301,8 @@ export default function BabyProfilePage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-800">
-                          {new Date(appointment.date).toLocaleDateString(
+                          {formatDateForDisplay(
+                            appointment.date,
                             locale === "pt-BR" ? "pt-BR" : "es-ES",
                             {
                               weekday: "long",
@@ -1432,6 +1520,14 @@ export default function BabyProfilePage() {
             remainingSessions: activePackage.remainingSessions,
             package: { name: activePackage.package.name },
           } : null}
+          activeBabyCard={baby.babyCardPurchases && baby.babyCardPurchases.length > 0 ? {
+            id: baby.babyCardPurchases[0].id,
+            completedSessions: baby.babyCardPurchases[0].completedSessions,
+            babyCard: {
+              name: baby.babyCardPurchases[0].babyCard.name,
+              totalSessions: baby.babyCardPurchases[0].babyCard.totalSessions,
+            },
+          } : null}
           onSuccess={() => {
             fetchBaby();
             fetchAppointments();
@@ -1538,6 +1634,34 @@ export default function BabyProfilePage() {
           }}
         />
       )}
+
+      {/* Sell Baby Card Dialog */}
+      {baby && (
+        <SellBabyCardDialog
+          open={showSellBabyCardDialog}
+          onOpenChange={setShowSellBabyCardDialog}
+          babyId={baby.id}
+          babyName={baby.name}
+          onSuccess={() => {
+            setBabyCardRefreshKey((prev) => prev + 1);
+          }}
+        />
+      )}
+
+      {/* Use Reward Dialog */}
+      <UseRewardDialog
+        open={useRewardDialog.open}
+        onOpenChange={(open) =>
+          setUseRewardDialog((prev) => ({ ...prev, open }))
+        }
+        purchaseId={useRewardDialog.purchaseId}
+        rewardId={useRewardDialog.rewardId}
+        rewardName={useRewardDialog.rewardName}
+        onSuccess={() => {
+          setBabyCardRefreshKey((prev) => prev + 1);
+          setUseRewardDialog({ open: false, purchaseId: "", rewardId: "", rewardName: "" });
+        }}
+      />
     </div>
   );
 }

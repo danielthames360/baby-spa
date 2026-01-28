@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatLocalDateString } from "@/lib/utils/date-utils";
@@ -52,12 +53,22 @@ interface ActivePackage {
   };
 }
 
+interface ActiveBabyCard {
+  id: string;
+  completedSessions: number;
+  babyCard: {
+    name: string;
+    totalSessions: number;
+  };
+}
+
 interface ScheduleAppointmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   babyId: string;
   babyName: string;
   activePackage: ActivePackage | null;
+  activeBabyCard?: ActiveBabyCard | null;
   onSuccess?: () => void;
 }
 
@@ -67,6 +78,7 @@ export function ScheduleAppointmentDialog({
   babyId,
   babyName,
   activePackage,
+  activeBabyCard,
   onSuccess,
 }: ScheduleAppointmentDialogProps) {
   const t = useTranslations();
@@ -223,6 +235,11 @@ export function ScheduleAppointmentDialog({
                 <p className="flex items-center gap-1 text-sm text-emerald-600">
                   <Package className="h-3 w-3" />
                   {activePackage.remainingSessions} {t("calendar.sessionsAvailable")}
+                </p>
+              ) : activeBabyCard ? (
+                <p className="flex items-center gap-1 text-sm text-violet-600">
+                  <CreditCard className="h-3 w-3" />
+                  {activeBabyCard.babyCard.name}
                 </p>
               ) : (
                 <p className="text-sm text-amber-600">

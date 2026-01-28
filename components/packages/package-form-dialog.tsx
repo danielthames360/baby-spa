@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Package, Baby, Heart } from "lucide-react";
+import { Loader2, Package, Baby, Heart, EyeOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +57,7 @@ interface PackageData {
   installmentsTotalPrice?: number | string | null;
   installmentsPayOnSessions?: string | null;
   isActive: boolean;
+  isPublic?: boolean;
   sortOrder: number;
 }
 
@@ -94,6 +95,7 @@ export function PackageFormDialog({
       installmentsTotalPrice: null,
       installmentsPayOnSessions: null,
       isActive: true,
+      isPublic: true,
       sortOrder: 0,
     },
   });
@@ -137,6 +139,7 @@ export function PackageFormDialog({
             : null,
           installmentsPayOnSessions: packageData.installmentsPayOnSessions ?? null,
           isActive: packageData.isActive,
+          isPublic: packageData.isPublic ?? true,
           sortOrder: packageData.sortOrder,
         });
       } else {
@@ -155,6 +158,7 @@ export function PackageFormDialog({
           installmentsTotalPrice: null,
           installmentsPayOnSessions: null,
           isActive: true,
+          isPublic: true,
           sortOrder: 0,
         });
       }
@@ -656,6 +660,32 @@ export function PackageFormDialog({
                     <p className="text-sm text-gray-500">
                       {t("packages.form.isActiveDescription")}
                     </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isPublic"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-xl bg-violet-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <EyeOff className="h-5 w-5 text-violet-500 mt-0.5" />
+                    <div>
+                      <FormLabel className="text-gray-700">
+                        {t("packages.form.isPublic")}
+                      </FormLabel>
+                      <p className="text-sm text-gray-500">
+                        {t("packages.form.isPublicHelp")}
+                      </p>
+                    </div>
                   </div>
                   <FormControl>
                     <Switch

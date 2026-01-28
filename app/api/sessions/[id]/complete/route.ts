@@ -15,6 +15,7 @@ const completeSessionSchema = z.object({
   paymentNotes: z.string().optional(),
   discountAmount: z.number().min(0).optional(),
   discountReason: z.string().optional(),
+  useFirstSessionDiscount: z.boolean().optional(), // Apply Baby Card first session discount
 });
 
 // POST /api/sessions/[id]/complete - Complete a session
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount, discountReason } = validationResult.data;
+    const { packageId, packagePurchaseId, paymentMethod, paymentNotes, discountAmount, discountReason, useFirstSessionDiscount } = validationResult.data;
 
     const result = await sessionService.completeSession({
       sessionId,
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       paymentNotes,
       discountAmount,
       discountReason,
+      useFirstSessionDiscount,
       userId: session.user.id,
       userName: session.user.name || "Unknown",
     });

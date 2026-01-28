@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
@@ -77,6 +77,7 @@ export default function BabySpaIntro({
   const [showLogo, setShowLogo] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [ripples, setRipples] = useState<Ripple[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [initialBubbles, setInitialBubbles] = useState<Bubble[]>([
     { id: 'init-1', x: 15, y: 20, size: 14, opacity: 0.6, speed: 0.25 },
@@ -239,6 +240,48 @@ export default function BabySpaIntro({
     }, 100);
     return () => clearInterval(interval);
   }, [shouldRender, phase]);
+
+  // Audio playback - try autoplay, fail silently if blocked
+  useEffect(() => {
+    if (!shouldRender || phase === 'complete') return;
+
+    // Create audio element
+    const audio = new Audio('/sounds/AudioBebe.m4a');
+    audio.loop = true;
+    audio.volume = 0.5;
+    audioRef.current = audio;
+
+    // Try to play (will fail silently if autoplay is blocked)
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay was prevented - that's okay, just continue without sound
+      });
+    }
+
+    // Cleanup: stop and remove audio when intro ends
+    return () => {
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [shouldRender, phase]);
+
+  // Fade out audio during transition
+  useEffect(() => {
+    if (phase === 'transition' && audioRef.current) {
+      const audio = audioRef.current;
+      const fadeOut = setInterval(() => {
+        if (audio.volume > 0.1) {
+          audio.volume = Math.max(0, audio.volume - 0.1);
+        } else {
+          audio.pause();
+          clearInterval(fadeOut);
+        }
+      }, 50);
+      return () => clearInterval(fadeOut);
+    }
+  }, [phase]);
 
   // Don't render anything if not needed
   if (!shouldRender || phase === 'complete') {

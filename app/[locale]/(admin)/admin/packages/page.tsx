@@ -13,6 +13,7 @@ import {
   Edit,
   Sparkles,
   Settings2,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -47,6 +48,7 @@ interface PackageItem {
   sessionCount: number;
   basePrice: number | string;
   isActive: boolean;
+  isPublic: boolean;
   sortOrder: number;
   _count?: {
     purchases: number;
@@ -321,18 +323,26 @@ export default function PackagesPage() {
                       </div>
                     </div>
 
-                    {/* Status badge */}
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                        pkg.isActive
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {pkg.isActive
-                        ? t("packages.active")
-                        : t("packages.inactive")}
-                    </span>
+                    {/* Status badges */}
+                    <div className="flex flex-col gap-1 items-end">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                          pkg.isActive
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {pkg.isActive
+                          ? t("packages.active")
+                          : t("packages.inactive")}
+                      </span>
+                      {!pkg.isPublic && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
+                          <EyeOff className="h-3 w-3" />
+                          {t("packages.internalOnly")}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Description */}

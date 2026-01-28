@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get("includeInactive") === "true";
     const activeOnly = searchParams.get("active") === "true";
+    const publicOnly = searchParams.get("publicOnly") === "true";
     const serviceType = searchParams.get("serviceType") as "BABY" | "PARENT" | null;
 
     let packages = await packageService.list(includeInactive);
@@ -22,6 +23,11 @@ export async function GET(request: NextRequest) {
     // Filter by active only if requested
     if (activeOnly) {
       packages = packages.filter((pkg) => pkg.isActive);
+    }
+
+    // Filter by public only if requested (for catalog/sales)
+    if (publicOnly) {
+      packages = packages.filter((pkg) => pkg.isPublic);
     }
 
     // Filter by service type if specified

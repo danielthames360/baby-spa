@@ -39,6 +39,9 @@ import {
   AlertTriangle,
   CalendarClock,
   UserRound,
+  Gift,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -58,6 +61,12 @@ const RegisterInstallmentPaymentDialog = dynamic(
 // Dynamic import for bulk scheduling dialog
 const BulkSchedulingDialog = dynamic(
   () => import("@/components/appointments/bulk-scheduling-dialog").then(mod => mod.BulkSchedulingDialog),
+  { ssr: false }
+);
+
+// Dynamic import for sell baby card dialog
+const SellBabyCardDialog = dynamic(
+  () => import("@/components/baby-cards/sell-baby-card-dialog").then(mod => mod.SellBabyCardDialog),
   { ssr: false }
 );
 
@@ -136,6 +145,42 @@ interface Product {
   currentStock: number;
 }
 
+interface BabyCardCheckoutInfo {
+  hasActiveCard: boolean;
+  purchase: {
+    id: string;
+    babyCardName: string;
+    completedSessions: number;
+    totalSessions: number;
+    progressPercent: number;
+    status: string;
+  } | null;
+  firstSessionDiscount: {
+    amount: number;
+    used: boolean;
+  } | null;
+  availableRewards: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+    sessionNumber: number;
+  }[];
+  nextReward: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    sessionNumber: number;
+    sessionsUntilUnlock: number;
+  } | null;
+  specialPrices: {
+    packageId: string;
+    packageName: string;
+    normalPrice: number;
+    specialPrice: number;
+  }[];
+}
+
 const paymentMethods = [
   { value: "CASH", icon: Banknote, color: "emerald" },
   { value: "TRANSFER", icon: Building, color: "blue" },
@@ -202,6 +247,31 @@ export function CompleteSessionDialog({
     parentName?: string;
     schedulePreferences: string | null;
   } | null>(null);
+
+  // Baby Card checkout info state
+  const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
+  const [newlyUnlockedRewards, setNewlyUnlockedRewards] = useState<{
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+  }[]>([]);
+
+  // Reward usage state
+  const [selectedRewardToUse, setSelectedRewardToUse] = useState<{
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+  } | null>(null);
+  const [isUsingReward, setIsUsingReward] = useState(false);
+  const [usedRewardIds, setUsedRewardIds] = useState<string[]>([]);
+
+  // First session discount state
+  const [useFirstSessionDiscount, setUseFirstSessionDiscount] = useState(false);
+
+  // Sell Baby Card dialog state
+  const [showSellBabyCardDialog, setShowSellBabyCardDialog] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -280,6 +350,59 @@ export function CompleteSessionDialog({
     }
   }, [sessionId]);
 
+  const fetchBabyCardInfo = useCallback(async (babyId: string) => {
+    try {
+      const response = await fetch(`/api/checkout/baby-card-info/${babyId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setBabyCardInfo(data);
+      }
+    } catch (error) {
+      console.error("Error fetching baby card info:", error);
+    }
+  }, []);
+
+  const handleUseReward = async (reward: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+  }) => {
+    if (!babyCardInfo?.purchase?.id) return;
+
+    setIsUsingReward(true);
+    try {
+      const response = await fetch(
+        `/api/baby-cards/purchases/${babyCardInfo.purchase.id}/rewards/${reward.id}/use`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            notes: `Usado en checkout de sesión`,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        // Mark reward as used locally
+        setUsedRewardIds((prev) => [...prev, reward.id]);
+        setSelectedRewardToUse(null);
+        // Refresh baby card info
+        if (session?.appointment?.baby?.id) {
+          await fetchBabyCardInfo(session.appointment.baby.id);
+        }
+      } else {
+        const data = await response.json();
+        setError(t(`babyCard.errors.${data.error}`) || t("common.error"));
+      }
+    } catch (error) {
+      console.error("Error using reward:", error);
+      setError(t("common.error"));
+    } finally {
+      setIsUsingReward(false);
+    }
+  };
+
   useEffect(() => {
     if (open && sessionId) {
       // Reset state
@@ -296,6 +419,12 @@ export function CompleteSessionDialog({
       setShowSuccessView(false);
       setShowBulkScheduling(false);
       setCompletedPurchaseInfo(null);
+      setBabyCardInfo(null);
+      setNewlyUnlockedRewards([]);
+      setSelectedRewardToUse(null);
+      setUsedRewardIds([]);
+      setUseFirstSessionDiscount(false);
+      setShowSellBabyCardDialog(false);
 
       fetchSession();
       fetchProducts();
@@ -343,6 +472,13 @@ export function CompleteSessionDialog({
 
     initializePackageSelection();
   }, [session, fetchPackages, fetchClientPackages]);
+
+  // Fetch Baby Card checkout info when session is loaded (only for baby appointments)
+  useEffect(() => {
+    if (session?.appointment?.baby?.id) {
+      fetchBabyCardInfo(session.appointment.baby.id);
+    }
+  }, [session, fetchBabyCardInfo]);
 
   // Calculate installment payment status when session has a linked package with installments
   useEffect(() => {
@@ -438,10 +574,21 @@ export function CompleteSessionDialog({
   const selectedPackage = selectedPurchaseId
     ? null // When using existing purchase, no package price
     : packages.find((p) => p.id === selectedPackageId);
-  const packagePrice = selectedPackage ? Number(selectedPackage.basePrice) : 0;
+
+  // Apply Baby Card special price if available
+  const specialPriceEntry = selectedPackageId && !selectedPurchaseId
+    ? babyCardInfo?.specialPrices.find((sp) => sp.packageId === selectedPackageId)
+    : undefined;
+  const packagePrice = specialPriceEntry?.specialPrice ?? (selectedPackage ? Number(selectedPackage.basePrice) : 0);
   const productsTotal = calculateProductsTotal();
   const subtotal = productsTotal + packagePrice;
-  const grandTotal = Math.max(0, subtotal - discountAmount);
+
+  // Calculate first session discount if enabled
+  const firstSessionDiscountValue = useFirstSessionDiscount && babyCardInfo?.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used
+    ? Math.min(babyCardInfo.firstSessionDiscount.amount, subtotal)
+    : 0;
+
+  const grandTotal = Math.max(0, subtotal - discountAmount - firstSessionDiscountValue);
 
   // Helper to format price
   const formatPrice = (price: number) => {
@@ -494,6 +641,7 @@ export function CompleteSessionDialog({
           paymentNotes: paymentNotes || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
           discountReason: discountAmount > 0 ? discountReason || undefined : undefined,
+          useFirstSessionDiscount: useFirstSessionDiscount || undefined,
         }),
       });
 
@@ -503,6 +651,11 @@ export function CompleteSessionDialog({
         const errorKey = data.error || "UNKNOWN_ERROR";
         setError(t(`session.errors.${errorKey}`));
         return;
+      }
+
+      // Capture newly unlocked Baby Card rewards
+      if (data.babyCardInfo?.newRewards?.length > 0) {
+        setNewlyUnlockedRewards(data.babyCardInfo.newRewards);
       }
 
       // Check if we should show bulk scheduling option
@@ -523,8 +676,12 @@ export function CompleteSessionDialog({
         });
         setShowSuccessView(true);
         onSuccess?.();
+      } else if (data.babyCardInfo?.newRewards?.length > 0) {
+        // Show success view with newly unlocked rewards
+        setShowSuccessView(true);
+        onSuccess?.();
       } else {
-        // No remaining sessions, just close
+        // No remaining sessions and no rewards, just close
         onOpenChange(false);
         onSuccess?.();
       }
@@ -570,8 +727,8 @@ export function CompleteSessionDialog({
           <div className="py-8 text-center text-gray-500">
             {t("session.errors.SESSION_NOT_FOUND")}
           </div>
-        ) : showSuccessView && completedPurchaseInfo ? (
-          // Success view with bulk scheduling option
+        ) : showSuccessView ? (
+          // Success view with bulk scheduling option and/or newly unlocked rewards
           <div className="flex flex-col items-center justify-center py-8 space-y-6">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100">
               <CheckCircle className="h-10 w-10 text-emerald-500" />
@@ -580,20 +737,57 @@ export function CompleteSessionDialog({
               <h3 className="text-xl font-semibold text-gray-800">
                 {t("session.completedSuccessfully")}
               </h3>
-              <p className="text-gray-600">
-                {t("bulkScheduling.scheduleNow")}
-              </p>
-              <div className="mt-4 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-4">
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold text-teal-700">{completedPurchaseInfo.babyName || completedPurchaseInfo.parentName}</span>
-                  {" - "}
-                  <span className="font-medium">{completedPurchaseInfo.packageName}</span>
-                </p>
-                <p className="text-lg font-bold text-emerald-600 mt-1">
-                  {t("bulkScheduling.remainingToSchedule", { count: completedPurchaseInfo.remainingSessions })}
-                </p>
-              </div>
+              {completedPurchaseInfo && (
+                <>
+                  <p className="text-gray-600">
+                    {t("bulkScheduling.scheduleNow")}
+                  </p>
+                  <div className="mt-4 rounded-xl bg-gradient-to-r from-teal-50 to-cyan-50 p-4">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold text-teal-700">{completedPurchaseInfo.babyName || completedPurchaseInfo.parentName}</span>
+                      {" - "}
+                      <span className="font-medium">{completedPurchaseInfo.packageName}</span>
+                    </p>
+                    <p className="text-lg font-bold text-emerald-600 mt-1">
+                      {t("bulkScheduling.remainingToSchedule", { count: completedPurchaseInfo.remainingSessions })}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+
+            {/* Newly Unlocked Baby Card Rewards - available in NEXT appointment */}
+            {newlyUnlockedRewards.length > 0 && (
+              <div className="w-full max-w-md rounded-2xl border-2 border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg">
+                    <Star className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-amber-800">{t("babyCard.checkout.nextSessionReward")}</p>
+                    <p className="text-sm text-amber-700">
+                      {t("babyCard.checkout.nextSessionRewardText")}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {newlyUnlockedRewards.map((reward) => (
+                    <div
+                      key={reward.id}
+                      className="flex items-center gap-3 rounded-xl bg-white/80 border border-amber-200 p-3"
+                    >
+                      <span className="text-2xl">{reward.displayIcon || "🎁"}</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{reward.displayName}</p>
+                        <p className="text-xs text-amber-600">{t("babyCard.rewards.readyToUse")}</p>
+                      </div>
+                      <Gift className="h-5 w-5 text-amber-500" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -602,13 +796,15 @@ export function CompleteSessionDialog({
               >
                 {t("common.close")}
               </Button>
-              <Button
-                onClick={() => setShowBulkScheduling(true)}
-                className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50"
-              >
-                <Package className="mr-2 h-4 w-4" />
-                {t("bulkScheduling.scheduleRemaining")}
-              </Button>
+              {completedPurchaseInfo && (
+                <Button
+                  onClick={() => setShowBulkScheduling(true)}
+                  className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50"
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  {t("bulkScheduling.scheduleRemaining")}
+                </Button>
+              )}
             </div>
           </div>
         ) : (
@@ -709,6 +905,202 @@ export function CompleteSessionDialog({
                   <p className="text-xs text-cyan-600">{t("session.preferencesWillBeSaved")}</p>
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Baby Card Section - Only show for baby appointments */}
+            {session.appointment.baby && babyCardInfo && (
+              <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-r from-violet-50 via-purple-50 to-fuchsia-50 p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+                    <CreditCard className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    {babyCardInfo.hasActiveCard && babyCardInfo.purchase ? (
+                      <>
+                        <p className="font-semibold text-gray-800">{babyCardInfo.purchase.babyCardName}</p>
+                        <p className="text-sm text-violet-600">
+                          {t("babyCard.checkout.sessionNumber", {
+                            number: babyCardInfo.purchase.completedSessions + 1,
+                            total: babyCardInfo.purchase.totalSessions,
+                          })}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-gray-800">{t("babyCard.checkout.noCard")}</p>
+                        <p className="text-sm text-violet-600">{t("babyCard.checkout.offerCardDesc")}</p>
+                      </>
+                    )}
+                  </div>
+                  {babyCardInfo.hasActiveCard && babyCardInfo.purchase ? (
+                    <div className="text-right">
+                      <div className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1">
+                        <Sparkles className="h-4 w-4 text-violet-600 mr-1.5" />
+                        <span className="text-sm font-bold text-violet-700">
+                          {Math.round(babyCardInfo.purchase.progressPercent)}%
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowSellBabyCardDialog(true)}
+                      className="h-9 rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 px-4 text-white shadow-md"
+                    >
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      {t("babyCard.checkout.buyCard")}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                {babyCardInfo.hasActiveCard && babyCardInfo.purchase && (
+                  <div className="mb-4">
+                    <div className="h-2 w-full rounded-full bg-violet-200/50">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
+                        style={{ width: `${babyCardInfo.purchase.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* First Session Discount - Toggle to apply */}
+                {babyCardInfo.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used && subtotal > 0 && (
+                  <div className="mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setUseFirstSessionDiscount(!useFirstSessionDiscount)}
+                      className={cn(
+                        "w-full flex items-center justify-between rounded-xl border-2 p-3 transition-all",
+                        useFirstSessionDiscount
+                          ? "border-amber-400 bg-gradient-to-r from-amber-50 to-yellow-50 ring-2 ring-amber-400"
+                          : "border-amber-200 bg-amber-50/50 hover:border-amber-300"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-lg",
+                          useFirstSessionDiscount ? "bg-amber-500" : "bg-amber-200"
+                        )}>
+                          <Star className={cn("h-5 w-5", useFirstSessionDiscount ? "text-white" : "text-amber-600")} />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold text-gray-800">
+                            {t("babyCard.checkout.firstSessionDiscount")}
+                          </p>
+                          <p className="text-sm text-amber-700">
+                            {t("babyCard.checkout.firstSessionDiscountValue", {
+                              amount: formatPrice(babyCardInfo.firstSessionDiscount.amount),
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full transition-all",
+                        useFirstSessionDiscount
+                          ? "bg-amber-500 text-white"
+                          : "bg-gray-200 text-gray-400"
+                      )}>
+                        {useFirstSessionDiscount ? (
+                          <Check className="h-5 w-5" />
+                        ) : (
+                          <Plus className="h-5 w-5" />
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {/* Available Rewards - Can use NOW */}
+                {babyCardInfo.availableRewards.filter((r) => !usedRewardIds.includes(r.id)).length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 mb-2">
+                      {t("babyCard.checkout.rewardReadyToUse")} ({babyCardInfo.availableRewards.filter((r) => !usedRewardIds.includes(r.id)).length})
+                    </p>
+                    <div className="space-y-2">
+                      {babyCardInfo.availableRewards
+                        .filter((r) => !usedRewardIds.includes(r.id))
+                        .map((reward) => (
+                        <div
+                          key={reward.id}
+                          className="flex items-center justify-between rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 px-4 py-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{reward.displayIcon || "🎁"}</span>
+                            <div>
+                              <p className="font-semibold text-gray-800">{reward.displayName}</p>
+                              <p className="text-xs text-emerald-600">
+                                {t("babyCard.checkout.rewardReadyToUseText")}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleUseReward(reward)}
+                            disabled={isUsingReward}
+                            className="h-9 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-white shadow-md"
+                          >
+                            {isUsingReward ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Gift className="mr-1.5 h-4 w-4" />
+                                {t("babyCard.checkout.useNow")}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    {usedRewardIds.length > 0 && (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-emerald-600">
+                        <Check className="h-4 w-4" />
+                        <span>{t("babyCard.checkout.rewardUsedSuccess")}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Next Session Reward Alert - reward unlocks AFTER completing this session */}
+                {babyCardInfo.nextReward &&
+                  babyCardInfo.purchase &&
+                  babyCardInfo.nextReward.sessionsUntilUnlock === 1 && (
+                  <div className="rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-3">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-5 w-5 text-amber-500" />
+                      <div>
+                        <p className="font-semibold text-amber-800">{t("babyCard.checkout.nextSessionReward")}</p>
+                        <p className="text-sm text-amber-700">
+                          {t("babyCard.checkout.nextSessionRewardText")} {babyCardInfo.nextReward.displayIcon || "🎁"} {babyCardInfo.nextReward.displayName}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Special Price Applied - if selecting an individual package with special price */}
+                {selectedPackageId && !selectedPurchaseId && babyCardInfo.specialPrices.length > 0 && (
+                  <>
+                    {babyCardInfo.specialPrices
+                      .filter((sp) => sp.packageId === selectedPackageId)
+                      .map((sp) => (
+                        <div key={sp.packageId} className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 mt-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Percent className="h-4 w-4 text-emerald-600" />
+                              <span className="font-medium text-emerald-800">{t("babyCard.checkout.specialPriceApplied")}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-500 line-through mr-2">{formatPrice(sp.normalPrice)}</span>
+                              <span className="font-bold text-emerald-600">{formatPrice(sp.specialPrice)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </>
+                )}
+              </div>
             )}
 
             {/* Two column layout for desktop */}
@@ -1109,6 +1501,17 @@ export function CompleteSessionDialog({
                       </span>
                     </div>
                   )}
+                  {firstSessionDiscountValue > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="flex items-center gap-1 text-amber-700">
+                        <Star className="h-3 w-3" />
+                        {t("babyCard.checkout.firstSessionDiscountLabel")}
+                      </span>
+                      <span className="text-amber-600 font-medium">
+                        -{formatPrice(firstSessionDiscountValue)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-teal-200 pt-2">
                     <span className="font-medium text-gray-700">
                       {t("session.total")}
@@ -1208,6 +1611,22 @@ export function CompleteSessionDialog({
           onComplete={() => {
             setShowBulkScheduling(false);
             onOpenChange(false);
+          }}
+        />
+      )}
+
+      {/* Sell Baby Card Dialog */}
+      {session?.appointment.baby && (
+        <SellBabyCardDialog
+          open={showSellBabyCardDialog}
+          onOpenChange={setShowSellBabyCardDialog}
+          babyId={session.appointment.baby.id}
+          babyName={session.appointment.baby.name}
+          hasActiveBabyCard={babyCardInfo?.hasActiveCard}
+          onSuccess={() => {
+            setShowSellBabyCardDialog(false);
+            // Refresh baby card info
+            fetchBabyCardInfo(session.appointment.baby!.id);
           }}
         />
       )}

@@ -56,7 +56,9 @@
     "nextSession": "Próxima sesión",
     "welcomeTo": "Bienvenido/a a",
     "sessionsWillAppear": "Las sesiones aparecerán aquí según el calendario del día",
-    "available": "disponibles"
+    "available": "disponibles",
+    "used": "Usado",
+    "seeMore": "Ver más"
   },
 
   "auth": {
@@ -113,6 +115,8 @@
     "expenses": "Gastos",
     "waitlist": "Lista de Espera",
     "events": "Eventos",
+    "babyCards": "Baby Cards",
+    "babyCard": "Mi Baby Card",
     "profile": "Mi Perfil",
     "help": "Ayuda",
     "history": "Historial"
@@ -523,6 +527,7 @@
     "editPackage": "Editar Paquete",
     "active": "Activo",
     "inactive": "Inactivo",
+    "internalOnly": "Solo interno",
     "activate": "Activar",
     "deactivate": "Desactivar",
     "completed": "Completado",
@@ -576,6 +581,8 @@
       "installmentAmountEach": "Cada cuota",
       "isActive": "Paquete activo",
       "isActiveDescription": "Los paquetes inactivos no se muestran para la venta",
+      "isPublic": "Visible en catálogo",
+      "isPublicHelp": "Si está desactivado, solo disponible para premios Baby Card y uso interno",
       "serviceType": "Tipo de servicio",
       "serviceTypeHelp": "Define si este paquete es para bebés o para padres/madres",
       "serviceTypeBaby": "Bebés",
@@ -871,6 +878,7 @@
     "serverError": "Error del servidor",
     "networkError": "Error de conexión",
     "validationError": "Error de validación",
+    "VALIDATION_ERROR": "Error de validación. Por favor verifica los campos requeridos.",
     "unauthorized": "No autorizado",
     "forbidden": "Acceso denegado"
   },
@@ -1096,6 +1104,7 @@
     "packages": {
       "activePackage": "Paquete Activo",
       "noActivePackage": "Sin paquete activo",
+      "hasBabyCard": "Tiene Baby Card activa",
       "sessionsRemaining": "sesiones restantes",
       "sellPackage": "Vender Paquete",
       "sellPackageDescription": "Asigna un paquete de sesiones a este bebé",
@@ -1318,6 +1327,7 @@
   },
 
   "portal": {
+    "backToDashboard": "Volver al Panel",
     "dashboard": {
       "title": "Mi Panel",
       "welcomeMessage": "Bienvenido/a al Portal de Padres",
@@ -1332,6 +1342,20 @@
       "sessionsAvailable": "sesiones disponibles",
       "viewHistory": "Ver historial",
       "viewAppointments": "Ver citas"
+    },
+    "babyCardPromo": {
+      "title": "✨ Baby Spa Card",
+      "subtitle": "¡Gana premios con cada visita!",
+      "benefit1Title": "Premios exclusivos",
+      "benefit1Desc": "Desbloquea regalos por cada sesión completada",
+      "benefit2Title": "Precios especiales",
+      "benefit2Desc": "Descuentos exclusivos en paquetes seleccionados",
+      "benefit3Title": "Beneficios desde el inicio",
+      "benefit3Desc": "Descuento especial en tu primera sesión",
+      "cta": "¡Me interesa! Consultar",
+      "whatsappMessage": "¡Hola! Me interesa conocer más sobre la Baby Spa Card y sus beneficios. ¿Podrían darme más información?",
+      "successTeaser": "🎁 ¿Sabías que con Baby Card cada sesión te acerca a premios especiales?",
+      "successTeaserDesc": "¡Pregúntanos en tu próxima visita, te encantará!"
     },
     "baby": {
       "ageInMonths": "{count} meses",
@@ -1767,6 +1791,309 @@
       "cancelDescription": "Los participantes serán notificados",
       "complete": "¿Finalizar este evento?",
       "completeDescription": "Se marcará como completado"
+    }
+  },
+
+  "babyCard": {
+    "title": "Baby Cards",
+    "subtitle": "Sistema de fidelización con tarjetas de beneficios",
+    "newCard": "Nueva Baby Card",
+    "editCard": "Editar Baby Card",
+    "viewCard": "Ver Baby Card",
+    "sellCard": "Vender Baby Card",
+
+    "info": {
+      "name": "Nombre de la tarjeta",
+      "namePlaceholder": "Ej: Baby Spa Card Premium",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Descripción de beneficios y características",
+      "price": "Precio de la tarjeta",
+      "totalSessions": "Total de sesiones",
+      "totalSessionsHelp": "Cantidad de sesiones para completar la tarjeta",
+      "firstSessionDiscountLabel": "Descuento primera sesión",
+      "firstSessionDiscountHelp": "Monto que se descuenta en la primera sesión (0 = sin descuento)",
+      "firstSessionDiscount": "Descuento 1ra sesión: {amount}",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "sortOrder": "Orden de visualización"
+    },
+
+    "sell": {
+      "title": "Vender Baby Card",
+      "subtitle": "Para {name}",
+      "selectCard": "Seleccionar Baby Card",
+      "pricePaid": "Precio pagado",
+      "priceModified": "Precio modificado (original: {original})",
+      "paymentReference": "Referencia de pago",
+      "paymentReferencePlaceholder": "Nº de transacción, comprobante, etc.",
+      "confirm": "Confirmar Venta",
+      "hasActiveCard": "Ya tiene Baby Card activa",
+      "hasActiveCardDesc": "Si vendes una nueva, la actual se marcará como reemplazada."
+    },
+
+    "specialPrices": {
+      "title": "Precios Especiales",
+      "subtitle": "Configura precios promocionales para servicios específicos",
+      "add": "Agregar precio especial",
+      "service": "Servicio",
+      "selectService": "Seleccionar servicio",
+      "normalPrice": "Precio normal",
+      "specialPrice": "Precio con Baby Card",
+      "savings": "Ahorro",
+      "empty": "No hay precios especiales configurados",
+      "emptyHint": "Los precios especiales aplican solo a sesiones individuales"
+    },
+
+    "rewards": {
+      "title": "Premios",
+      "subtitle": "Configura los premios que se desbloquean en cada sesión",
+      "add": "Agregar premio",
+      "sessionNumber": "Se desbloquea en la sesión número",
+      "type": "Tipo de premio",
+      "typeService": "Servicio gratis",
+      "typeProduct": "Producto gratis",
+      "typeEvent": "Acceso a evento",
+      "typeCustom": "Personalizado",
+      "selectService": "Seleccionar servicio",
+      "selectProduct": "Seleccionar producto",
+      "selectEvent": "Tipo de evento",
+      "customName": "Nombre del premio",
+      "customNamePlaceholder": "Ej: Diploma de Graduación",
+      "customDescription": "Descripción del premio",
+      "customDescriptionPlaceholder": "Descripción detallada del premio personalizado",
+      "displayName": "Nombre a mostrar",
+      "displayNamePlaceholder": "Ej: Sesión de Fotos Gratis",
+      "displayIcon": "Icono (emoji)",
+      "displayIconPlaceholder": "Ej: 📸",
+      "unnamed": "Sin nombre",
+      "firstSessionFree": "Primera sesión gratis",
+      "empty": "No hay premios configurados",
+      "emptyHint": "Agrega premios para motivar a los clientes",
+      "count": "{count} premios",
+      "use": "Usar",
+      "unlockedAt": "Desbloqueado en sesión {session}",
+      "unlocksAt": "Se desbloquea en sesión {session}",
+      "useReward": "Usar Premio",
+      "useRewardDesc": "El premio será marcado como usado",
+      "readyToUse": "Listo para usar",
+      "useWarning": "Esta acción no se puede deshacer. El premio quedará marcado como usado.",
+      "notes": "Notas (opcional)",
+      "notesPlaceholder": "Notas sobre cómo se utilizó el premio...",
+      "confirmUse": "Confirmar Uso"
+    },
+
+    "preview": {
+      "title": "Vista previa de la tarjeta",
+      "sessions": "Sesiones",
+      "rewards": "Premios"
+    },
+
+    "purchase": {
+      "title": "Vender Baby Card",
+      "selectCard": "Seleccionar Baby Card",
+      "forBaby": "Para",
+      "summary": "Resumen de compra",
+      "benefits": "Beneficios incluidos",
+      "firstSessionDiscount": "Descuento de {amount} en primera sesión",
+      "specialPrice": "Precio especial {service}: Bs. {price}",
+      "rewardsCount": "{count} premios desbloqueables",
+      "paymentMethod": "Método de pago",
+      "reference": "Referencia/Comprobante",
+      "scheduleFirst": "Agendar primera sesión gratis ahora",
+      "selectDate": "Seleccionar fecha",
+      "selectTime": "Seleccionar hora",
+      "confirm": "Confirmar Venta",
+      "confirmWithPrice": "Confirmar Venta - Bs. {price}",
+      "alreadyHasCard": "Este bebé ya tiene una Baby Card activa",
+      "replaceWarning": "Si activa una nueva, la actual se marcará como reemplazada y el progreso se reiniciará.",
+      "replaceConfirm": "¿Reemplazar la Baby Card actual?",
+      "cardSelected": "Baby Card seleccionada"
+    },
+
+    "progress": {
+      "title": "Progreso",
+      "sessions": "Sesiones",
+      "of": "de",
+      "completed": "completadas",
+      "remaining": "restantes",
+      "percentComplete": "{percent}% completado"
+    },
+
+    "status": {
+      "ACTIVE": "Activa",
+      "COMPLETED": "Completada",
+      "REPLACED": "Reemplazada",
+      "CANCELLED": "Cancelada",
+      "active": "Activa",
+      "completed": "Completada",
+      "replaced": "Reemplazada",
+      "cancelled": "Cancelada"
+    },
+
+    "rewardStatus": {
+      "available": "Disponible",
+      "locked": "Bloqueado",
+      "used": "Usado",
+      "unlocksAt": "Se desbloquea en sesión {session}",
+      "sessionsLeft": "Te faltan {count} sesiones más",
+      "oneSessionLeft": "¡Una sesión más para desbloquearlo!",
+      "justUnlocked": "¡Recién desbloqueado!"
+    },
+
+    "useReward": {
+      "title": "Usar Premio",
+      "rewardFor": "Premio para",
+      "appliesDiscount": "Este premio aplica un descuento del 100% en:",
+      "applyTo": "Aplicar en",
+      "currentAppointment": "Esta cita actual",
+      "currentAppointmentDesc": "Se agregará el servicio/producto gratis a esta cita",
+      "newAppointment": "Agendar nueva cita",
+      "newAppointmentDesc": "Se creará una cita con el premio aplicado",
+      "notes": "Notas",
+      "notesPlaceholder": "Notas opcionales sobre el uso del premio",
+      "warning": "Esta acción no se puede deshacer.",
+      "warningDetail": "El premio quedará marcado como usado.",
+      "confirm": "Confirmar Uso",
+      "cancel": "Cancelar"
+    },
+
+    "checkout": {
+      "cardActive": "Baby Card Activa",
+      "sessionNumber": "Sesión #{number} de {total}",
+      "nextSession": "Próxima será sesión #{number}",
+      "availableRewards": "Premios disponibles",
+      "availableRewardsCount": "{count} premio(s) disponible(s)",
+      "useNow": "Usar Ahora",
+      "useRewardNow": "Usar premio ahora",
+      "rewardReadyToUse": "¡Premio listo para usar!",
+      "rewardReadyToUseText": "Puede usar este premio en esta sesión:",
+      "nextSessionReward": "¡Premio en próxima cita!",
+      "nextSessionRewardText": "Al completar esta sesión, en su próxima cita podrá usar:",
+      "rewardUsedSuccess": "Premio usado exitosamente",
+      "confirmUseReward": "¿Usar este premio?",
+      "confirmUseRewardText": "El premio se marcará como usado y se aplicará el beneficio correspondiente.",
+      "specialPriceApplied": "Precio especial aplicado",
+      "babyCardDiscount": "Descuento Baby Card",
+      "savings": "Ahorro",
+      "noCard": "Sin Baby Card",
+      "offerCard": "¿Activar Baby Card?",
+      "offerCardDesc": "El cliente puede adquirir una Baby Card para obtener beneficios",
+      "buyCard": "Adquirir",
+      "firstSessionDiscount": "Descuento primera sesión",
+      "firstSessionDiscountValue": "Descuento de {amount}",
+      "firstSessionDiscountLabel": "Descuento Baby Card",
+      "hasSpecialPrices": "Tiene precios especiales en paquetes"
+    },
+
+    "history": {
+      "title": "Historial de sesiones",
+      "sessionLog": "Registro de sesiones",
+      "rewardUnlocked": "premio desbloqueado!",
+      "firstSession": "Primera sesión gratis",
+      "previousCards": "Baby Cards anteriores",
+      "replacedOn": "Reemplazada el {date}",
+      "viewDetail": "Ver detalle",
+      "noHistory": "Sin historial de sesiones"
+    },
+
+    "profile": {
+      "sectionTitle": "Baby Card",
+      "noActiveCard": "Sin Baby Card activa",
+      "noActiveCardDesc": "Este bebé no tiene una Baby Card activa",
+      "sellNewCard": "Vender Baby Card",
+      "purchasedOn": "Comprada el {date}",
+      "rewardsAvailable": "{count} premio(s) disponible(s)",
+      "rewardsSection": "Premios",
+      "useReward": "Usar Premio",
+      "historySection": "Historial",
+      "sessionsCompleted": "Sesiones completadas",
+      "availableRewards": "Premios disponibles",
+      "upcomingRewards": "Próximos premios",
+      "sessionsAway": "sesiones más",
+      "history": "Historial",
+      "sellCard": "Vender Baby Card",
+      "sellAnotherCard": "Vender otra Baby Card"
+    },
+
+    "portal": {
+      "myCard": "Mi Baby Spa Card",
+      "cardFor": "Tarjeta de {babyName}",
+      "specialPriceActive": "Precio especial activo",
+      "youSave": "ahorras Bs. {amount}",
+      "myRewards": "Mis Premios",
+      "requestReward": "Para usar este premio, solicítalo en tu próxima visita al Baby Spa.",
+      "noCard": "No tienes Baby Card activa",
+      "noCardDesc": "Pregunta en Baby Spa sobre las tarjetas de beneficios",
+      "viewProgress": "Ver mi progreso",
+      "rewardUnlocked": "🎉 ¡Premio Desbloqueado!",
+      "rewardUnlockedDesc": "Solicítalo en tu próxima visita",
+      "sessionProgress": "Sesión {current} de {total}",
+      "nextRewardIn": "¡Faltan {sessions} sesiones para: {reward}!"
+    },
+
+    "list": {
+      "empty": "No hay Baby Cards",
+      "emptyDesc": "Crea tu primera Baby Card para comenzar",
+      "sessionsCount": "{count} sesiones",
+      "rewardsCount": "{count} premios",
+      "purchasesCount": "{count} vendidas",
+      "specialPricesCount": "{count} precios especiales",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "viewStats": "Ver Estadísticas"
+    },
+
+    "messages": {
+      "created": "Baby Card creada exitosamente",
+      "updated": "Baby Card actualizada",
+      "deleted": "Baby Card eliminada",
+      "activated": "Baby Card activada",
+      "deactivated": "Baby Card desactivada",
+      "sold": "Baby Card vendida exitosamente",
+      "rewardUsed": "Premio aplicado exitosamente",
+      "rewardUnlocked": "¡Nuevo premio desbloqueado!",
+      "sessionCounted": "Sesión registrada en Baby Card",
+      "cardCompleted": "¡Baby Card completada! El cliente ha cumplido todas las sesiones",
+      "firstDiscountApplied": "Descuento de primera sesión aplicado"
+    },
+
+    "errors": {
+      "NAME_REQUIRED": "El nombre es requerido",
+      "NAME_TOO_SHORT": "El nombre es muy corto",
+      "NAME_TOO_LONG": "El nombre es muy largo",
+      "PRICE_MIN": "El precio debe ser mayor a 0",
+      "SESSIONS_MIN": "Debe tener al menos 1 sesión",
+      "SESSIONS_MAX": "Máximo 100 sesiones",
+      "REWARD_SESSION_EXCEEDS_TOTAL": "La sesión del premio excede el total de sesiones",
+      "DUPLICATE_REWARD_SESSIONS": "Hay premios duplicados en la misma sesión",
+      "DUPLICATE_SPECIAL_PRICE_PACKAGES": "Hay precios especiales duplicados para el mismo servicio",
+      "DISPLAY_NAME_REQUIRED": "El nombre a mostrar es requerido",
+      "PACKAGE_REQUIRED_FOR_SERVICE": "Selecciona un servicio para este premio",
+      "PRODUCT_REQUIRED_FOR_PRODUCT": "Selecciona un producto para este premio",
+      "CUSTOM_NAME_REQUIRED": "El nombre del premio personalizado es requerido",
+      "BABY_CARD_NOT_FOUND": "Baby Card no encontrada",
+      "BABY_CARD_NOT_ACTIVE": "La Baby Card no está activa",
+      "BABY_CARD_HAS_PURCHASES": "No se puede eliminar una Baby Card que ya tiene compras",
+      "REWARD_HAS_USAGES_CANNOT_DELETE": "No se puede eliminar este premio porque ya fue entregado a un cliente",
+      "PURCHASE_NOT_FOUND": "Compra de Baby Card no encontrada",
+      "REWARD_NOT_FOUND": "Premio no encontrado",
+      "REWARD_NOT_VALID_FOR_PURCHASE": "El premio no corresponde a esta Baby Card",
+      "REWARD_NOT_UNLOCKED": "El premio aún no está desbloqueado",
+      "REWARD_ALREADY_USED": "El premio ya fue utilizado",
+      "FIRST_SESSION_DISCOUNT_ALREADY_USED": "El descuento de primera sesión ya fue utilizado",
+      "SESSION_NUMBER_MIN": "La sesión debe ser mínimo 2 (la sesión 1 es reservada para el descuento)",
+      "REWARD_SESSION_ONE_RESERVED": "La sesión 1 está reservada para el descuento de primera sesión. Los premios deben empezar desde la sesión 2.",
+      "BABY_CARD_REQUIRED": "Selecciona una Baby Card",
+      "BABY_REQUIRED": "Selecciona un bebé"
+    },
+
+    "confirmations": {
+      "delete": "¿Eliminar esta Baby Card?",
+      "deleteDescription": "Esta acción no se puede deshacer. Solo se puede eliminar si no tiene compras.",
+      "deactivate": "¿Desactivar esta Baby Card?",
+      "deactivateDescription": "No aparecerá disponible para venta",
+      "useReward": "¿Usar este premio?",
+      "useRewardDescription": "Esta acción no se puede deshacer"
     }
   }
 }

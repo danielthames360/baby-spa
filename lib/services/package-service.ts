@@ -19,6 +19,7 @@ export interface PackageWithPurchases {
   requiresAdvancePayment: boolean;
   advancePaymentAmount: Prisma.Decimal | null;
   isActive: boolean;
+  isPublic: boolean; // false = only for Baby Card rewards and internal use
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -43,6 +44,7 @@ export interface PackageCreateInput {
   installmentsTotalPrice?: number | null;
   installmentsPayOnSessions?: string | null;
   isActive?: boolean;
+  isPublic?: boolean; // false = only for Baby Card rewards and internal use
   sortOrder?: number;
 }
 
@@ -173,6 +175,7 @@ export const packageService = {
         installmentsTotalPrice: data.installmentsTotalPrice,
         installmentsPayOnSessions: data.installmentsPayOnSessions,
         isActive: data.isActive ?? true,
+        isPublic: data.isPublic ?? true,
         sortOrder: data.sortOrder ?? 0,
       },
       include: {
@@ -215,6 +218,7 @@ export const packageService = {
         ...(data.installmentsTotalPrice !== undefined && { installmentsTotalPrice: data.installmentsTotalPrice }),
         ...(data.installmentsPayOnSessions !== undefined && { installmentsPayOnSessions: data.installmentsPayOnSessions }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
       },
       include: {

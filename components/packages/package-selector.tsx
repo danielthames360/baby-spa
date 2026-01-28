@@ -58,11 +58,20 @@ export interface PackagePurchaseData {
   };
 }
 
+// Special price info from Baby Card
+export interface SpecialPriceInfo {
+  packageId: string;
+  packageName: string;
+  normalPrice: number;
+  specialPrice: number;
+}
+
 export interface PackageSelectorProps {
   // Data
   babyId?: string;
   packages?: PackageData[];
   babyPackages?: PackagePurchaseData[];
+  specialPrices?: SpecialPriceInfo[]; // Baby Card special prices
 
   // State
   selectedPackageId?: string | null;
@@ -94,6 +103,7 @@ interface PackageOptionProps {
   sessions: number;
   duration: number;
   price?: number;
+  specialPrice?: number; // Baby Card special price
   remaining?: number;
   total?: number;
   selected?: boolean;
@@ -108,6 +118,7 @@ function PackageOption({
   sessions,
   duration,
   price,
+  specialPrice,
   remaining,
   total,
   selected,
@@ -115,6 +126,7 @@ function PackageOption({
   showPrice = true,
   onClick,
 }: PackageOptionProps) {
+  const hasSpecialPrice = specialPrice !== undefined && price !== undefined && specialPrice < price;
   return (
     <button
       type="button"
@@ -197,12 +209,26 @@ function PackageOption({
         {/* Price */}
         {showPrice && price !== undefined && price > 0 && (
           <div className="shrink-0 text-right">
-            <span className={cn(
-              "font-bold",
-              selected ? "text-teal-700" : "text-gray-700"
-            )}>
-              {price.toFixed(0)} Bs
-            </span>
+            {hasSpecialPrice ? (
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="text-xs text-gray-400 line-through">
+                  {price.toFixed(0)} Bs
+                </span>
+                <span className={cn(
+                  "font-bold",
+                  selected ? "text-violet-700" : "text-violet-600"
+                )}>
+                  {specialPrice!.toFixed(0)} Bs
+                </span>
+              </div>
+            ) : (
+              <span className={cn(
+                "font-bold",
+                selected ? "text-teal-700" : "text-gray-700"
+              )}>
+                {price.toFixed(0)} Bs
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -239,6 +265,7 @@ export function PackageSelector({
   babyId,
   packages: externalPackages,
   babyPackages: externalBabyPackages,
+  specialPrices: externalSpecialPrices,
   selectedPackageId,
   selectedPurchaseId,
   onSelectPackage,
@@ -294,7 +321,7 @@ export function PackageSelector({
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/packages?active=true");
+      const response = await fetch("/api/packages?active=true&publicOnly=true");
       const data = await response.json();
       if (response.ok) {
         setPackages(data.packages || []);
@@ -396,6 +423,13 @@ export function PackageSelector({
   const filteredPackages = activeCategoryId
     ? packages.filter((pkg) => pkg.categoryId === activeCategoryId)
     : packages;
+
+  // Helper to get special price for a package
+  const getSpecialPrice = (packageId: string): number | undefined => {
+    if (!externalSpecialPrices) return undefined;
+    const sp = externalSpecialPrices.find((p) => p.packageId === packageId);
+    return sp?.specialPrice;
+  };
 
   // Handle selection
   const handleSelectPurchase = (purchase: PackagePurchaseData) => {
@@ -514,6 +548,7 @@ export function PackageSelector({
                   sessions={pkg.sessionCount}
                   duration={pkg.duration}
                   price={typeof pkg.basePrice === "string" ? parseFloat(pkg.basePrice) : pkg.basePrice}
+                  specialPrice={getSpecialPrice(pkg.id)}
                   selected={selectedPackageId === pkg.id && !selectedPurchaseId}
                   requiresAdvance={pkg.requiresAdvancePayment}
                   showPrice={showPrices}

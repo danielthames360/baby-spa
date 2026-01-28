@@ -164,7 +164,7 @@ export function SellPackageDialog({
   const fetchPackages = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/packages");
+      const response = await fetch("/api/packages?active=true&publicOnly=true");
       const data = await response.json();
       setPackages(data.packages || []);
     } catch (error) {

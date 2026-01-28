@@ -79,11 +79,51 @@ import {
   CreditCard,
   AlertTriangle,
   UserRound,
+  Sparkles,
+  Star,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
 import { getPaymentStatus, type PaymentStatus } from "@/lib/utils/installments";
 import { parseSchedulePreferences, formatPreferencesText } from "@/lib/utils/bulk-scheduling";
+
+// Baby Card checkout info interface
+interface BabyCardCheckoutInfo {
+  hasActiveCard: boolean;
+  purchase: {
+    id: string;
+    babyCardName: string;
+    completedSessions: number;
+    totalSessions: number;
+    progressPercent: number;
+    status: string;
+  } | null;
+  firstSessionDiscount: {
+    amount: number;
+    used: boolean;
+  } | null;
+  availableRewards: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+    sessionNumber: number;
+  }[];
+  nextReward: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    sessionNumber: number;
+    sessionsUntilUnlock: number;
+  } | null;
+  specialPrices: {
+    packageId: string;
+    packageName: string;
+    normalPrice: number;
+    specialPrice: number;
+  }[];
+}
 
 interface AppointmentDetailsProps {
   open: boolean;
@@ -255,6 +295,10 @@ export function AppointmentDetails({
   const [installmentPaymentStatus, setInstallmentPaymentStatus] = useState<PaymentStatus | null>(null);
   const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] = useState(false);
 
+  // Baby Card info state
+  const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
+  const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+
   // Reset package editing state when modal closes or appointment changes
   useEffect(() => {
     if (!open) {
@@ -278,7 +322,33 @@ export function AppointmentDetails({
     setSelectedPackageId(null);
     setSelectedPurchaseId(null);
     setPackageError(null);
+    setBabyCardInfo(null);
   }, [appointment?.id]);
+
+  // Fetch Baby Card info when appointment has a baby
+  useEffect(() => {
+    if (!open || !appointment?.baby?.id) {
+      setBabyCardInfo(null);
+      return;
+    }
+
+    const fetchBabyCardInfo = async () => {
+      setLoadingBabyCardInfo(true);
+      try {
+        const response = await fetch(`/api/checkout/baby-card-info/${appointment.baby!.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setBabyCardInfo(data);
+        }
+      } catch (error) {
+        console.error("Error fetching baby card info:", error);
+      } finally {
+        setLoadingBabyCardInfo(false);
+      }
+    };
+
+    fetchBabyCardInfo();
+  }, [open, appointment?.baby?.id]);
 
   // Calculate installment payment status when appointment has a package with installments
   useEffect(() => {
@@ -508,7 +578,7 @@ export function AppointmentDetails({
       // Fetch packages and catalog in parallel
       // For baby appointments, fetch baby's packages; for parent appointments, just fetch catalog
       const promises: Promise<Response>[] = [
-        fetch("/api/packages?active=true"),
+        fetch("/api/packages?active=true&publicOnly=true"),
       ];
       if (appointment.baby) {
         promises.unshift(fetch(`/api/babies/${appointment.baby.id}/packages`));
@@ -600,7 +670,7 @@ export function AppointmentDetails({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-white/50 bg-white/95 p-0 backdrop-blur-md">
+        <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-white/50 bg-white/95 p-0 backdrop-blur-md">
           <DialogHeader className="shrink-0 border-b border-gray-100 px-6 py-4">
             <DialogTitle className="flex items-center justify-between">
               <span className="text-xl font-bold text-gray-800">
@@ -613,163 +683,251 @@ export function AppointmentDetails({
           </DialogHeader>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            {/* Info cards grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Date card */}
-              <div className="rounded-xl bg-gray-50 p-3">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Calendar className="h-4 w-4" />
-                  <span className="text-xs font-medium uppercase tracking-wide">
-                    {t("calendar.date")}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm font-semibold text-gray-800">
-                  {formattedDate}
-                </p>
-              </div>
-
-              {/* Time card */}
-              <div className="rounded-xl bg-gray-50 p-3">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-xs font-medium uppercase tracking-wide">
-                    {t("calendar.time")}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm font-semibold text-gray-800">
-                  {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
-                </p>
-              </div>
-            </div>
-
-            {/* Package card - full width */}
+            {/* Client info header - most important, shown first */}
             <div className={cn(
-              "rounded-xl p-3",
-              appointment.packagePurchase || appointment.selectedPackage
-                ? "bg-teal-50 border border-teal-200"
-                : "bg-amber-50 border border-amber-200"
+              "rounded-xl border-2 bg-white p-4",
+              isParentAppointment ? "border-rose-100" : "border-teal-100"
             )}>
-              {!isEditingPackage ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg",
-                      appointment.packagePurchase || appointment.selectedPackage
-                        ? "bg-teal-100"
-                        : "bg-amber-100"
-                    )}>
-                      <Package className={cn(
-                        "h-4 w-4",
-                        appointment.packagePurchase || appointment.selectedPackage
-                          ? "text-teal-600"
-                          : "text-amber-600"
-                      )} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                        {t("calendar.package")}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full shadow-md",
+                    isParentAppointment
+                      ? "bg-gradient-to-br from-rose-400 to-pink-500 shadow-rose-200"
+                      : "bg-gradient-to-br from-teal-500 to-cyan-500 shadow-teal-200"
+                  )}>
+                    <ClientIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg font-semibold text-gray-800">
+                        {clientName}
                       </p>
-                      <div className="flex items-center gap-2">
-                        <p className={cn(
-                          "text-sm font-semibold",
-                          appointment.packagePurchase || appointment.selectedPackage
-                            ? "text-teal-700"
-                            : "text-amber-700"
-                        )}>
-                          {appointment.packagePurchase
-                            ? appointment.packagePurchase.package.name
-                            : appointment.selectedPackage
-                              ? appointment.selectedPackage.name
-                              : t("calendar.sessionToDefine")}
-                        </p>
-                        {/* Installment payment overdue badge */}
-                        {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && (
-                          <Badge className="flex items-center gap-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-300 px-1.5 py-0">
-                            <AlertTriangle className="h-3 w-3" />
-                            <span className="text-[10px] font-medium">
-                              {t("packages.installments.alerts.paymentWarning")}
-                            </span>
-                          </Badge>
-                        )}
+                      {isParentAppointment && (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                          {t("calendar.clientType.parent")}
+                        </span>
+                      )}
+                    </div>
+                    {/* For baby appointments, show primary parent */}
+                    {!isParentAppointment && primaryParent && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {primaryParent.name}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {primaryParent.phone}
+                        </span>
                       </div>
-                      {/* Advance payment amount for PENDING_PAYMENT */}
-                      {appointment.status === "PENDING_PAYMENT" && appointment.selectedPackage?.advancePaymentAmount && (
-                        <p className="mt-1 text-sm font-bold text-orange-600">
-                          💰 {t("payment.advanceRequired")}: Bs. {parseFloat(appointment.selectedPackage.advancePaymentAmount.toString()).toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {/* Edit button - only for scheduled appointments */}
-                  {appointment.status === "SCHEDULED" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleEditPackage}
-                      disabled={isLoadingPackages}
-                      className="h-8 px-2 text-teal-600 hover:bg-teal-100 hover:text-teal-700"
-                    >
-                      {isLoadingPackages ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Pencil className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      {t("calendar.changePackage")}
-                    </p>
-                  </div>
-                  <PackageSelector
-                    babyId={appointment.baby?.id || ""}
-                    packages={catalogPackages}
-                    babyPackages={babyPackages}
-                    selectedPackageId={selectedPackageId}
-                    selectedPurchaseId={selectedPurchaseId}
-                    onSelectPackage={handlePackageSelect}
-                    showCategories={true}
-                    showPrices={false}
-                    showExistingFirst={true}
-                    allowNewPackage={true}
-                    compact={true}
-                    showProvisionalMessage={false}
-                    maxHeight="200px"
-                    forceShowCatalog={!!appointment.selectedPackage && !appointment.packagePurchase}
-                  />
-                  {packageError && (
-                    <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-2 text-xs text-rose-700">
-                      <AlertCircle className="h-3 w-3" />
-                      {t(`calendar.errors.${packageError}`)}
-                    </div>
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelPackageEdit}
-                      className="h-8"
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSavePackage}
-                      disabled={isSavingPackage || (!selectedPackageId && !selectedPurchaseId)}
-                      className="h-8 bg-teal-600 text-white hover:bg-teal-700"
-                    >
-                      {isSavingPackage ? (
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      ) : null}
-                      {t("common.save")}
-                    </Button>
+                    )}
+                    {/* For parent appointments, show phone */}
+                    {isParentAppointment && clientPhone && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {clientPhone}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+                {/* Action buttons */}
+                <div className="flex items-center gap-2">
+                  {/* WhatsApp button */}
+                  {clientPhone && (
+                    <a
+                      href={`https://wa.me/${clientPhone.replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500 text-white transition-colors hover:bg-emerald-600"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </a>
+                  )}
+                  {/* View baby details - only for baby appointments */}
+                  {!isParentAppointment && appointment.baby && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleViewBaby}
+                        disabled={isLoadingBaby}
+                        className="h-9 w-9 p-0 text-cyan-600 hover:bg-cyan-100"
+                      >
+                        {isLoadingBaby ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Info className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Link href={`/admin/clients/${appointment.baby.id}`} target="_blank">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-9 p-0 text-teal-600 hover:bg-teal-100"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                  {/* Link to parent profile for parent appointments */}
+                  {isParentAppointment && appointment.parent && (
+                    <Link href={`/admin/parents/${appointment.parent.id}`} target="_blank">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0 text-rose-600 hover:bg-rose-100"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Date/Time + Package - compact row */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Date & Time combined */}
+              <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-200">
+                  <Calendar className="h-5 w-5 text-gray-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-800">
+                    {formattedDate}
+                  </p>
+                  <p className="flex items-center gap-1 text-sm text-gray-500">
+                    <Clock className="h-3 w-3" />
+                    {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Package - compact */}
+              <div className={cn(
+                "flex items-center gap-3 rounded-xl p-3",
+                appointment.packagePurchase || appointment.selectedPackage
+                  ? "bg-teal-50 border border-teal-200"
+                  : "bg-amber-50 border border-amber-200"
+              )}>
+                <div className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                  appointment.packagePurchase || appointment.selectedPackage
+                    ? "bg-teal-100"
+                    : "bg-amber-100"
+                )}>
+                  <Package className={cn(
+                    "h-5 w-5",
+                    appointment.packagePurchase || appointment.selectedPackage
+                      ? "text-teal-600"
+                      : "text-amber-600"
+                  )} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={cn(
+                    "truncate text-sm font-semibold",
+                    appointment.packagePurchase || appointment.selectedPackage
+                      ? "text-teal-700"
+                      : "text-amber-700"
+                  )}>
+                    {appointment.packagePurchase
+                      ? appointment.packagePurchase.package.name
+                      : appointment.selectedPackage
+                        ? appointment.selectedPackage.name
+                        : t("calendar.sessionToDefine")}
+                  </p>
+                  {/* Installment payment overdue badge */}
+                  {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && (
+                    <Badge className="mt-1 flex w-fit items-center gap-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-300 px-1.5 py-0">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span className="text-[10px] font-medium">
+                        {t("packages.installments.alerts.paymentWarning")}
+                      </span>
+                    </Badge>
+                  )}
+                  {/* Advance payment amount for PENDING_PAYMENT */}
+                  {appointment.status === "PENDING_PAYMENT" && appointment.selectedPackage?.advancePaymentAmount && (
+                    <p className="mt-1 text-xs font-bold text-orange-600">
+                      💰 Bs. {parseFloat(appointment.selectedPackage.advancePaymentAmount.toString()).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                {/* Edit button - only for scheduled appointments */}
+                {appointment.status === "SCHEDULED" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEditPackage}
+                    disabled={isLoadingPackages}
+                    className="h-8 w-8 shrink-0 p-0 text-teal-600 hover:bg-teal-100 hover:text-teal-700"
+                  >
+                    {isLoadingPackages ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Pencil className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Edit package mode - full width below */}
+            {isEditingPackage && (
+              <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    {t("calendar.changePackage")}
+                  </p>
+                </div>
+                <PackageSelector
+                  babyId={appointment.baby?.id || ""}
+                  packages={catalogPackages}
+                  babyPackages={babyPackages}
+                  selectedPackageId={selectedPackageId}
+                  selectedPurchaseId={selectedPurchaseId}
+                  onSelectPackage={handlePackageSelect}
+                  showCategories={true}
+                  showPrices={false}
+                  showExistingFirst={true}
+                  allowNewPackage={true}
+                  compact={true}
+                  showProvisionalMessage={false}
+                  maxHeight="200px"
+                  forceShowCatalog={!!appointment.selectedPackage && !appointment.packagePurchase}
+                />
+                {packageError && (
+                  <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-2 text-xs text-rose-700">
+                    <AlertCircle className="h-3 w-3" />
+                    {t(`calendar.errors.${packageError}`)}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelPackageEdit}
+                    className="h-8"
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSavePackage}
+                    disabled={isSavingPackage || (!selectedPackageId && !selectedPurchaseId)}
+                    className="h-8 bg-teal-600 text-white hover:bg-teal-700"
+                  >
+                    {isSavingPackage ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : null}
+                    {t("common.save")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Parent schedule preferences - shows when parent set preferred schedule */}
             {schedulePreferencesText && (
@@ -814,110 +972,123 @@ export function AppointmentDetails({
               </Alert>
             )}
 
-            {/* Client info (Baby or Parent) */}
-            <div className={cn(
-              "rounded-xl border-2 bg-white p-4",
-              isParentAppointment ? "border-rose-100" : "border-teal-100"
-            )}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "flex h-11 w-11 items-center justify-center rounded-full shadow-md",
-                    isParentAppointment
-                      ? "bg-gradient-to-br from-rose-400 to-pink-500 shadow-rose-200"
-                      : "bg-gradient-to-br from-teal-500 to-cyan-500 shadow-teal-200"
-                  )}>
-                    <ClientIcon className="h-5 w-5 text-white" />
+            {/* Baby Card Section - only for baby appointments */}
+            {!isParentAppointment && appointment.baby && (
+              <div className="rounded-xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
+                {loadingBabyCardInfo ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-800">
-                        {clientName}
-                      </p>
-                      {isParentAppointment && (
-                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-                          {t("calendar.clientType.parent")}
-                        </span>
-                      )}
+                ) : babyCardInfo?.hasActiveCard && babyCardInfo.purchase ? (
+                  <div className="space-y-3">
+                    {/* Card header */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+                        <CreditCard className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{babyCardInfo.purchase.babyCardName}</p>
+                        <p className="text-sm text-violet-600">
+                          {t("babyCard.portal.sessionProgress", {
+                            current: babyCardInfo.purchase.completedSessions + 1,
+                            total: babyCardInfo.purchase.totalSessions,
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1">
+                          <Sparkles className="mr-1.5 h-4 w-4 text-violet-600" />
+                          <span className="text-sm font-bold text-violet-700">
+                            {Math.round(babyCardInfo.purchase.progressPercent)}%
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    {/* For baby appointments, show primary parent */}
-                    {!isParentAppointment && primaryParent && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {primaryParent.name}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {primaryParent.phone}
-                        </span>
+
+                    {/* Progress bar */}
+                    <div className="h-2 w-full rounded-full bg-violet-200/50">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
+                        style={{ width: `${babyCardInfo.purchase.progressPercent}%` }}
+                      />
+                    </div>
+
+                    {/* Available rewards */}
+                    {babyCardInfo.availableRewards.length > 0 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+                          <Gift className="h-4 w-4" />
+                          {t("babyCard.profile.availableRewards")} ({babyCardInfo.availableRewards.length})
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {babyCardInfo.availableRewards.map((reward) => (
+                            <div
+                              key={reward.id}
+                              className="flex items-center justify-between rounded-lg bg-white p-2"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{reward.displayIcon || "🎁"}</span>
+                                <span className="text-sm font-medium text-gray-700">
+                                  {reward.displayName}
+                                </span>
+                              </div>
+                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                                {t("babyCard.rewards.readyToUse")}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs text-emerald-600">
+                          {t("babyCard.profile.useReward")}: {t("common.view")} → {appointment.baby.name}
+                        </p>
                       </div>
                     )}
-                    {/* For parent appointments, show phone */}
-                    {isParentAppointment && clientPhone && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {clientPhone}
-                        </span>
+
+                    {/* Next reward */}
+                    {babyCardInfo.nextReward && (
+                      <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                        <Star className="h-4 w-4 text-amber-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-800">
+                            {t("babyCard.portal.nextRewardIn", {
+                              sessions: babyCardInfo.nextReward.sessionsUntilUnlock,
+                              reward: babyCardInfo.nextReward.displayName,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* First session discount available */}
+                    {babyCardInfo.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used && (
+                      <div className="flex items-center gap-2 rounded-lg bg-teal-50 border border-teal-200 p-2.5">
+                        <Sparkles className="h-4 w-4 text-teal-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-teal-800">
+                            {t("babyCard.checkout.firstSessionDiscount")}
+                          </p>
+                          <p className="text-xs text-teal-600">
+                            {t("babyCard.checkout.firstSessionDiscountValue", {
+                              amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
+                            })}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-                {/* Buttons - only show for baby appointments */}
-                {!isParentAppointment && appointment.baby && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleViewBaby}
-                      disabled={isLoadingBaby}
-                      className="h-8 w-8 p-0 text-cyan-600 hover:bg-cyan-100"
-                    >
-                      {isLoadingBaby ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Info className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Link href={`/admin/clients/${appointment.baby.id}`} target="_blank">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-teal-600 hover:bg-teal-100"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200">
+                      <CreditCard className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-600">{t("babyCard.profile.noActiveCard")}</p>
+                      <p className="text-sm text-gray-500">{t("babyCard.profile.noActiveCardDesc")}</p>
+                    </div>
                   </div>
-                )}
-                {/* Link to parent profile for parent appointments */}
-                {isParentAppointment && appointment.parent && (
-                  <Link href={`/admin/parents/${appointment.parent.id}`} target="_blank">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-100"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </Link>
                 )}
               </div>
-
-              {/* WhatsApp button */}
-              {clientPhone && (
-                <a
-                  href={`https://wa.me/${clientPhone.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  {t("calendar.sendWhatsApp")}
-                </a>
-              )}
-            </div>
+            )}
 
             {/* Notes */}
             {appointment.notes && (

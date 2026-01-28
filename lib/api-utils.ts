@@ -149,6 +149,18 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
       PARENT_HAS_BABIES: 400,
       PARENT_HAS_APPOINTMENTS: 400,
       PARENT_HAS_PURCHASES: 400,
+
+      // Baby Card errors
+      BABY_CARD_NOT_FOUND: 404,
+      BABY_CARD_NOT_ACTIVE: 400,
+      BABY_CARD_HAS_PURCHASES: 400,
+      PURCHASE_NOT_FOUND: 404,
+      REWARD_NOT_FOUND: 404,
+      REWARD_NOT_VALID_FOR_PURCHASE: 400,
+      REWARD_NOT_UNLOCKED: 400,
+      REWARD_ALREADY_USED: 400,
+      FIRST_FREE_SESSION_ALREADY_USED: 400,
+      BABY_CARD_NO_FREE_SESSION: 400,
     };
 
     const statusCode = knownErrors[error.message];

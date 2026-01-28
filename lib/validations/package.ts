@@ -62,6 +62,7 @@ export const packageSchema = z.object({
     .optional()
     .nullable(),
   isActive: z.boolean(),
+  isPublic: z.boolean().optional(),  // false = solo para premios Baby Card y uso interno
   sortOrder: z.number().int(),
 });
 
@@ -83,6 +84,7 @@ export type PackageFormInput = {
   installmentsTotalPrice?: number | null;
   installmentsPayOnSessions?: string | null;
   isActive?: boolean;
+  isPublic?: boolean;
   sortOrder?: number;
 };
 

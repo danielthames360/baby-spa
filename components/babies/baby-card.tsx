@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Baby, Phone, Calendar, Package, ChevronRight } from "lucide-react";
+import { Baby, Phone, Calendar, Package, ChevronRight, CreditCard } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { calculateExactAge, formatAgeShort } from "@/lib/utils/age";
@@ -28,6 +28,16 @@ interface BabyCardProps {
       isActive: boolean;
       package: {
         name: string;
+      };
+    }[];
+    babyCardPurchases?: {
+      id: string;
+      status: string;
+      completedSessions: number;
+      babyCard: {
+        id: string;
+        name: string;
+        totalSessions: number;
       };
     }[];
     _count: {
@@ -91,6 +101,11 @@ export function BabyCard({ baby, locale = "es" }: BabyCardProps) {
                 <Badge className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 text-xs text-white shadow-sm">
                   <Package className="mr-1 h-3 w-3" />
                   {totalRemainingSessions} {t("common.sessionsUnit")}
+                </Badge>
+              ) : baby.babyCardPurchases && baby.babyCardPurchases.length > 0 ? (
+                <Badge className="rounded-full bg-violet-100 text-xs text-violet-700">
+                  <CreditCard className="mr-1 h-3 w-3" />
+                  {baby.babyCardPurchases[0].babyCard.name}
                 </Badge>
               ) : (
                 <Badge
