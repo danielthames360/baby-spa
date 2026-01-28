@@ -112,6 +112,22 @@ interface EvaluationMetadata extends IndexableMetadata {
   appointmentId: string;
 }
 
+interface StaffPaymentMetadata extends IndexableMetadata {
+  staffName: string;
+  type: string;
+  grossAmount: number;
+  netAmount: number;
+  advanceDeducted?: number;
+  description?: string;
+}
+
+interface ExpenseMetadata extends IndexableMetadata {
+  category: string;
+  description: string;
+  amount: number;
+  reference?: string;
+}
+
 // ============================================================
 // INCLUDES
 // ============================================================
@@ -443,6 +459,42 @@ export const activityService = {
     });
   },
 
+  /**
+   * Log staff payment registered
+   */
+  async logStaffPaymentRegistered(
+    paymentId: string,
+    metadata: StaffPaymentMetadata,
+    performedById: string
+  ) {
+    return this.log({
+      type: "STAFF_PAYMENT_REGISTERED",
+      title: "activity.staff_payment_registered",
+      entityType: "staffPayment",
+      entityId: paymentId,
+      metadata,
+      performedById,
+    });
+  },
+
+  /**
+   * Log expense registered
+   */
+  async logExpenseRegistered(
+    expenseId: string,
+    metadata: ExpenseMetadata,
+    performedById: string
+  ) {
+    return this.log({
+      type: "EXPENSE_REGISTERED",
+      title: "activity.expense_registered",
+      entityType: "expense",
+      entityId: expenseId,
+      metadata,
+      performedById,
+    });
+  },
+
   // ----------------------
   // READ
   // ----------------------
@@ -576,4 +628,6 @@ export type {
   BabyCreatedMetadata,
   PackageAssignedMetadata,
   ClientUpdatedMetadata,
+  StaffPaymentMetadata,
+  ExpenseMetadata,
 };

@@ -35,6 +35,8 @@
     "optional": "Opcional",
     "noResults": "Sem resultados",
     "clearFilters": "Limpar filtros",
+    "filter": "Filtrar",
+    "clear": "Limpar",
     "today": "Hoje",
     "yesterday": "Ontem",
     "tomorrow": "Amanhã",
@@ -2183,7 +2185,341 @@
       "baby_created": "Bebê registrado: {babyName}",
       "package_assigned": "Pacote atribuído: {packageName}",
       "client_updated": "Cliente atualizado: {clientName}",
-      "evaluation_saved": "Avaliação salva: {babyName}"
+      "evaluation_saved": "Avaliação salva: {babyName}",
+      "staff_payment_registered": "Pagamento registrado: {staffName}",
+      "expense_registered": "Despesa registrada: {category}"
+    }
+  },
+
+  "staffPayments": {
+    "title": "Pagamentos ao Pessoal",
+    "subtitle": "Gestão de salários, adiantamentos, bônus e deduções",
+    "newPayment": "Registrar Pagamento",
+    "empty": "Nenhum pagamento registrado",
+    "createSuccess": "Pagamento registrado com sucesso",
+    "deleteSuccess": "Pagamento excluído com sucesso",
+
+    "types": {
+      "SALARY": "Salário",
+      "COMMISSION": "Comissão",
+      "BONUS": "Bônus",
+      "ADVANCE": "Adiantamento",
+      "ADVANCE_RETURN": "Devolução Adiantamento",
+      "DEDUCTION": "Dedução",
+      "BENEFIT": "Benefício",
+      "SETTLEMENT": "Rescisão"
+    },
+
+    "months": {
+      "1": "Janeiro",
+      "2": "Fevereiro",
+      "3": "Março",
+      "4": "Abril",
+      "5": "Maio",
+      "6": "Junho",
+      "7": "Julho",
+      "8": "Agosto",
+      "9": "Setembro",
+      "10": "Outubro",
+      "11": "Novembro",
+      "12": "Dezembro"
+    },
+
+    "status": {
+      "PENDING": "Pendente",
+      "PAID": "Pago"
+    },
+
+    "table": {
+      "date": "Data",
+      "staff": "Funcionário",
+      "type": "Tipo",
+      "status": "Status",
+      "description": "Descrição",
+      "amount": "Valor",
+      "gross": "Bruto",
+      "deducted": "Deduzido",
+      "net": "Líquido",
+      "actions": "Ações"
+    },
+
+    "filters": {
+      "staff": "Funcionário",
+      "type": "Tipo",
+      "status": "Status",
+      "month": "Mês",
+      "year": "Ano",
+      "from": "De",
+      "to": "Até"
+    },
+
+    "dialog": {
+      "title": "Registrar Pagamento",
+      "staff": "Funcionário",
+      "selectStaff": "Selecionar funcionário",
+      "advancePending": "Adiantamento pendente",
+      "periodInfo": "Informações do período {month} {year}",
+      "sessionsCompleted": "Sessões completadas",
+      "daysWithActivity": "Dias com atividade",
+      "babyCardsSold": "Baby Cards vendidos",
+      "daysWithoutActivity": "Dias sem atividade",
+      "advancePendingAlert": "Adiantamento pendente de {amount}",
+      "type": "Tipo de pagamento",
+      "incomeTypes": "Recebimentos do funcionário",
+      "expenseTypes": "Descontos / Devoluções",
+      "periodMonth": "Mês do período",
+      "periodYear": "Ano do período",
+      "grossAmount": "Valor bruto",
+      "deductAdvance": "Descontar adiantamento do salário",
+      "amountToDeduct": "Valor a descontar",
+      "max": "máx",
+      "description": "Descrição",
+      "descriptionPlaceholder": "Ex: Salário mês de janeiro, Bônus por desempenho...",
+      "netAmount": "Valor líquido a pagar",
+      "paymentMethod": "Método de pagamento",
+      "submit": "Registrar Pagamento",
+      "pendingMovements": "Movimentos pendentes"
+    },
+
+    "pagination": {
+      "showing": "Mostrando {from}-{to} de {total}"
+    },
+
+    "deleteConfirm": {
+      "title": "Excluir este pagamento?",
+      "description": "Esta ação não pode ser desfeita. O pagamento será marcado como excluído mas permanecerá no histórico.",
+      "salaryDescription": "Ao excluir este pagamento de salário, os movimentos incluídos (bônus, comissões, deduções) voltarão ao status PENDENTE e poderão ser incluídos em outro pagamento de salário."
+    },
+
+    "errors": {
+      "missingFields": "Por favor preencha todos os campos obrigatórios",
+      "advanceExceedsBalance": "O valor a descontar excede o saldo de adiantamentos",
+      "advanceReturnExceedsBalance": "O valor a devolver excede o saldo de adiantamentos pendente",
+      "paymentMismatch": "O total dos métodos de pagamento não coincide com o valor líquido",
+      "salaryAlreadyPaid": "Já existe um pagamento de salário para este período",
+      "periodAlreadyPaid": "Não é possível criar movimento para um período já pago. Exclua primeiro o pagamento de salário se precisar fazer correções.",
+      "cannotDeleteIncludedMovement": "Não é possível excluir este movimento porque já está incluído em um pagamento de salário. Exclua primeiro o pagamento de salário.",
+      "createFailed": "Erro ao registrar o pagamento",
+      "deleteFailed": "Erro ao excluir o pagamento",
+      "cannotDeleteWithSubsequentActivity": "Não é possível excluir porque há movimentos de adiantamento posteriores"
+    },
+
+    "quickActions": {
+      "movement": "Movimento",
+      "movementDesc": "Bônus, comissões, benefícios ou deduções",
+      "salary": "Pagar Salário",
+      "salaryDesc": "Liquidar salário do período",
+      "advance": "Dar Adiantamento",
+      "advanceDesc": "Entregar adiantamento de salário",
+      "advanceReturn": "Devolução Adiantamento",
+      "advanceReturnDesc": "Registrar devolução de adiantamento"
+    },
+
+    "salaryDrawer": {
+      "title": "Pagar Salário",
+      "selectStaff": "Selecionar Funcionário",
+      "selectPeriod": "Selecionar Período",
+      "preview": "Visualização",
+      "payment": "Pagamento",
+      "step": "Passo {current} de {total}",
+      "baseSalary": "Salário Base",
+      "pendingMovements": "Movimentos Pendentes",
+      "noMovements": "Sem movimentos pendentes",
+      "bonus": "Bônus",
+      "commission": "Comissão",
+      "benefit": "Benefício",
+      "deduction": "Dedução",
+      "subtotal": "Subtotal",
+      "advanceDeduction": "Dedução de Adiantamento",
+      "advanceBalance": "Saldo adiantamento",
+      "deductAdvance": "Descontar adiantamento",
+      "deductAmount": "Valor a descontar",
+      "netToPay": "Líquido a Pagar",
+      "periodFrom": "De",
+      "periodTo": "Até",
+      "back": "Voltar",
+      "next": "Próximo",
+      "confirmPayment": "Confirmar Pagamento",
+      "grossTotal": "Total Bruto",
+      "paySalary": "Pagar Salário"
+    },
+
+    "advanceDialog": {
+      "currentBalance": "Saldo de adiantamento atual",
+      "willIncreaseTo": "Aumentará para:",
+      "willDecreaseTo": "Diminuirá para:",
+      "noStaffWithBalance": "Não há funcionários com saldo de adiantamento pendente"
+    },
+
+    "movementDialog": {
+      "willBeDeducted": "será deduzido do salário",
+      "deductionInfo": "Esta dedução será descontada do próximo pagamento de salário do funcionário.",
+      "incomeInfo": "Este valor será adicionado ao próximo pagamento de salário do funcionário."
+    },
+
+    "payFrequency": {
+      "DAILY": "Diário",
+      "WEEKLY": "Semanal",
+      "BIWEEKLY": "Quinzenal",
+      "MONTHLY": "Mensal"
+    }
+  },
+
+  "users": {
+    "title": "Gestão de Usuários",
+    "subtitle": "Administre a equipe do sistema",
+    "newUser": "Novo Usuário",
+    "empty": "Nenhum usuário registrado",
+    "createSuccess": "Usuário criado com sucesso",
+    "updateSuccess": "Usuário atualizado com sucesso",
+    "activateSuccess": "Usuário ativado com sucesso",
+    "deactivateSuccess": "Usuário desativado com sucesso",
+    "neverLoggedIn": "Nunca acessou",
+
+    "roles": {
+      "ADMIN": "Administrador",
+      "RECEPTION": "Recepção",
+      "THERAPIST": "Terapeuta"
+    },
+
+    "status": {
+      "active": "Ativo",
+      "inactive": "Inativo"
+    },
+
+    "payFrequency": {
+      "DAILY": "Diário",
+      "WEEKLY": "Semanal",
+      "BIWEEKLY": "Quinzenal",
+      "MONTHLY": "Mensal"
+    },
+
+    "table": {
+      "name": "Nome",
+      "username": "Usuário",
+      "role": "Função",
+      "salary": "Salário",
+      "status": "Status",
+      "lastLogin": "Último acesso"
+    },
+
+    "actions": {
+      "activate": "Ativar",
+      "deactivate": "Desativar"
+    },
+
+    "dialog": {
+      "createTitle": "Criar Usuário",
+      "editTitle": "Editar Usuário",
+      "name": "Nome completo",
+      "namePlaceholder": "Ex: Maria Silva",
+      "username": "Nome de usuário",
+      "usernamePlaceholder": "Ex: maria_silva",
+      "email": "E-mail",
+      "emailPlaceholder": "email@exemplo.com",
+      "password": "Senha",
+      "leaveBlankToKeep": "deixe vazio para manter",
+      "role": "Função",
+      "phone": "Telefone",
+      "salarySection": "Informações de Salário",
+      "baseSalary": "Salário base",
+      "payFrequency": "Frequência de pagamento",
+      "create": "Criar Usuário"
+    },
+
+    "deactivateConfirm": {
+      "title": "Desativar usuário?",
+      "description": "O usuário {name} não poderá acessar o sistema. Você poderá reativá-lo a qualquer momento."
+    },
+
+    "activateConfirm": {
+      "title": "Ativar usuário?",
+      "description": "O usuário {name} poderá acessar novamente o sistema."
+    },
+
+    "pagination": {
+      "showing": "Mostrando {from}-{to} de {total}"
+    },
+
+    "errors": {
+      "missingFields": "Por favor preencha todos os campos obrigatórios",
+      "passwordRequired": "A senha é obrigatória para novos usuários",
+      "usernameExists": "Este nome de usuário já está em uso",
+      "emailExists": "Este e-mail já está em uso",
+      "createFailed": "Erro ao criar o usuário",
+      "updateFailed": "Erro ao atualizar o usuário",
+      "toggleFailed": "Erro ao alterar o status do usuário"
+    }
+  },
+
+  "expenses": {
+    "title": "Despesas Administrativas",
+    "subtitle": "Registro e acompanhamento de despesas operacionais",
+    "newExpense": "Registrar Despesa",
+    "empty": "Nenhuma despesa registrada neste período",
+    "createSuccess": "Despesa registrada com sucesso",
+    "deleteSuccess": "Despesa excluída com sucesso",
+
+    "categories": {
+      "RENT": "Aluguel",
+      "UTILITIES": "Serviços",
+      "SUPPLIES": "Suprimentos",
+      "MAINTENANCE": "Manutenção",
+      "MARKETING": "Marketing",
+      "TAXES": "Impostos",
+      "INSURANCE": "Seguros",
+      "EQUIPMENT": "Equipamentos",
+      "OTHER": "Outros"
+    },
+
+    "summary": {
+      "title": "Resumo do Período",
+      "noData": "Sem despesas neste período"
+    },
+
+    "table": {
+      "date": "Data",
+      "category": "Categoria",
+      "description": "Descrição",
+      "reference": "Referência",
+      "amount": "Valor",
+      "actions": "Ações"
+    },
+
+    "filters": {
+      "category": "Categoria",
+      "from": "De",
+      "to": "Até"
+    },
+
+    "dialog": {
+      "title": "Registrar Despesa",
+      "category": "Categoria",
+      "description": "Descrição",
+      "descriptionPlaceholder": "Ex: Pagamento do aluguel de janeiro, Conta de luz...",
+      "amount": "Valor",
+      "date": "Data da despesa",
+      "reference": "Referência",
+      "referencePlaceholder": "Ex: Nota Fiscal #123, Recibo #456...",
+      "paymentMethod": "Método de pagamento",
+      "submit": "Registrar Despesa"
+    },
+
+    "pagination": {
+      "showing": "Mostrando {from}-{to} de {total}"
+    },
+
+    "deleteConfirm": {
+      "title": "Excluir esta despesa?",
+      "description": "Esta ação não pode ser desfeita. A despesa será marcada como excluída mas permanecerá no histórico."
+    },
+
+    "errors": {
+      "missingFields": "Por favor preencha todos os campos obrigatórios",
+      "invalidAmount": "O valor deve ser maior que 0",
+      "paymentMismatch": "O total dos métodos de pagamento não coincide com o valor",
+      "createFailed": "Erro ao registrar a despesa",
+      "deleteFailed": "Erro ao excluir a despesa"
     }
   }
 }

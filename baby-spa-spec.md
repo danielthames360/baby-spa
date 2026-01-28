@@ -356,14 +356,26 @@ enum CashExpenseCategory {
 }
 
 enum StaffPaymentType {
-  SALARY          // Sueldo mensual
-  COMMISSION      // Comisión
-  BONUS           // Bono
-  ADVANCE         // Adelanto (aumenta deuda)
-  ADVANCE_RETURN  // Devolución de adelanto (reduce deuda)
-  DEDUCTION       // Descuento (faltas, etc.)
-  BENEFIT         // Aguinaldo / Beneficios
-  SETTLEMENT      // Liquidación
+  SALARY          // Sueldo (consolida movimientos del período)
+  COMMISSION      // Comisión (movimiento que acumula)
+  BONUS           // Bono (movimiento que acumula)
+  ADVANCE         // Adelanto (pago real, aumenta deuda)
+  ADVANCE_RETURN  // Devolución de adelanto (pago real, reduce deuda)
+  DEDUCTION       // Descuento (movimiento que acumula)
+  BENEFIT         // Aguinaldo / Beneficios (movimiento que acumula)
+  SETTLEMENT      // Liquidación (pago final)
+}
+
+enum StaffPaymentStatus {
+  PENDING   // Movimiento registrado, pendiente de incluir en salario
+  PAID      // Pago realizado o movimiento incluido en salario
+}
+
+enum PayFrequency {
+  DAILY     // Pago diario
+  WEEKLY    // Pago semanal (lunes a domingo)
+  BIWEEKLY  // Pago quincenal (1-15 y 16-fin de mes)
+  MONTHLY   // Pago mensual (default)
 }
 
 enum ExpenseCategory {
@@ -1002,32 +1014,65 @@ model CashRegisterExpense {
 
 ```prisma
 model StaffPayment {
-  id              String            @id @default(cuid())
-  
+  id              String              @id @default(cuid())
+
   staffId         String
-  staff           User              @relation("StaffPayments", fields: [staffId], references: [id])
-  
+  staff           User                @relation("StaffPayments", fields: [staffId], references: [id])
+
   type            StaffPaymentType
-  grossAmount     Decimal           @db.Decimal(10, 2)
-  netAmount       Decimal           @db.Decimal(10, 2)
-  
-  advanceDeducted Decimal?          @db.Decimal(10, 2)
-  
+  status          StaffPaymentStatus  @default(PENDING)  // PENDING = movimiento, PAID = pagado
+
+  grossAmount     Decimal             @db.Decimal(10, 2)
+  netAmount       Decimal             @db.Decimal(10, 2)
+  advanceDeducted Decimal?            @db.Decimal(10, 2)
+
   description     String
-  periodMonth     Int?
-  periodYear      Int?
-  
-  paidAt          DateTime          @default(now())
-  
+
+  // Período flexible (soporta diario, semanal, quincenal, mensual)
+  periodStart     DateTime?           // Inicio del período
+  periodEnd       DateTime?           // Fin del período
+  periodMonth     Int?                // Mes (legacy, para compatibilidad)
+  periodYear      Int?                // Año (legacy, para compatibilidad)
+
+  // Fechas
+  movementDate    DateTime?           // Fecha del movimiento (para bonos, deducciones)
+  paidAt          DateTime?           // Fecha de pago efectivo (null si PENDING)
+
+  // Consolidación de salario
+  includedInSalaryId String?          // Si es movimiento, referencia al SALARY que lo incluyó
+  includedInSalary   StaffPayment?    @relation("MovementsIncludedInSalary", fields: [includedInSalaryId], references: [id])
+  includedMovements  StaffPayment[]   @relation("MovementsIncludedInSalary")
+
+  // Auditoría
   createdById     String
-  createdBy       User              @relation("StaffPaymentCreator", fields: [createdById], references: [id])
-  createdAt       DateTime          @default(now())
-  
+  createdBy       User                @relation("StaffPaymentCreator", fields: [createdById], references: [id])
+  createdAt       DateTime            @default(now())
+
+  // Soft delete
+  deletedAt       DateTime?
+  deletedById     String?
+  deletedBy       User?               @relation("StaffPaymentDeleter", fields: [deletedById], references: [id])
+
   @@index([staffId])
+  @@index([status])
   @@index([paidAt])
   @@index([type])
+  @@index([periodStart, periodEnd])
 }
 ```
+
+**Tipos de Movimiento vs Pago:**
+
+| Tipo | Categoría | Status Inicial | Descripción |
+|------|-----------|----------------|-------------|
+| BONUS | Movimiento | PENDING | Se acumula hasta el pago de salario |
+| COMMISSION | Movimiento | PENDING | Se acumula hasta el pago de salario |
+| BENEFIT | Movimiento | PENDING | Se acumula hasta el pago de salario |
+| DEDUCTION | Movimiento | PENDING | Se acumula (monto negativo) |
+| SALARY | Pago Real | PAID | Consolida todos los movimientos PENDING del período |
+| ADVANCE | Pago Real | PAID | Dinero entregado al empleado (aumenta deuda) |
+| ADVANCE_RETURN | Pago Real | PAID | Empleado devuelve adelanto (reduce deuda) |
+| SETTLEMENT | Pago Real | PAID | Liquidación final |
 
 ### StaffAdvanceBalance (Control de Adelantos)
 
@@ -1331,6 +1376,50 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - Sistema ALERTA pero NO BLOQUEA por pagos atrasados
 - Pagos flexibles (cualquier monto en cualquier momento)
 
+## 6.8 Pagos a Personal (Staff Payments)
+
+### Conceptos Clave
+- **Movimientos**: Registros que se acumulan (BONUS, COMMISSION, BENEFIT, DEDUCTION) - status=PENDING
+- **Pagos Reales**: Transferencias de dinero (SALARY, ADVANCE, ADVANCE_RETURN) - status=PAID
+- **Frecuencia de Pago**: Cada empleado tiene su frecuencia (DAILY, WEEKLY, BIWEEKLY, MONTHLY)
+- **Período**: Rango de fechas calculado según frecuencia del empleado
+
+### Flujo de Nómina
+```
+1. DURANTE EL PERÍODO:
+   - Registrar bonos, comisiones → status=PENDING
+   - Registrar deducciones → status=PENDING (monto negativo)
+   - Dar adelantos si necesario → status=PAID, aumenta advanceBalance
+
+2. FIN DEL PERÍODO:
+   - Sistema muestra preview: salario base + movimientos + adelanto pendiente
+   - Staff confirma pago de SALARY
+   - Movimientos PENDING → se marcan PAID + se vinculan al salario
+   - Se descuenta adelanto si se indica
+
+3. SI HAY ERROR:
+   - Eliminar el SALARY
+   - Movimientos vuelven a PENDING automáticamente
+   - Balance de adelanto se restaura
+   - Corregir y volver a pagar
+```
+
+### Reglas de Negocio
+- **Un período = Un salario**: No se puede pagar el mismo período dos veces
+- **Movimientos protegidos**: No se puede crear movimiento en período ya pagado
+- **Movimientos vinculados**: No se puede eliminar movimiento ya incluido en salario
+- **Adelantos controlados**: No se puede devolver/descontar más del balance disponible
+- **Soft delete**: Los pagos eliminados mantienen historial de auditoría
+- **Empleado sin salario base**: Permitido (para comisionistas puros)
+
+### Frecuencias de Pago
+| Frecuencia | Período | Ejemplo |
+|------------|---------|---------|
+| DAILY | Mismo día | 15 ene → 15 ene |
+| WEEKLY | Lunes a Domingo | 13 ene (lun) → 19 ene (dom) |
+| BIWEEKLY | 1-15 o 16-fin de mes | 1 ene → 15 ene |
+| MONTHLY | Mes completo | 1 ene → 31 ene |
+
 ---
 
 # 7. MÓDULOS IMPLEMENTADOS
@@ -1371,9 +1460,9 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 6.1: Notificaciones en Tiempo Real (COMPLETADO)
 - [x] Módulo 6.2: Actividad Reciente (COMPLETADO)
 
-## ⏳ Fase 7: Finanzas (~20 hrs)
-- [ ] Módulo 7.1: Staff Payments (~12 hrs)
-- [ ] Módulo 7.2: Gastos Administrativos (~8 hrs)
+## ✅ Fase 7: Finanzas (COMPLETADA)
+- [x] Módulo 7.1: Staff Payments (COMPLETADO)
+- [x] Módulo 7.2: Gastos Administrativos (COMPLETADO)
 
 ## ⏳ Fase 8: Portal Padres Mejorado (~22 hrs)
 - [ ] Módulo 8.1: Cancelar/Reagendar Citas
@@ -1487,57 +1576,96 @@ TRADUCCIONES:
 
 ## Fase 7: Finanzas
 
-### Módulo 7.1: Staff Payments
+### Módulo 7.1: Staff Payments ✅ COMPLETADO
 ```
 MODELOS:
-□ Enum StaffPaymentType
-□ Modelo StaffPayment
-□ Modelo StaffAdvanceBalance
-□ Actualizar PaymentParentType
-□ Migración ejecutada
+✅ Enum StaffPaymentType (SALARY, COMMISSION, BONUS, ADVANCE, ADVANCE_RETURN, DEDUCTION, BENEFIT, SETTLEMENT)
+✅ Enum StaffPaymentStatus (PENDING, PAID) - Nuevo para diferenciar movimientos vs pagos
+✅ Enum PayFrequency (DAILY, WEEKLY, BIWEEKLY, MONTHLY) - Frecuencia de pago por empleado
+✅ Modelo StaffPayment (con status, periodStart/End, movementDate, includedInSalaryId, soft delete)
+✅ Modelo StaffAdvanceBalance
+✅ Campo payFrequency en User
+✅ Migración ejecutada
 
 BACKEND:
-□ StaffPaymentService
-□ StaffAdvanceBalanceService
-□ GET/POST /api/staff-payments
-□ GET /api/staff/:id/payments
-□ GET /api/staff/:id/stats
-□ GET /api/staff/:id/advance-balance
+✅ StaffPaymentService con métodos separados:
+  - createMovement() - Para BONUS, COMMISSION, BENEFIT, DEDUCTION (status=PENDING)
+  - createAdvance() - Para adelantos (status=PAID, aumenta balance)
+  - createAdvanceReturn() - Para devoluciones (status=PAID, reduce balance)
+  - createSalaryPayment() - Consolida movimientos PENDING, los marca PAID
+  - getSalaryPreview() - Pre-calcula salario con movimientos pendientes
+  - getPendingMovements() - Obtiene movimientos PENDING del período
+  - getStaffStats() - Estadísticas (sesiones, días trabajados, baby cards)
+  - calculatePeriodDates() - Calcula período según frecuencia de pago
+  - getSalaryPerPeriod() - Divide salario base según frecuencia
+  - delete() - Soft delete con reversión de balance y liberación de movimientos
+✅ GET/POST /api/staff-payments
+✅ DELETE /api/staff-payments/[id]
+✅ GET /api/staff-payments/stats (con salaryPreview)
+✅ GET /api/staff-payments/staff-with-balances
+
+VALIDACIONES (Edge Cases):
+✅ No permitir pagar mismo período 2 veces (SALARY_ALREADY_PAID_FOR_PERIOD)
+✅ No permitir crear movimiento en período ya pagado (PERIOD_ALREADY_PAID)
+✅ No permitir eliminar movimiento incluido en salario (CANNOT_DELETE_MOVEMENT_INCLUDED_IN_SALARY)
+✅ No permitir devolver más adelanto del debido (ADVANCE_RETURN_EXCEEDS_BALANCE)
+✅ No permitir descontar más adelanto del disponible (ADVANCE_DEDUCTION_EXCEEDS_BALANCE)
+✅ Al eliminar SALARY → movimientos vuelven a PENDING
+✅ Al eliminar ADVANCE → balance se reduce
+✅ Al eliminar SALARY con descuento → balance se restaura
 
 FRONTEND:
-□ Página /admin/staff-payments
-□ StaffPaymentDialog
-□ StaffPaymentList
-□ StaffHistoryView
-□ StaffStatsCard
-□ AdvanceAlert
+✅ Página /admin/staff-payments
+✅ StaffPaymentDialog (diferencia movimientos vs pagos, muestra preview de salario)
+✅ StaffPaymentList (con badges de status PENDING/PAID, colores por tipo)
+✅ StaffPaymentFilters (por staff, tipo, status, fechas)
+✅ Selector de tipo agrupado (Ingresos verde / Egresos rojo)
+✅ Preview de salario con movimientos pendientes
+✅ Alerta de adelanto pendiente
+✅ Split payments para SALARY y ADVANCE
+
+FLUJO DE NÓMINA:
+1. Durante el período: Registrar bonos, comisiones, deducciones → status=PENDING
+2. Dar adelanto: Pago real → status=PAID, aumenta advanceBalance
+3. Fin del período: Pagar SALARY → consolida movimientos, los marca PAID
+4. Si error: Eliminar SALARY → movimientos vuelven a PENDING, corregir, volver a pagar
 
 TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
+✅ es.json completo
+✅ pt-BR.json completo
 ```
 
-### Módulo 7.2: Gastos Administrativos
+### Módulo 7.2: Gastos Administrativos ✅ COMPLETADO
 ```
 MODELOS:
-□ Enum ExpenseCategory
-□ Modelo Expense
-□ Migración ejecutada
+✅ Enum ExpenseCategory (RENT, UTILITIES, SUPPLIES, MAINTENANCE, MARKETING, TAXES, INSURANCE, EQUIPMENT, OTHER)
+✅ Modelo Expense (con soft delete)
+✅ Migración ejecutada
 
 BACKEND:
-□ ExpenseService
-□ GET/POST /api/expenses
-□ GET /api/expenses/summary
+✅ ExpenseService (CRUD completo)
+  - create() - Con split payments
+  - list() - Con filtros y paginación
+  - getById() - Con payment details
+  - getSummaryByCategory() - Resumen por categoría
+  - getTotal() - Total del período
+  - update()
+  - delete() - Soft delete
+✅ GET/POST /api/expenses
+✅ GET /api/expenses/[id]
+✅ DELETE /api/expenses/[id]
+✅ GET /api/expenses/summary
 
 FRONTEND:
-□ Página /admin/expenses
-□ ExpenseDialog
-□ ExpenseList
-□ ExpenseSummaryCard
+✅ Página /admin/expenses
+✅ ExpenseDialog (con split payments)
+✅ ExpenseList (con acciones)
+✅ ExpenseFilters (categoría, fechas)
+✅ ExpenseSummary (resumen visual por categoría)
 
 TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
+✅ es.json completo
+✅ pt-BR.json completo
 ```
 
 ## Fase 8: Portal Padres Mejorado
@@ -1709,6 +1837,15 @@ Al iniciar cada sesión, Claude Code debe entender:
 8. PORTAL DE PADRES:
    - Cancelar/reagendar solo con 24h de anticipación
    - Genera notificación a recepción
+
+9. PAGOS A PERSONAL:
+   - Movimientos (BONUS, COMMISSION, BENEFIT, DEDUCTION) → status=PENDING
+   - Pagos reales (SALARY, ADVANCE, ADVANCE_RETURN) → status=PAID
+   - Al pagar SALARY → consolida movimientos PENDING del período
+   - No se puede pagar el mismo período dos veces
+   - No se puede crear movimiento en período ya pagado
+   - Al eliminar SALARY → movimientos vuelven a PENDING
+   - Empleado tiene payFrequency (DAILY/WEEKLY/BIWEEKLY/MONTHLY)
    - Puede ver saldo financiero pero no pagar online
 ```
 

@@ -49,6 +49,7 @@ const navigation = [
 ];
 
 const secondaryNavigation = [
+  { key: "users", href: "/admin/users", icon: Users },
   { key: "staffPayments", href: "/admin/staff-payments", icon: CreditCard },
   { key: "expenses", href: "/admin/expenses", icon: Receipt },
   { key: "activity", href: "/admin/activity", icon: History },

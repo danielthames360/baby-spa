@@ -164,6 +164,17 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
 
       // Notification errors
       NOTIFICATION_NOT_FOUND: 404,
+
+      // Staff Payment errors
+      PAYMENT_NOT_FOUND: 404,
+      PAYMENT_ALREADY_DELETED: 400,
+      ADVANCE_DEDUCTION_EXCEEDS_BALANCE: 400,
+      CANNOT_DELETE_PAYMENT_WITH_SUBSEQUENT_ADVANCE_ACTIVITY: 400,
+
+      // Expense errors
+      EXPENSE_NOT_FOUND: 404,
+      EXPENSE_ALREADY_DELETED: 400,
+      CANNOT_UPDATE_DELETED_EXPENSE: 400,
     };
 
     const statusCode = knownErrors[error.message];

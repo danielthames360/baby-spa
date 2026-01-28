@@ -55,12 +55,46 @@ enum PaymentMethod {
   OTHER
 }
 
-enum PaymentType {
-  SALARY
-  ADVANCE
-  BONUS
-  DEDUCTION
-  OTHER
+// Tipos de pago a staff (más específicos)
+enum StaffPaymentType {
+  // Movimientos positivos (ingresos para el empleado)
+  SALARY          // Sueldo del período
+  COMMISSION      // Comisión
+  BONUS           // Bono / Horas extra
+  BENEFIT         // Aguinaldo / Viáticos / Beneficios
+  SETTLEMENT      // Liquidación
+  ADVANCE         // Adelanto (aumenta deuda, pero es ingreso)
+
+  // Movimientos negativos (descuentos para el empleado)
+  DEDUCTION       // Descuento (faltas, tardanzas, etc.)
+  ADVANCE_RETURN  // Devolución de adelanto (reduce deuda)
+}
+
+// Estado del movimiento/pago
+enum PaymentStatus {
+  PENDING         // Movimiento registrado, pendiente de pago
+  PAID            // Pago realizado / Movimiento incluido en pago
+}
+
+// Frecuencia de pago del empleado
+enum PayFrequency {
+  DAILY           // Diario
+  WEEKLY          // Semanal
+  BIWEEKLY        // Quincenal
+  MONTHLY         // Mensual
+}
+
+// Categorías de gastos administrativos
+enum ExpenseCategory {
+  RENT            // Alquiler
+  UTILITIES       // Servicios (agua, luz, internet)
+  SUPPLIES        // Insumos
+  MAINTENANCE     // Mantenimiento / Reparaciones
+  MARKETING       // Marketing / Publicidad
+  TAXES           // Impuestos / Contabilidad
+  INSURANCE       // Seguros
+  EQUIPMENT       // Equipos / Mobiliario
+  OTHER           // Otros
 }
 
 enum MovementType {
@@ -142,6 +176,8 @@ enum PaymentParentType {
   EVENT_PARTICIPANT     // Pago de evento
   APPOINTMENT           // Pago anticipado de cita
   PACKAGE_INSTALLMENT   // Cuota de paquete
+  STAFF_PAYMENT         // Pago a empleado
+  EXPENSE               // Gasto administrativo
 }
 
 enum Mood {
@@ -200,6 +236,10 @@ enum ActivityType {
 
   // Evaluaciones (Terapeutas)
   EVALUATION_SAVED
+
+  // Staff Payments y Gastos (Fase 7)
+  STAFF_PAYMENT_REGISTERED
+  EXPENSE_REGISTERED
 }
 
 // ============================================================
@@ -217,7 +257,8 @@ model User {
   isActive     Boolean   @default(true)
 
   // Para control de sueldos
-  baseSalary Decimal? @db.Decimal(10, 2)
+  baseSalary   Decimal?      @db.Decimal(10, 2)
+  payFrequency PayFrequency  @default(MONTHLY)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -227,7 +268,10 @@ model User {
   appointmentsAssigned       Appointment[]
   registrationLinks          RegistrationLink[]
   babyNotes                  BabyNote[]
-  staffPayments              StaffPayment[]
+  staffPaymentsReceived      StaffPayment[]        @relation("StaffPaymentsReceived")
+  staffPaymentsCreated       StaffPayment[]        @relation("StaffPaymentsCreated")
+  staffPaymentsDeleted       StaffPayment[]        @relation("StaffPaymentsDeleted")
+  advanceBalance             StaffAdvanceBalance?
   appointmentPayments        AppointmentPayment[]
   packagePayments            PackagePayment[]
   createdEvents              Event[]
@@ -237,6 +281,8 @@ model User {
   paymentDetailsCreated      PaymentDetail[]       @relation("PaymentDetailsCreated")
   notificationsRead          Notification[]        @relation("NotificationReadBy")
   activitiesPerformed        Activity[]            @relation("ActivitiesPerformed")
+  expensesCreated            Expense[]             @relation("ExpensesCreated")
+  expensesDeleted            Expense[]             @relation("ExpensesDeleted")
 
   @@map("users")
 }
@@ -858,34 +904,111 @@ model PackagePayment {
 // ============================================================
 
 model StaffPayment {
-  id     String      @id @default(cuid())
-  userId String
-  user   User        @relation(fields: [userId], references: [id])
-  type   PaymentType
-  amount Decimal     @db.Decimal(10, 2)
-  period String? // "2026-01" para sueldos/adelantos
-  notes  String?
-  date   DateTime    @db.Date
+  id              String            @id @default(cuid())
 
-  createdAt DateTime @default(now())
+  // Empleado que recibe el pago
+  staffId         String
+  staff           User              @relation("StaffPaymentsReceived", fields: [staffId], references: [id])
 
+  // Tipo y estado
+  type            StaffPaymentType
+  status          PaymentStatus     @default(PENDING)
+
+  // Montos
+  grossAmount     Decimal           @db.Decimal(10, 2)  // Monto bruto (puede ser negativo para deducciones)
+  netAmount       Decimal           @db.Decimal(10, 2)  // Monto neto (después de descuentos de adelanto)
+
+  // Descuento de adelanto (solo aplica para SALARY)
+  advanceDeducted Decimal?          @db.Decimal(10, 2)  // Monto descontado de adelanto
+
+  // Descripción
+  description     String
+
+  // Período de pago (fechas flexibles para cualquier frecuencia)
+  periodStart     DateTime?         // Inicio del período (nullable para migración)
+  periodEnd       DateTime?         // Fin del período (nullable para migración)
+  movementDate    DateTime?         // Fecha específica del movimiento (ej: día de la falta)
+
+  // Campos legacy (para compatibilidad)
+  periodMonth     Int?              // Mes del período (1-12)
+  periodYear      Int?              // Año del período
+
+  // Fecha del pago real (null si es movimiento pendiente)
+  paidAt          DateTime?
+
+  // Referencia al pago de salario que incluyó este movimiento (para trazabilidad)
+  includedInSalaryId String?
+  includedInSalary   StaffPayment?  @relation("MovementsIncludedInSalary", fields: [includedInSalaryId], references: [id])
+  includedMovements  StaffPayment[] @relation("MovementsIncludedInSalary")
+
+  // Auditoría
+  createdById     String
+  createdBy       User              @relation("StaffPaymentsCreated", fields: [createdById], references: [id])
+  createdAt       DateTime          @default(now())
+
+  // Soft delete
+  deletedAt       DateTime?
+  deletedById     String?
+  deletedBy       User?             @relation("StaffPaymentsDeleted", fields: [deletedById], references: [id])
+
+  @@index([staffId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@index([type])
+  @@index([deletedAt])
   @@map("staff_payments")
 }
 
 // ============================================================
-// GASTOS OPERATIVOS
+// CONTROL DE ADELANTOS PENDIENTES
+// ============================================================
+
+model StaffAdvanceBalance {
+  id              String    @id @default(cuid())
+
+  staffId         String    @unique
+  staff           User      @relation(fields: [staffId], references: [id])
+
+  currentBalance  Decimal   @db.Decimal(10, 2) @default(0)  // Saldo pendiente de adelanto
+
+  updatedAt       DateTime  @updatedAt
+
+  @@map("staff_advance_balances")
+}
+
+// ============================================================
+// GASTOS ADMINISTRATIVOS
 // ============================================================
 
 model Expense {
-  id          String   @id @default(cuid())
-  description String
-  category    String?
-  amount      Decimal  @db.Decimal(10, 2)
-  date        DateTime @db.Date
-  notes       String?
+  id              String          @id @default(cuid())
 
-  createdAt DateTime @default(now())
+  // Categoría y descripción
+  category        ExpenseCategory
+  description     String
 
+  // Monto
+  amount          Decimal         @db.Decimal(10, 2)
+
+  // Referencia/comprobante
+  reference       String?         // Número de factura, etc.
+
+  // Fecha del gasto
+  expenseDate     DateTime        @db.Date @default(now())
+
+  // Auditoría
+  createdById     String
+  createdBy       User            @relation("ExpensesCreated", fields: [createdById], references: [id])
+  createdAt       DateTime        @default(now())
+
+  // Soft delete
+  deletedAt       DateTime?
+  deletedById     String?
+  deletedBy       User?           @relation("ExpensesDeleted", fields: [deletedById], references: [id])
+
+  @@index([expenseDate])
+  @@index([category])
+  @@index([deletedAt])
   @@map("expenses")
 }
 
