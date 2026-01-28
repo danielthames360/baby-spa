@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { Prisma, PaymentMethod, ParticipantStatus, DiscountType } from "@prisma/client";
 import { paymentDetailService } from "./payment-detail-service";
+import { activityService } from "./activity-service";
+import { fromDateOnly } from "@/lib/utils/date-utils";
 
 // Payment detail input type for split payments
 interface PaymentDetailInput {
@@ -199,7 +201,7 @@ export const eventParticipantService = {
     const status: ParticipantStatus =
       input.discountType === "COURTESY" ? "CONFIRMED" : "REGISTERED";
 
-    return prisma.eventParticipant.create({
+    const participant = await prisma.eventParticipant.create({
       data: {
         eventId: input.eventId,
         babyId: input.babyId,
@@ -214,6 +216,19 @@ export const eventParticipantService = {
       },
       include: participantInclude,
     });
+
+    // Log activity for event registration
+    try {
+      await activityService.logEventRegistration(participant.id, {
+        babyName: baby.name,
+        eventName: event.name,
+        eventDate: fromDateOnly(event.date),
+      }, input.registeredById);
+    } catch (error) {
+      console.error("Error logging event registration activity:", error);
+    }
+
+    return participant;
   },
 
   /**
@@ -306,7 +321,7 @@ export const eventParticipantService = {
     const status: ParticipantStatus =
       input.discountType === "COURTESY" ? "CONFIRMED" : "REGISTERED";
 
-    return prisma.eventParticipant.create({
+    const participant = await prisma.eventParticipant.create({
       data: {
         eventId: input.eventId,
         parentId,
@@ -321,6 +336,20 @@ export const eventParticipantService = {
       },
       include: participantInclude,
     });
+
+    // Log activity for event registration
+    try {
+      const parentName = participant.parent?.name || input.name;
+      await activityService.logEventRegistration(participant.id, {
+        parentName,
+        eventName: event.name,
+        eventDate: fromDateOnly(event.date),
+      }, input.registeredById);
+    } catch (error) {
+      console.error("Error logging event registration activity:", error);
+    }
+
+    return participant;
   },
 
   /**

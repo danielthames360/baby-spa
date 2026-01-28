@@ -23,6 +23,7 @@ import {
   PartyPopper,
   ChevronLeft,
   IdCard,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -50,6 +51,7 @@ const navigation = [
 const secondaryNavigation = [
   { key: "staffPayments", href: "/admin/staff-payments", icon: CreditCard },
   { key: "expenses", href: "/admin/expenses", icon: Receipt },
+  { key: "activity", href: "/admin/activity", icon: History },
   { key: "reports", href: "/admin/reports", icon: BarChart3 },
   { key: "settings", href: "/admin/settings", icon: Settings },
 ];

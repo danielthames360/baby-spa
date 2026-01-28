@@ -165,6 +165,43 @@ enum StaffNotificationType {
   RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
 }
 
+// Para Activity (registro de actividad/auditoría)
+enum ActivityType {
+  // Sesiones
+  SESSION_COMPLETED
+  DISCOUNT_APPLIED
+
+  // Citas
+  APPOINTMENT_CREATED
+  APPOINTMENT_CREATED_PORTAL
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_CANCELLED_PORTAL
+  APPOINTMENT_RESCHEDULED
+  APPOINTMENT_RESCHEDULED_PORTAL
+
+  // Baby Card
+  BABY_CARD_SOLD
+  BABY_CARD_REWARD_DELIVERED
+
+  // Pagos
+  INSTALLMENT_PAID
+
+  // Caja (se integrarán en Fase 9)
+  CASH_REGISTER_OPENED
+  CASH_REGISTER_CLOSED
+
+  // Eventos
+  EVENT_REGISTRATION
+
+  // Bebés y Clientes
+  BABY_CREATED
+  PACKAGE_ASSIGNED
+  CLIENT_UPDATED
+
+  // Evaluaciones (Terapeutas)
+  EVALUATION_SAVED
+}
+
 // ============================================================
 // USUARIOS DEL SISTEMA (Staff)
 // ============================================================
@@ -199,6 +236,7 @@ model User {
   babyCardRewardsApplied     BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
   paymentDetailsCreated      PaymentDetail[]       @relation("PaymentDetailsCreated")
   notificationsRead          Notification[]        @relation("NotificationReadBy")
+  activitiesPerformed        Activity[]            @relation("ActivitiesPerformed")
 
   @@map("users")
 }
@@ -1280,4 +1318,38 @@ model PaymentDetail {
 
   @@index([parentType, parentId])
   @@map("payment_details")
+}
+
+// ============================================================
+// ACTIVIDAD RECIENTE (Auditoría)
+// ============================================================
+
+model Activity {
+  id            String         @id @default(cuid())
+
+  // Tipo de actividad
+  type          ActivityType
+
+  // Descripción (key de traducción)
+  title         String         // "activity.session_completed"
+  description   String?        // Información adicional
+
+  // Entidad relacionada (para navegación con botón "Ver")
+  entityType    String?        // "appointment", "baby", "session", etc.
+  entityId      String?        // ID del registro
+
+  // Datos adicionales para UI (JSON flexible)
+  metadata      Json?          // { userName: "María", babyName: "Lucas", amount: 350 }
+
+  // Quién realizó la acción (null si es sistema/portal)
+  performedById String?
+  performedBy   User?          @relation("ActivitiesPerformed", fields: [performedById], references: [id])
+
+  // Timestamp
+  createdAt     DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([performedById, createdAt])
+  @@map("activities")
 }

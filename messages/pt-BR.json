@@ -119,7 +119,8 @@
     "babyCard": "Meu Baby Card",
     "profile": "Meu Perfil",
     "help": "Ajuda",
-    "history": "Histórico"
+    "history": "Histórico",
+    "activity": "Atividade"
   },
 
   "roles": {
@@ -2135,6 +2136,54 @@
       "deactivateDescription": "Não aparecerá disponível para venda",
       "useReward": "Usar este prêmio?",
       "useRewardDescription": "Esta ação não pode ser desfeita"
+    }
+  },
+
+  "activity": {
+    "title": "Atividade Recente",
+    "subtitle": "Histórico de ações realizadas no sistema",
+    "empty": "Nenhuma atividade registrada",
+    "filters": {
+      "type": "Tipo de atividade",
+      "allTypes": "Todos os tipos",
+      "performedBy": "Realizado por",
+      "allUsers": "Todos os usuários",
+      "from": "De",
+      "to": "Até",
+      "apply": "Filtrar",
+      "clear": "Limpar",
+      "typeGroups": {
+        "appointments": "Agendamentos",
+        "sessions": "Sessões",
+        "babyCards": "Baby Cards",
+        "clients": "Clientes",
+        "packages": "Pacotes",
+        "events": "Eventos",
+        "evaluations": "Avaliações"
+      }
+    },
+    "pagination": {
+      "showing": "Mostrando {from}-{to} de {total}",
+      "previous": "Anterior",
+      "next": "Próximo"
+    },
+    "types": {
+      "session_completed": "Sessão completada: {babyName}",
+      "discount_applied": "Desconto aplicado: {babyName}",
+      "appointment_created": "Agendamento criado: {babyName}",
+      "appointment_created_portal": "Agendamento criado (Portal): {babyName}",
+      "appointment_cancelled": "Agendamento cancelado: {babyName}",
+      "appointment_cancelled_portal": "Agendamento cancelado (Portal): {babyName}",
+      "appointment_rescheduled": "Agendamento reagendado: {babyName}",
+      "appointment_rescheduled_portal": "Agendamento reagendado (Portal): {babyName}",
+      "baby_card_sold": "Baby Card vendido: {babyName}",
+      "baby_card_reward_delivered": "Prêmio entregue: {babyName}",
+      "installment_paid": "Parcela paga: {packageName}",
+      "event_registration": "Inscrição em evento: {eventName}",
+      "baby_created": "Bebê registrado: {babyName}",
+      "package_assigned": "Pacote atribuído: {packageName}",
+      "client_updated": "Cliente atualizado: {clientName}",
+      "evaluation_saved": "Avaliação salva: {babyName}"
     }
   }
 }

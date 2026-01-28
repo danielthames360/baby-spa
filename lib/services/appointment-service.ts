@@ -15,6 +15,7 @@ import {
   getEndOfDayUTC,
   fromDateOnly,
 } from "@/lib/utils/date-utils";
+import { activityService } from "./activity-service";
 
 // Re-export for backwards compatibility
 export { BUSINESS_HOURS, MAX_APPOINTMENTS_PER_SLOT, SLOT_DURATION_MINUTES, generateTimeSlots, isWithinBusinessHours };
@@ -794,6 +795,20 @@ export const appointmentService = {
       return newAppointment;
     });
 
+    // Log activity for created appointment
+    try {
+      const babyName = appointment.baby?.name;
+      const parentName = appointment.parent?.name;
+      await activityService.logAppointmentCreated(appointment.id, {
+        babyName,
+        parentName,
+        date: fromDateOnly(appointmentDate),
+        time: startTime,
+      }, userId);
+    } catch (error) {
+      console.error("Error logging appointment creation activity:", error);
+    }
+
     return appointment as AppointmentWithRelations;
   },
 
@@ -1033,10 +1048,39 @@ export const appointmentService = {
         },
       });
 
-      return updated;
+      return { updated, action };
     });
 
-    return appointment as AppointmentWithRelations;
+    // Log activity for cancelled or rescheduled appointments
+    try {
+      const babyName = appointment.updated.baby?.name;
+      const parentName = appointment.updated.parent?.name;
+      const dateStr = fromDateOnly(appointment.updated.date);
+      const timeStr = appointment.updated.startTime;
+
+      if (appointment.action === "CANCELLED") {
+        await activityService.logAppointmentCancelled(id, {
+          babyName,
+          parentName,
+          date: dateStr,
+          time: timeStr,
+          cancellationReason: input.cancelReason || undefined,
+        }, userId);
+      } else if (appointment.action === "RESCHEDULED") {
+        await activityService.logAppointmentRescheduled(id, {
+          babyName,
+          parentName,
+          date: oldValue.date as string || dateStr,
+          time: oldValue.startTime as string || timeStr,
+          newDate: dateStr,
+          newTime: timeStr,
+        }, userId);
+      }
+    } catch (error) {
+      console.error("Error logging appointment activity:", error);
+    }
+
+    return appointment.updated as AppointmentWithRelations;
   },
 
   // Cancel appointment

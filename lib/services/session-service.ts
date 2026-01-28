@@ -4,7 +4,8 @@ import { inventoryService } from "./inventory-service";
 import { packageService } from "./package-service";
 import { babyCardService } from "./baby-card-service";
 import { paymentDetailService } from "./payment-detail-service";
-import { normalizeToUTCNoon, getStartOfDayUTC, getEndOfDayUTC } from "@/lib/utils/date-utils";
+import { activityService } from "./activity-service";
+import { normalizeToUTCNoon, getStartOfDayUTC, getEndOfDayUTC, fromDateOnly } from "@/lib/utils/date-utils";
 
 // Payment detail input type for split payments
 interface PaymentDetailInput {
@@ -348,12 +349,15 @@ export const sessionService = {
                 },
               },
             },
+            parent: true, // For parent-only appointments
           },
         },
         products: {
           include: { product: true },
         },
-        packagePurchase: true,
+        packagePurchase: {
+          include: { package: { select: { name: true } } },
+        },
       },
     });
 
@@ -389,6 +393,7 @@ export const sessionService = {
     if (packagePurchaseId) {
       selectedPackagePurchase = await prisma.packagePurchase.findUnique({
         where: { id: packagePurchaseId },
+        include: { package: { select: { name: true } } },
       });
       if (selectedPackagePurchase && selectedPackagePurchase.remainingSessions <= 0) {
         throw new Error("PACKAGE_NO_REMAINING_SESSIONS");
@@ -718,6 +723,40 @@ export const sessionService = {
         // Don't fail the session completion if Baby Card tracking fails
         console.error("Error updating Baby Card progress:", error);
       }
+    }
+
+    // Log activity for completed session
+    // Handle both baby and parent-only appointments
+    const isParentAppointment = !session.appointment.babyId && session.appointment.parentId;
+    const clientName = isParentAppointment
+      ? session.appointment.parent?.name || "N/A"
+      : session.appointment.baby?.name || "N/A";
+    const packageName = packageToSell?.name || sessionPackage?.package?.name || activePackage?.package?.name || "N/A";
+    try {
+      await activityService.logSessionCompleted(sessionId, {
+        babyName: clientName, // Can be baby name or parent name depending on appointment type
+        packageName,
+        sessionNumber: result.session.sessionNumber || undefined,
+        totalAmount: Number(result.totalAmount),
+        paymentMethods: paymentDetails?.map((d) => d.paymentMethod) || (paymentMethod ? [paymentMethod] : undefined),
+        date: fromDateOnly(session.appointment.date), // For calendar navigation
+        appointmentId: session.appointmentId, // For highlighting the appointment
+      }, userId);
+
+      // Log discount if applied
+      if (discountAmount > 0) {
+        await activityService.logDiscountApplied(sessionId, {
+          babyName: clientName,
+          originalPrice: Number(subtotalAmount),
+          discountAmount,
+          reason: discountReason || undefined,
+          date: fromDateOnly(session.appointment.date),
+          appointmentId: session.appointmentId,
+        }, userId);
+      }
+    } catch (error) {
+      // Don't fail session completion if activity logging fails
+      console.error("Error logging session activity:", error);
     }
 
     return { ...result, babyCardInfo, firstSessionDiscountApplied };

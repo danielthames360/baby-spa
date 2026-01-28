@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { Prisma, BabyCardStatus, RewardType, PaymentMethod } from "@prisma/client";
 import { paymentDetailService } from "./payment-detail-service";
+import { activityService } from "./activity-service";
 
 // Payment detail input type for split payments
 interface PaymentDetailInput {
@@ -406,7 +407,7 @@ export const babyCardService = {
       throw new Error("BABY_NOT_FOUND");
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // If baby has existing active card, mark it as replaced
       if (existingPurchase) {
         await tx.babyCardPurchase.update({
@@ -469,8 +470,21 @@ export const babyCardService = {
         });
       }
 
-      return purchase;
+      return { purchase, babyName: baby.name, cardName: babyCard.name };
     });
+
+    // Log activity for sold baby card
+    try {
+      await activityService.logBabyCardSold(result.purchase.id, {
+        babyName: result.babyName,
+        cardName: result.cardName,
+        pricePaid: input.pricePaid,
+      }, input.createdById);
+    } catch (error) {
+      console.error("Error logging baby card sold activity:", error);
+    }
+
+    return result.purchase;
   },
 
   /**
@@ -704,7 +718,11 @@ export const babyCardService = {
     const [purchase, reward] = await Promise.all([
       prisma.babyCardPurchase.findUnique({
         where: { id: input.purchaseId },
-        include: { rewardUsages: true },
+        include: {
+          rewardUsages: true,
+          baby: { select: { name: true } },
+          babyCard: { select: { name: true } },
+        },
       }),
       prisma.babyCardReward.findUnique({
         where: { id: input.rewardId },
@@ -738,7 +756,7 @@ export const babyCardService = {
       throw new Error("REWARD_ALREADY_USED");
     }
 
-    return prisma.babyCardRewardUsage.create({
+    const usage = await prisma.babyCardRewardUsage.create({
       data: {
         babyCardPurchaseId: input.purchaseId,
         babyCardRewardId: input.rewardId,
@@ -753,6 +771,19 @@ export const babyCardService = {
         usedBy: { select: { id: true, name: true } },
       },
     });
+
+    // Log activity for reward delivered
+    try {
+      await activityService.logBabyCardRewardDelivered(input.purchaseId, {
+        babyName: purchase.baby?.name || "N/A",
+        cardName: purchase.babyCard?.name || "N/A",
+        rewardName: reward.displayName || undefined,
+      }, input.usedById);
+    } catch (error) {
+      console.error("Error logging baby card reward delivered activity:", error);
+    }
+
+    return usage;
   },
 
   // ============================================================

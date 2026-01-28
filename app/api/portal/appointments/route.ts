@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parseDateToUTCNoon, getStartOfDayUTC } from "@/lib/utils/date-utils";
+import { parseDateToUTCNoon, getStartOfDayUTC, fromDateOnly } from "@/lib/utils/date-utils";
 import { notificationService } from "@/lib/services/notification-service";
+import { activityService } from "@/lib/services/activity-service";
 
 export async function GET() {
   try {
@@ -508,10 +509,9 @@ export async function POST(request: Request) {
       return appointment;
     });
 
-    // Create notification for reception staff
+    // Log activity for portal appointment creation
+    let babyName: string | undefined;
     try {
-      // Get the baby name for notification
-      let babyName: string | undefined;
       if (!isParentAppointment) {
         const baby = await prisma.baby.findUnique({
           where: { id: babyId },
@@ -520,6 +520,18 @@ export async function POST(request: Request) {
         babyName = baby?.name;
       }
 
+      await activityService.logAppointmentCreatedPortal(result.id, {
+        babyName,
+        parentName: isParentAppointment ? parent?.name : undefined,
+        date: fromDateOnly(appointmentDate),
+        time: startTime,
+      });
+    } catch (activityError) {
+      console.error("Failed to log activity:", activityError);
+    }
+
+    // Create notification for reception staff
+    try {
       await notificationService.createForNewAppointment(
         {
           id: result.id,

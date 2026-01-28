@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { babyService } from "@/lib/services/baby-service";
 import { parentService } from "@/lib/services/parent-service";
+import { activityService } from "@/lib/services/activity-service";
 import {
   babySearchParamsSchema,
   babySchema,
@@ -195,6 +196,17 @@ export async function POST(request: NextRequest) {
         },
         parentsToLink
       );
+
+      // Log activity for baby creation
+      try {
+        const parentNames = baby.parents?.map((p) => p.parent.name) || [];
+        await activityService.logBabyCreated(baby.id, {
+          babyName: baby.name,
+          parentNames,
+        }, session.user.id);
+      } catch (activityError) {
+        console.error("Error logging baby creation activity:", activityError);
+      }
 
       return NextResponse.json({ baby }, { status: 201 });
     } catch (error) {

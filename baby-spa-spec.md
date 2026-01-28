@@ -16,7 +16,8 @@
 6. [Reglas de Negocio](#6-reglas-de-negocio)
 7. [Módulos Implementados](#7-módulos-implementados)
 8. [Plan de Implementación](#8-plan-de-implementación)
-9. [Instrucciones para Claude Code](#9-instrucciones-para-claude-code)
+9. [Arqueo de Caja (Fase Final)](#fase-9-arqueo-de-caja)
+10. [Instrucciones para Claude Code](#10-instrucciones-para-claude-code)
 
 ---
 
@@ -350,6 +351,7 @@ enum CashRegisterStatus {
 enum CashExpenseCategory {
   SUPPLIES      // Insumos
   FOOD          // Comida/Refrigerios
+  BANK_DEPOSIT  // Depósito a cuenta bancaria (efectivo → banco)
   OTHER         // Otro
 }
 
@@ -382,6 +384,8 @@ enum ActivityType {
   APPOINTMENT_CREATED
   APPOINTMENT_CREATED_PORTAL
   APPOINTMENT_CANCELLED
+  APPOINTMENT_CANCELLED_PORTAL
+  APPOINTMENT_RESCHEDULED
   APPOINTMENT_RESCHEDULED_PORTAL
   BABY_CARD_SOLD
   BABY_CARD_REWARD_DELIVERED
@@ -1363,10 +1367,9 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 5.1: Sistema Baby Card
 - [x] Módulo 5.2: Pagos Divididos (Split Payments)
 
-## ⏳ Fase 6: Operaciones (~35 hrs)
+## ⏳ Fase 6: Operaciones (~20 hrs)
 - [x] Módulo 6.1: Notificaciones en Tiempo Real (COMPLETADO)
-- [ ] Módulo 6.2: Arqueo de Caja (~15 hrs)
-- [ ] Módulo 6.3: Actividad Reciente (~12 hrs)
+- [x] Módulo 6.2: Actividad Reciente (COMPLETADO)
 
 ## ⏳ Fase 7: Finanzas (~20 hrs)
 - [ ] Módulo 7.1: Staff Payments (~12 hrs)
@@ -1379,12 +1382,17 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [ ] Módulo 8.4: Mesversarios
 - [ ] Módulo 8.5: Dashboard Mejorado
 
-## 🔮 Fase 9: Reportes y Automatización (FUTURO)
-- [ ] Módulo 9.1: Reportes Financieros
-- [ ] Módulo 9.2: Cron Jobs
-- [ ] Módulo 9.3: Notificaciones Push
-- [ ] Módulo 9.4: Configuración del Sistema
-- [ ] Módulo 9.5: QR de Pago
+## ⏳ Fase 9: Arqueo de Caja (~15 hrs)
+- [ ] Módulo 9.1: Arqueo de Caja
+- Nota: Movido al final porque depende de entender cómo ADMIN interactúa con pagos
+- Ver decisiones tomadas en: PlanificacionesBabySpa/PLANIFICACION-ARQUEO-CAJA.md
+
+## 🔮 Fase 10: Reportes y Automatización (FUTURO)
+- [ ] Módulo 10.1: Reportes Financieros
+- [ ] Módulo 10.2: Cron Jobs
+- [ ] Módulo 10.3: Notificaciones Push
+- [ ] Módulo 10.4: Configuración del Sistema
+- [ ] Módulo 10.5: QR de Pago
 
 ---
 
@@ -1436,63 +1444,45 @@ TRADUCCIONES:
 ✅ pt-BR.json completo
 ```
 
-### Módulo 6.2: Arqueo de Caja
+### Módulo 6.2: Actividad Reciente ✅ COMPLETADO
 ```
 MODELOS:
-□ Enum CashRegisterStatus
-□ Enum CashExpenseCategory
-□ Modelo CashRegisterSession
-□ Modelo CashRegisterExpense
-□ Migración ejecutada
+✅ Enum ActivityType (19 tipos incluyendo EVALUATION_SAVED)
+✅ Modelo Activity
+✅ Migración ejecutada
 
 BACKEND:
-□ CashRegisterService
-□ POST /api/cash-register/open
-□ GET /api/cash-register/current
-□ GET /api/cash-register/summary
-□ POST /api/cash-register/expenses
-□ POST /api/cash-register/close
-□ GET /api/cash-register/history
-□ PATCH /api/cash-register/:id/approve
-□ PATCH /api/cash-register/:id/reject
+✅ ActivityService con helpers por tipo
+✅ GET /api/activity (filtros: tipo, usuario, rango de fechas)
+✅ Integrar en servicios existentes:
+  - session-service (SESSION_COMPLETED, DISCOUNT_APPLIED)
+  - appointment-service (APPOINTMENT_CREATED, CANCELLED, RESCHEDULED)
+  - portal appointments (APPOINTMENT_CREATED_PORTAL)
+  - baby-card-service (BABY_CARD_SOLD, BABY_CARD_REWARD_DELIVERED)
+  - event-participant-service (EVENT_REGISTRATION)
+  - babies route (BABY_CREATED)
+  - evaluate route (EVALUATION_SAVED) - actividad de terapeutas
+
+CRON JOB (Fase 10):
+□ Limpieza mensual de registros > 1 año
+□ Retención: ~3.5 MB/año estimado
 
 FRONTEND:
-□ Página /admin/cash-register
-□ CashRegisterOpenDialog
-□ CashRegisterExpenseDialog
-□ CashRegisterCloseDialog
-□ CashRegisterSummary
-□ CashRegisterHistory (admin)
-□ Indicador en header (turno abierto/cerrado)
+✅ Página /admin/activity (solo ADMIN)
+✅ ActivityFilters (grupos: citas, sesiones, babyCards, clientes, paquetes, eventos, evaluaciones)
+✅ ActivityList con paginación y agrupación por día
+✅ ActivityCard con botón "Ver" (navega a calendario con date+appointmentId)
+✅ Link en sidebar (icono History)
+
+NOTAS:
+- Títulos usan keys de traducción + metadata (no texto fijo)
+- Navegación "Ver" reutiliza patrón de notificaciones (date + appointmentId)
+- CASH_REGISTER_* se integrarán en Fase 9
+- INSTALLMENT_PAID, PACKAGE_ASSIGNED, CLIENT_UPDATED pendientes de integración
 
 TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
-```
-
-### Módulo 6.3: Actividad Reciente
-```
-MODELOS:
-□ Enum ActivityType
-□ Modelo Activity
-□ Migración ejecutada
-
-BACKEND:
-□ ActivityService con helpers por tipo
-□ GET /api/activity (filtros: tipo, usuario, fecha, búsqueda)
-□ Integrar en servicios existentes
-□ Cron job de limpieza (1 año)
-
-FRONTEND:
-□ Página /admin/activity (solo ADMIN)
-□ ActivityFilters
-□ ActivityList con paginación
-□ ActivityCard con botón "Ver"
-□ Link en sidebar
-
-TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
+✅ es.json completo
+✅ pt-BR.json completo
 ```
 
 ## Fase 7: Finanzas
@@ -1596,11 +1586,71 @@ TRADUCCIONES:
 □ pt-BR.json completo
 ```
 
+## Fase 9: Arqueo de Caja
+
+> **Nota:** Este módulo se movió al final porque depende de entender cómo ADMIN interactúa con el sistema de pagos.
+> Las decisiones de diseño tomadas están documentadas en: `PlanificacionesBabySpa/PLANIFICACION-ARQUEO-CAJA.md`
+
+### Módulo 9.1: Arqueo de Caja
+```
+MODELOS:
+□ Enum CashRegisterStatus
+□ Enum CashExpenseCategory (con BANK_DEPOSIT)
+□ Modelo CashRegisterSession
+□ Modelo CashRegisterExpense
+□ Migración ejecutada
+
+BACKEND:
+□ CashRegisterService
+□ POST /api/cash-register/open
+□ GET /api/cash-register/current
+□ GET /api/cash-register/summary (dashboard en tiempo real)
+□ POST /api/cash-register/expenses
+□ POST /api/cash-register/close
+□ GET /api/cash-register/history
+□ PATCH /api/cash-register/:id/approve
+□ PATCH /api/cash-register/:id/reject
+
+FRONTEND:
+□ Página /admin/cash-register
+□ CashRegisterOpenDialog
+□ CashRegisterExpenseDialog
+□ CashRegisterCloseDialog
+□ CashRegisterSummary (dashboard en tiempo real)
+□ CashRegisterHistory (admin)
+□ Indicador en header (turno abierto/cerrado)
+□ Modal obligatorio para RECEPTION si no hay caja abierta
+
+DECISIONES TOMADAS:
+✓ Una caja global (solo un turno activo a la vez)
+✓ RECEPTION debe tener caja abierta para operar (bloqueo obligatorio)
+✓ Depósitos a banco como categoría BANK_DEPOSIT en CashExpenseCategory
+✓ Dashboard de caja en tiempo real
+✓ Ingresos calculados por timestamp (createdAt entre openedAt y closedAt)
+⏳ PENDIENTE: Definir si ADMIN necesita caja abierta para cobrar
+
+TRADUCCIONES:
+□ es.json completo
+□ pt-BR.json completo
+```
+
+## Fase 10: Reportes y Automatización (FUTURO)
+
+> Esta fase se implementará después del Arqueo de Caja
+
+```
+□ Módulo 10.1: Reportes Financieros
+□ Módulo 10.2: Cron Jobs
+□ Módulo 10.3: Notificaciones Push
+□ Módulo 10.4: Configuración del Sistema
+□ Módulo 10.5: QR de Pago
+```
+
 ---
 
-# 9. INSTRUCCIONES PARA CLAUDE CODE
+# 10. INSTRUCCIONES PARA CLAUDE CODE
 
-## 9.1 Contexto del Proyecto
+## 10.1 Contexto del Proyecto
 
 Al iniciar cada sesión, Claude Code debe entender:
 - Sistema de gestión para spa de bebés
@@ -1609,7 +1659,7 @@ Al iniciar cada sesión, Claude Code debe entender:
 - Multiidioma (ES/PT-BR)
 - 4 roles: Admin, Reception, Therapist, Parent
 
-## 9.2 Reglas Críticas
+## 10.2 Reglas Críticas
 
 ```
 ⚠️ IMPORTANTE - LEER SIEMPRE:
@@ -1662,7 +1712,7 @@ Al iniciar cada sesión, Claude Code debe entender:
    - Puede ver saldo financiero pero no pagar online
 ```
 
-## 9.3 Convenciones de Código
+## 10.3 Convenciones de Código
 
 ```typescript
 // Archivos: kebab-case
@@ -1684,7 +1734,7 @@ interface BabyCreateInput {}
 type AppointmentStatus = 'SCHEDULED' | 'COMPLETED';
 ```
 
-## 9.4 Patrones de Código
+## 10.4 Patrones de Código
 
 ### API Routes
 ```typescript
@@ -1718,7 +1768,7 @@ export const serviceNameService = {
 };
 ```
 
-## 9.5 Checklist de Verificación
+## 10.5 Checklist de Verificación
 
 Antes de cada commit:
 ```
@@ -1734,7 +1784,7 @@ Antes de cada commit:
 □ NO usar tenantId en ningún modelo
 ```
 
-## 9.6 Archivos de Referencia
+## 10.6 Archivos de Referencia
 
 Cuando implementes nuevas funcionalidades, revisa estos patrones:
 - API: `app/api/babies/route.ts`
