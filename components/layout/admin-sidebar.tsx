@@ -12,60 +12,73 @@ import {
   Baby,
   UserRound,
   Package,
-  ClipboardList,
-  Bell,
-  BarChart3,
   Settings,
   Warehouse,
   CreditCard,
   Receipt,
-  ListTodo,
   PartyPopper,
   ChevronLeft,
   IdCard,
   History,
+  LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { UserRole } from "@prisma/client";
+import {
+  hasPermission,
+  Permission,
+  MAIN_NAV_ITEMS,
+  SECONDARY_NAV_ITEMS,
+} from "@/lib/permissions";
+
+// Mapa de iconos por nombre
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Baby,
+  UserRound,
+  Package,
+  Settings,
+  Warehouse,
+  CreditCard,
+  Receipt,
+  PartyPopper,
+  IdCard,
+  History,
+};
 
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
+  userRole: UserRole;
 }
 
-const navigation = [
-  { key: "dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { key: "calendar", href: "/admin/calendar", icon: Calendar },
-  { key: "clients", href: "/admin/clients", icon: Users },
-  { key: "babies", href: "/admin/babies", icon: Baby },
-  { key: "parents", href: "/admin/parents", icon: UserRound },
-  { key: "packages", href: "/admin/packages", icon: Package },
-  { key: "sessions", href: "/admin/sessions", icon: ClipboardList },
-  { key: "waitlist", href: "/admin/waitlist", icon: ListTodo },
-  { key: "events", href: "/admin/events", icon: PartyPopper },
-  { key: "babyCards", href: "/admin/baby-cards", icon: IdCard },
-  { key: "notifications", href: "/admin/notifications", icon: Bell },
-  { key: "inventory", href: "/admin/inventory", icon: Warehouse },
-];
-
-const secondaryNavigation = [
-  { key: "users", href: "/admin/users", icon: Users },
-  { key: "staffPayments", href: "/admin/staff-payments", icon: CreditCard },
-  { key: "expenses", href: "/admin/expenses", icon: Receipt },
-  { key: "activity", href: "/admin/activity", icon: History },
-  { key: "reports", href: "/admin/reports", icon: BarChart3 },
-  { key: "settings", href: "/admin/settings", icon: Settings },
-];
-
-export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
+export function AdminSidebar({
+  collapsed,
+  onToggle,
+  userRole,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
 
   const isActive = (href: string) => {
     // Remove locale prefix for comparison
     const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");
-    return pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`);
+    return (
+      pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`)
+    );
   };
+
+  // Filtrar items según permisos del rol
+  const filteredMainNav = MAIN_NAV_ITEMS.filter((item) =>
+    item.requiredPermissions.some((p: Permission) => hasPermission(userRole, p))
+  );
+
+  const filteredSecondaryNav = SECONDARY_NAV_ITEMS.filter((item) =>
+    item.requiredPermissions.some((p: Permission) => hasPermission(userRole, p))
+  );
 
   return (
     <aside
@@ -113,8 +126,8 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {navigation.map((item) => {
-          const Icon = item.icon;
+        {filteredMainNav.map((item) => {
+          const Icon = ICON_MAP[item.icon] || LayoutDashboard;
           const active = isActive(item.href);
 
           return (
@@ -136,30 +149,34 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
           );
         })}
 
-        <Separator className="my-4 bg-gradient-to-r from-transparent via-teal-200 to-transparent" />
+        {filteredSecondaryNav.length > 0 && (
+          <>
+            <Separator className="my-4 bg-gradient-to-r from-transparent via-teal-200 to-transparent" />
 
-        {secondaryNavigation.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
+            {filteredSecondaryNav.map((item) => {
+              const Icon = ICON_MAP[item.icon] || Settings;
+              const active = isActive(item.href);
 
-          return (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                active
-                  ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-200"
-                  : "text-gray-600 hover:bg-teal-50 hover:text-teal-700",
-                collapsed && "justify-center px-2"
-              )}
-              title={collapsed ? t(item.key) : undefined}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{t(item.key)}</span>}
-            </Link>
-          );
-        })}
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    active
+                      ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-200"
+                      : "text-gray-600 hover:bg-teal-50 hover:text-teal-700",
+                    collapsed && "justify-center px-2"
+                  )}
+                  title={collapsed ? t(item.key) : undefined}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span>{t(item.key)}</span>}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
     </aside>
   );

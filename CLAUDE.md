@@ -170,6 +170,7 @@ const display = formatDateForDisplay(dbDate, locale); // → "viernes, 6 de febr
 ❌ Exponer notas internas a padres
 ❌ Más de 5 citas/slot (staff) o 2 (portal)
 ❌ Borrar datos - usar soft delete
+❌ Duplicar lógica - revisar lib/utils/ primero
 ```
 
 ---
@@ -186,6 +187,45 @@ const display = formatDateForDisplay(dbDate, locale); // → "viernes, 6 de febr
 ✅ Usar lib/form-utils.ts para formularios
 ✅ Traducciones en AMBOS idiomas
 ✅ Probar en /es/ y /pt-BR/
+```
+
+---
+
+## 🔄 DRY - Reutilización de Código
+
+**ANTES de escribir código, verificar si ya existe una utilidad:**
+
+```
+lib/utils/date-utils.ts    → Fechas (formatLocalDateString, formatDateForDisplay, toDateOnly, fromDateOnly)
+lib/utils/age.ts           → Edad (calculateExactAge, formatAge, isMesversario)
+lib/utils/currency-utils.ts → Moneda (getCurrencySymbol, formatCurrency)
+lib/utils/gender-utils.ts  → Género (getGenderGradient)
+lib/form-utils.ts          → Forms (getStringValue, getDateValue, getTodayDateString)
+lib/api-utils.ts           → APIs (withAuth, handleApiError)
+```
+
+**Reglas:**
+1. **BUSCAR PRIMERO** - Antes de escribir lógica inline, revisar si existe en `lib/utils/`
+2. **CREAR SI ES REUTILIZABLE** - Si la lógica puede usarse en 2+ lugares, crear una función en utils
+3. **NO DUPLICAR** - Si ves código similar en otro archivo, extraerlo a un util compartido
+
+```typescript
+// ❌ MAL - Lógica inline que ya existe
+const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+// ✅ BIEN - Usar el util existente
+import { formatLocalDateString } from "@/lib/utils/date-utils";
+const todayStr = formatLocalDateString(now);
+```
+
+```typescript
+// ❌ MAL - Duplicar lógica de color por género
+const getGenderColor = (gender: string) => {
+  switch (gender) { case "MALE": return "from-sky-400..."; }
+};
+
+// ✅ BIEN - Usar el util existente
+import { getGenderGradient } from "@/lib/utils/gender-utils";
 ```
 
 ---

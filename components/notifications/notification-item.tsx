@@ -1,18 +1,34 @@
 "use client";
 
-import { Bell, Clock, Check, Eye, Calendar } from "lucide-react";
+import { CalendarPlus, Clock, Check, Eye, Calendar, CalendarClock, CalendarX2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NotificationData } from "@/lib/stores/notification-store";
 import { formatDistanceToNow } from "date-fns";
 import { es, ptBR } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
+import { getNotificationStyle, getNotificationIconType } from "@/lib/utils/notification-utils";
 
 // Hoisted locale map to avoid recreation on each render (rerender-memo-with-default-value)
 const DATE_LOCALES = {
   "pt-BR": ptBR,
   es: es,
 } as const;
+
+// Icon component based on notification type
+function NotificationIcon({ iconType, className }: { iconType: string; className?: string }) {
+  const iconClass = className || "h-4 w-4";
+  switch (iconType) {
+    case "clock":
+      return <Clock className={iconClass} />;
+    case "calendar-clock":
+      return <CalendarClock className={iconClass} />;
+    case "calendar-x":
+      return <CalendarX2 className={iconClass} />;
+    default:
+      return <CalendarPlus className={iconClass} />;
+  }
+}
 
 interface NotificationItemProps {
   notification: NotificationData;
@@ -32,6 +48,8 @@ export function NotificationItem({
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] ?? es;
 
   const isPending = notification.metadata?.isPendingPayment;
+  const style = getNotificationStyle(notification.type, isPending);
+  const iconType = getNotificationIconType(notification.type, isPending);
   const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
     addSuffix: false,
     locale: dateLocale,
@@ -55,13 +73,16 @@ export function NotificationItem({
         "relative rounded-xl border p-3 transition-all",
         notification.isRead
           ? "border-gray-100 bg-gray-50/50"
-          : "border-teal-100 bg-white shadow-sm",
+          : cn(style.border, "bg-white shadow-sm"),
         compact ? "p-2" : "p-3"
       )}
     >
       {/* Unread indicator */}
       {!notification.isRead && (
-        <div className="absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-teal-500" />
+        <div className={cn(
+          "absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full",
+          style.indicator
+        )} />
       )}
 
       <div className="flex items-start gap-3">
@@ -69,16 +90,11 @@ export function NotificationItem({
         <div
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-            isPending
-              ? "bg-amber-100 text-amber-600"
-              : "bg-teal-100 text-teal-600"
+            style.iconBg,
+            style.iconText
           )}
         >
-          {isPending ? (
-            <Clock className="h-4 w-4" />
-          ) : (
-            <Bell className="h-4 w-4" />
-          )}
+          <NotificationIcon iconType={iconType} />
         </div>
 
         {/* Content */}

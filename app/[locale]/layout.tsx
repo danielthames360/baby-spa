@@ -31,7 +31,7 @@ export default async function LocaleLayout({
         <IntroOverlay>
           {children}
         </IntroOverlay>
-        <Toaster position="top-right" richColors />
+        <Toaster position="top-right" />
       </NextIntlClientProvider>
     </SessionProvider>
   );

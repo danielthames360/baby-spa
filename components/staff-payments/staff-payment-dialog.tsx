@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SplitPaymentForm } from "@/components/payments/split-payment-form";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 
 // Movement types (records that accumulate, not actual payments)
 const MOVEMENT_TYPES = ["BONUS", "COMMISSION", "BENEFIT", "DEDUCTION"] as const;
@@ -661,7 +662,7 @@ export function StaffPaymentDialog({
               <SplitPaymentForm
                 totalAmount={netAmount > 0 ? netAmount : amountNum}
                 onPaymentDetailsChange={setPaymentDetails}
-                currency={locale === "pt-BR" ? "R$" : "Bs."}
+                currency={getCurrencySymbol(locale)}
               />
             </div>
           )}

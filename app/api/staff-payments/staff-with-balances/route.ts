@@ -5,7 +5,7 @@ import { staffPaymentService } from "@/lib/services/staff-payment-service";
 // GET /api/staff-payments/staff-with-balances
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const staffWithBalances = await staffPaymentService.getStaffWithBalances();
 

@@ -9,6 +9,7 @@ declare module "next-auth" {
     name: string;
     role: UserRole | "PARENT";
     parentId?: string;
+    mustChangePassword?: boolean;
   }
 
   interface Session {
@@ -18,6 +19,7 @@ declare module "next-auth" {
       name: string;
       role: UserRole | "PARENT";
       parentId?: string;
+      mustChangePassword?: boolean;
     };
   }
 }
@@ -29,5 +31,6 @@ declare module "next-auth/jwt" {
     name: string;
     role: UserRole | "PARENT";
     parentId?: string;
+    mustChangePassword?: boolean;
   }
 }

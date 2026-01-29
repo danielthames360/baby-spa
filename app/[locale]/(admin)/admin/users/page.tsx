@@ -28,8 +28,8 @@ export default async function UsersPage({
     redirect(`/${locale}/login`);
   }
 
-  // Only ADMIN can access this page
-  if (session.user.role !== "ADMIN") {
+  // Only OWNER can access this page
+  if (session.user.role !== "OWNER") {
     redirect(`/${locale}/admin/dashboard`);
   }
 

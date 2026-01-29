@@ -64,6 +64,45 @@
     "hello": "Hola"
   },
 
+  "profile": {
+    "title": "Mi Perfil",
+    "subtitle": "Administra tu información personal y seguridad",
+    "personalInfo": "Información Personal",
+    "accountInfo": "Información de Cuenta",
+    "security": "Seguridad",
+    "securityDesc": "Mantén tu cuenta segura cambiando tu contraseña periódicamente.",
+    "name": "Nombre completo",
+    "username": "Nombre de usuario",
+    "usernameReadOnly": "El nombre de usuario no puede modificarse",
+    "email": "Correo electrónico",
+    "phone": "Teléfono",
+    "role": "Rol",
+    "memberSince": "Miembro desde",
+    "lastLogin": "Último acceso",
+    "changePassword": "Cambiar Contraseña",
+    "changePasswordDesc": "Ingresa tu contraseña actual y luego tu nueva contraseña.",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar nueva contraseña",
+    "passwordMinLength": "Mínimo 6 caracteres",
+    "passwordSecure": "Tu contraseña está actualizada",
+    "mustChangePassword": "Cambio de contraseña requerido",
+    "mustChangePasswordDesc": "Por seguridad, debes cambiar tu contraseña antes de continuar.",
+    "profileUpdated": "Perfil actualizado correctamente",
+    "passwordChanged": "Contraseña cambiada correctamente",
+    "errors": {
+      "loadFailed": "Error al cargar el perfil",
+      "updateFailed": "Error al actualizar",
+      "passwordsDoNotMatch": "Las contraseñas no coinciden",
+      "CURRENT_PASSWORD_REQUIRED": "Ingresa tu contraseña actual",
+      "PASSWORD_TOO_SHORT": "La contraseña debe tener al menos 6 caracteres",
+      "CONFIRM_PASSWORD_REQUIRED": "Confirma tu nueva contraseña",
+      "PASSWORDS_DO_NOT_MATCH": "Las contraseñas no coinciden",
+      "CURRENT_PASSWORD_INCORRECT": "La contraseña actual es incorrecta",
+      "NEW_PASSWORD_SAME_AS_CURRENT": "La nueva contraseña debe ser diferente a la actual"
+    }
+  },
+
   "auth": {
     "login": "Iniciar sesión",
     "logout": "Cerrar sesión",
@@ -128,6 +167,7 @@
   },
 
   "roles": {
+    "owner": "Socio",
     "admin": "Administrador",
     "reception": "Recepción",
     "therapist": "Terapeuta",
@@ -532,6 +572,7 @@
     "subtitle": "Configuración de paquetes de sesiones",
     "newPackage": "Nuevo Paquete",
     "editPackage": "Editar Paquete",
+    "viewPackage": "Ver Paquete",
     "active": "Activo",
     "inactive": "Inactivo",
     "internalOnly": "Solo interno",
@@ -2516,6 +2557,7 @@
     "neverLoggedIn": "Nunca ingresó",
 
     "roles": {
+      "OWNER": "Socio",
       "ADMIN": "Administrador",
       "RECEPTION": "Recepción",
       "THERAPIST": "Terapeuta"
@@ -2558,6 +2600,7 @@
       "emailPlaceholder": "correo@ejemplo.com",
       "password": "Contraseña",
       "leaveBlankToKeep": "dejar vacío para mantener",
+      "passwordChangeRequired": "El usuario deberá cambiar esta contraseña en su primer inicio de sesión",
       "role": "Rol",
       "phone": "Teléfono",
       "salarySection": "Información de Salario",
@@ -2594,6 +2637,8 @@
   "expenses": {
     "title": "Gastos Administrativos",
     "subtitle": "Registro y seguimiento de gastos operativos",
+    "subtitleReception": "Registra gastos operativos del día",
+    "receptionMessage": "Usa el botón 'Registrar Gasto' para agregar un nuevo gasto.",
     "newExpense": "Registrar Gasto",
     "empty": "No hay gastos registrados en este período",
     "createSuccess": "Gasto registrado exitosamente",
@@ -2660,5 +2705,22 @@
       "createFailed": "Error al registrar el gasto",
       "deleteFailed": "Error al eliminar el gasto"
     }
+  },
+
+  "dashboard": {
+    "welcomeOwner": "Panel de Control - Vista Completa",
+    "welcomeAdmin": "Panel de Administración",
+    "welcomeReception": "Panel de Operaciones",
+    "todayAppointments": "Citas de Hoy",
+    "pendingCheckouts": "Checkouts Pendientes",
+    "activeClients": "Clientes Activos",
+    "registeredBabies": "Bebés Registrados",
+    "todayIncome": "Ingresos de Hoy",
+    "monthIncome": "Ingresos del Mes",
+    "pendingPayments": "Pagos Pendientes",
+    "todaySummary": "Resumen de Hoy",
+    "completedToday": "Completadas",
+    "inProgress": "En Progreso",
+    "scheduledRemaining": "Programadas"
   }
 }

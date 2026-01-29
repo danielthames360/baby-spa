@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, User, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
-type UserRole = "ADMIN" | "RECEPTION" | "THERAPIST";
+type UserRole = "OWNER" | "ADMIN" | "RECEPTION" | "THERAPIST";
 type PayFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 
 interface UserData {
@@ -44,10 +44,15 @@ interface UserDialogProps {
   locale: string;
   user?: UserData | null;
   trigger?: React.ReactNode;
+  currentUserRole?: UserRole;
 }
 
-const ROLES: UserRole[] = ["ADMIN", "RECEPTION", "THERAPIST"];
+// Solo OWNER puede ver/crear OWNER. Los demás solo ven roles menores
+const ROLES: UserRole[] = ["OWNER", "ADMIN", "RECEPTION", "THERAPIST"];
 const PAY_FREQUENCIES: PayFrequency[] = ["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"];
+
+// Contraseña temporal predefinida para nuevos usuarios
+const DEFAULT_PASSWORD = "cambiar123";
 
 export function UserDialog({
   open,
@@ -55,12 +60,18 @@ export function UserDialog({
   locale,
   user,
   trigger,
+  currentUserRole,
 }: UserDialogProps) {
   const t = useTranslations("users");
   const tCommon = useTranslations("common");
   const router = useRouter();
 
   const isEditing = !!user;
+
+  // Solo OWNER puede ver/crear usuarios OWNER
+  const availableRoles = currentUserRole === "OWNER"
+    ? ROLES
+    : ROLES.filter(r => r !== "OWNER");
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -78,6 +89,7 @@ export function UserDialog({
   // Reset form when dialog opens/closes or user changes
   useEffect(() => {
     if (open && user) {
+      // Editando usuario existente
       setUsername(user.username);
       setEmail(user.email || "");
       setPassword("");
@@ -86,7 +98,20 @@ export function UserDialog({
       setPhone(user.phone || "");
       setBaseSalary(user.baseSalary?.toString() || "");
       setPayFrequency(user.payFrequency);
+      setShowPassword(false);
+    } else if (open && !user) {
+      // Creando nuevo usuario - mostrar contraseña por defecto
+      setUsername("");
+      setEmail("");
+      setPassword(DEFAULT_PASSWORD);
+      setName("");
+      setRole("THERAPIST");
+      setPhone("");
+      setBaseSalary("");
+      setPayFrequency("MONTHLY");
+      setShowPassword(true); // Mostrar contraseña visible al crear
     } else if (!open) {
+      // Dialog cerrado - limpiar todo
       setUsername("");
       setEmail("");
       setPassword("");
@@ -239,6 +264,11 @@ export function UserDialog({
               )}
             </Button>
           </div>
+          {!isEditing && (
+            <p className="text-xs text-amber-600">
+              💡 {t("dialog.passwordChangeRequired")}
+            </p>
+          )}
         </div>
 
         {/* Role */}
@@ -249,7 +279,7 @@ export function UserDialog({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <SelectItem key={r} value={r}>
                   {t(`roles.${r}`)}
                 </SelectItem>

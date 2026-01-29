@@ -66,6 +66,7 @@ interface PackageFormDialogProps {
   onOpenChange: (open: boolean) => void;
   package?: PackageData | null;
   onSuccess: () => void;
+  readOnly?: boolean;
 }
 
 export function PackageFormDialog({
@@ -73,6 +74,7 @@ export function PackageFormDialog({
   onOpenChange,
   package: packageData,
   onSuccess,
+  readOnly = false,
 }: PackageFormDialogProps) {
   const t = useTranslations();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -223,15 +225,19 @@ export function PackageFormDialog({
               <Package className="h-5 w-5 text-teal-600" />
             </div>
             <DialogTitle className="text-xl font-semibold text-gray-800">
-              {packageData
-                ? t("packages.editPackage")
-                : t("packages.newPackage")}
+              {readOnly
+                ? t("packages.viewPackage")
+                : packageData
+                  ? t("packages.editPackage")
+                  : t("packages.newPackage")}
             </DialogTitle>
           </div>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className={`space-y-4 ${readOnly ? "[&_input]:disabled:bg-gray-50 [&_input]:disabled:cursor-not-allowed [&_textarea]:disabled:bg-gray-50 [&_textarea]:disabled:cursor-not-allowed" : ""}`}>
+            {/* Disable all form fields in readOnly mode */}
+            <fieldset disabled={readOnly} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -243,8 +249,9 @@ export function PackageFormDialog({
                   <FormControl>
                     <Input
                       {...field}
+                      disabled={readOnly}
                       placeholder={t("packages.form.namePlaceholder")}
-                      className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                      className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20 disabled:bg-gray-50 disabled:cursor-not-allowed"
                     />
                   </FormControl>
                   <FormMessage>
@@ -265,8 +272,9 @@ export function PackageFormDialog({
                   <FormControl>
                     <Textarea
                       {...field}
+                      disabled={readOnly}
                       placeholder={t("packages.form.descriptionPlaceholder")}
-                      className="min-h-[80px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                      className="min-h-[80px] rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20 disabled:bg-gray-50 disabled:cursor-not-allowed"
                     />
                   </FormControl>
                   <FormMessage>
@@ -287,9 +295,10 @@ export function PackageFormDialog({
                   <Select
                     value={field.value || ""}
                     onValueChange={(value) => field.onChange(value || null)}
+                    disabled={readOnly}
                   >
                     <FormControl>
-                      <SelectTrigger className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20">
+                      <SelectTrigger className="h-11 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20 disabled:bg-gray-50 disabled:cursor-not-allowed">
                         <SelectValue placeholder={t("packages.form.categoryPlaceholder")} />
                       </SelectTrigger>
                     </FormControl>
@@ -320,12 +329,13 @@ export function PackageFormDialog({
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => field.onChange("BABY")}
+                      onClick={() => !readOnly && field.onChange("BABY")}
+                      disabled={readOnly}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         field.value === "BABY"
                           ? "border-teal-500 bg-teal-50 text-teal-700"
                           : "border-gray-200 hover:border-teal-200 hover:bg-teal-50/50"
-                      }`}
+                      } ${readOnly ? "cursor-not-allowed opacity-70" : ""}`}
                     >
                       <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
                         field.value === "BABY"
@@ -341,12 +351,13 @@ export function PackageFormDialog({
                     </button>
                     <button
                       type="button"
-                      onClick={() => field.onChange("PARENT")}
+                      onClick={() => !readOnly && field.onChange("PARENT")}
+                      disabled={readOnly}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         field.value === "PARENT"
                           ? "border-pink-500 bg-pink-50 text-pink-700"
                           : "border-gray-200 hover:border-pink-200 hover:bg-pink-50/50"
-                      }`}
+                      } ${readOnly ? "cursor-not-allowed opacity-70" : ""}`}
                     >
                       <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
                         field.value === "PARENT"
@@ -696,30 +707,44 @@ export function PackageFormDialog({
                 </FormItem>
               )}
             />
+            </fieldset>
 
             <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="flex-1 h-11 rounded-xl border-2 border-gray-200"
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("common.saving")}
-                  </>
-                ) : (
-                  t("common.save")
-                )}
-              </Button>
+              {readOnly ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="flex-1 h-11 rounded-xl border-2 border-gray-200"
+                >
+                  {t("common.close")}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="flex-1 h-11 rounded-xl border-2 border-gray-200"
+                  >
+                    {t("common.cancel")}
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 h-11 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("common.saving")}
+                      </>
+                    ) : (
+                      t("common.save")
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </form>
         </Form>

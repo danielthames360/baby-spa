@@ -3,12 +3,13 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { expenseService } from "@/lib/services/expense-service";
-import { ExpenseCategory } from "@prisma/client";
+import { ExpenseCategory, UserRole } from "@prisma/client";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { ExpenseFilters } from "@/components/expenses/expense-filters";
 import { ExpenseDialog } from "@/components/expenses/expense-dialog";
 import { ExpenseSummary } from "@/components/expenses/expense-summary";
 import { fromDateOnly } from "@/lib/utils/date-utils";
+import { hasPermission } from "@/lib/permissions";
 
 interface ExpensesPageProps {
   params: Promise<{ locale: string }>;
@@ -31,10 +32,14 @@ export default async function ExpensesPage({
     redirect(`/${locale}/login`);
   }
 
-  // Only ADMIN can access this page
-  if (session.user.role !== "ADMIN") {
+  // OWNER, ADMIN, and RECEPTION can access this page
+  const userRole = session.user.role as UserRole;
+  if (!["OWNER", "ADMIN", "RECEPTION"].includes(userRole)) {
     redirect(`/${locale}/admin/dashboard`);
   }
+
+  // Check if user can view all expenses (OWNER/ADMIN only)
+  const canViewAll = hasPermission(userRole, "expenses:view-all");
 
   const t = await getTranslations("expenses");
   const resolvedSearchParams = await searchParams;
@@ -93,7 +98,9 @@ export default async function ExpensesPage({
           <h1 className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-nunito text-3xl font-bold text-transparent">
             {t("title")}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {canViewAll ? t("subtitle") : t("subtitleReception")}
+          </p>
         </div>
         <ExpenseDialog
           locale={locale}
@@ -105,30 +112,43 @@ export default async function ExpensesPage({
         />
       </div>
 
-      {/* Summary */}
-      <ExpenseSummary
-        summaryByCategory={summaryByCategory}
-        total={total}
-        locale={locale}
-      />
+      {/* Summary - Only for users who can view all */}
+      {canViewAll && (
+        <ExpenseSummary
+          summaryByCategory={summaryByCategory}
+          total={total}
+          locale={locale}
+        />
+      )}
 
-      {/* Filters */}
-      <ExpenseFilters
-        locale={locale}
-        initialFilters={{
-          category: resolvedSearchParams.category,
-          from: resolvedSearchParams.from || fromDateOnly(defaultFrom),
-          to: resolvedSearchParams.to || fromDateOnly(defaultTo),
-        }}
-      />
+      {/* Filters - Only for users who can view all */}
+      {canViewAll && (
+        <ExpenseFilters
+          locale={locale}
+          initialFilters={{
+            category: resolvedSearchParams.category,
+            from: resolvedSearchParams.from || fromDateOnly(defaultFrom),
+            to: resolvedSearchParams.to || fromDateOnly(defaultTo),
+          }}
+        />
+      )}
 
-      {/* Expenses List */}
-      <ExpenseList
-        expenses={expenses}
-        pagination={pagination}
-        locale={locale}
-        emptyMessage={t("empty")}
-      />
+      {/* Expenses List - Only for users who can view all */}
+      {canViewAll && (
+        <ExpenseList
+          expenses={expenses}
+          pagination={pagination}
+          locale={locale}
+          emptyMessage={t("empty")}
+        />
+      )}
+
+      {/* Message for RECEPTION users */}
+      {!canViewAll && (
+        <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center shadow-lg backdrop-blur-sm">
+          <p className="text-gray-600">{t("receptionMessage")}</p>
+        </div>
+      )}
     </div>
   );
 }

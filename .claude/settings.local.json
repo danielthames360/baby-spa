@@ -73,7 +73,12 @@
       "Bash(then echo \"$f\")",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "WebFetch(domain:www.reactbits.dev)",
+      "WebSearch",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(dir:*)",
+      "mcp__prisma__migrate-dev"
     ]
   }
 }

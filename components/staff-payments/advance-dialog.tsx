@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SplitPaymentForm } from "@/components/payments/split-payment-form";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 
 type PayFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 
@@ -279,7 +280,7 @@ export function AdvanceDialog({
               <SplitPaymentForm
                 totalAmount={amountNum}
                 onPaymentDetailsChange={setPaymentDetails}
-                currency={locale === "pt-BR" ? "R$" : "Bs."}
+                currency={getCurrencySymbol(locale)}
               />
             </div>
           )}

@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { SplitPaymentForm } from "@/components/payments/split-payment-form";
+import { getTodayDateString } from "@/lib/form-utils";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 
 // Constants outside component
 const EXPENSE_CATEGORIES = [
@@ -62,9 +64,7 @@ export function ExpenseDialog({ locale, trigger }: ExpenseDialogProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
-  const [expenseDate, setExpenseDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [expenseDate, setExpenseDate] = useState(getTodayDateString());
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
 
   // Reset form when dialog closes
@@ -74,7 +74,7 @@ export function ExpenseDialog({ locale, trigger }: ExpenseDialogProps) {
       setDescription("");
       setAmount("");
       setReference("");
-      setExpenseDate(new Date().toISOString().split("T")[0]);
+      setExpenseDate(getTodayDateString());
       setPaymentDetails([]);
     }
   }, [open]);
@@ -213,7 +213,7 @@ export function ExpenseDialog({ locale, trigger }: ExpenseDialogProps) {
             <SplitPaymentForm
               totalAmount={amountNum}
               onPaymentDetailsChange={setPaymentDetails}
-              currency={locale === "pt-BR" ? "R$" : "Bs."}
+              currency={getCurrencySymbol(locale)}
             />
           </div>
 

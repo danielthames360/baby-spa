@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import {
   Package,
@@ -11,12 +12,15 @@ import {
   ToggleLeft,
   ToggleRight,
   Edit,
+  Eye,
   Sparkles,
   Settings2,
   EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { hasPermission } from "@/lib/permissions";
+import { UserRole } from "@prisma/client";
 
 // bundle-dynamic-imports: Lazy load dialogs to reduce initial bundle
 const PackageFormDialog = dynamic(
@@ -59,6 +63,12 @@ export default function PackagesPage() {
   const t = useTranslations();
   const params = useParams();
   const locale = params.locale as string;
+  const { data: session } = useSession();
+  const userRole = (session?.user?.role as UserRole) || "RECEPTION";
+
+  // Permisos
+  const canCreate = hasPermission(userRole, "packages:create");
+  const canEdit = hasPermission(userRole, "packages:edit");
 
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -68,6 +78,7 @@ export default function PackagesPage() {
   const [selectedPackage, setSelectedPackage] = useState<PackageItem | null>(
     null
   );
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
@@ -124,11 +135,19 @@ export default function PackagesPage() {
 
   const handleEdit = (pkg: PackageItem) => {
     setSelectedPackage(pkg);
+    setIsReadOnly(false);
+    setShowDialog(true);
+  };
+
+  const handleView = (pkg: PackageItem) => {
+    setSelectedPackage(pkg);
+    setIsReadOnly(true);
     setShowDialog(true);
   };
 
   const handleCreate = () => {
     setSelectedPackage(null);
+    setIsReadOnly(false);
     setShowDialog(true);
   };
 
@@ -198,13 +217,15 @@ export default function PackagesPage() {
           </h1>
           <p className="mt-1 text-gray-500">{t("packages.subtitle")}</p>
         </div>
-        <Button
-          onClick={handleCreate}
-          className="h-12 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-teal-400/40"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          {t("packages.newPackage")}
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={handleCreate}
+            className="h-12 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-teal-400/40"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            {t("packages.newPackage")}
+          </Button>
+        )}
       </div>
 
       {/* Category Filter */}
@@ -242,17 +263,19 @@ export default function PackagesPage() {
         >
           {t("packages.categories.uncategorized")}
         </button>
-        <div className="ml-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCategoryManager(true)}
-            className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
-          >
-            <Settings2 className="mr-1.5 h-4 w-4" />
-            {t("categoryManager.title")}
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCategoryManager(true)}
+              className="rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+            >
+              <Settings2 className="mr-1.5 h-4 w-4" />
+              {t("categoryManager.title")}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Package Form Dialog */}
@@ -261,6 +284,7 @@ export default function PackagesPage() {
         onOpenChange={setShowDialog}
         package={selectedPackage}
         onSuccess={handleDialogSuccess}
+        readOnly={isReadOnly}
       />
 
       {/* Category Manager Dialog */}
@@ -370,37 +394,51 @@ export default function PackagesPage() {
 
                   {/* Actions */}
                   <div className="mt-4 flex gap-2 pt-4 border-t border-gray-100">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(pkg)}
-                      className="flex-1 h-9 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
-                    >
-                      <Edit className="mr-1.5 h-4 w-4" />
-                      {t("common.edit")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(pkg)}
-                      disabled={isToggling}
-                      className={`flex-1 h-9 rounded-xl border-2 ${
-                        pkg.isActive
-                          ? "border-gray-200 text-gray-600 hover:bg-gray-50"
-                          : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                      }`}
-                    >
-                      {isToggling ? (
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      ) : pkg.isActive ? (
-                        <ToggleRight className="mr-1.5 h-4 w-4" />
-                      ) : (
-                        <ToggleLeft className="mr-1.5 h-4 w-4" />
-                      )}
-                      {pkg.isActive
-                        ? t("packages.deactivate")
-                        : t("packages.activate")}
-                    </Button>
+                    {canEdit ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(pkg)}
+                          className="flex-1 h-9 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+                        >
+                          <Edit className="mr-1.5 h-4 w-4" />
+                          {t("common.edit")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleActive(pkg)}
+                          disabled={isToggling}
+                          className={`flex-1 h-9 rounded-xl border-2 ${
+                            pkg.isActive
+                              ? "border-gray-200 text-gray-600 hover:bg-gray-50"
+                              : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {isToggling ? (
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                          ) : pkg.isActive ? (
+                            <ToggleRight className="mr-1.5 h-4 w-4" />
+                          ) : (
+                            <ToggleLeft className="mr-1.5 h-4 w-4" />
+                          )}
+                          {pkg.isActive
+                            ? t("packages.deactivate")
+                            : t("packages.activate")}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleView(pkg)}
+                        className="flex-1 h-9 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+                      >
+                        <Eye className="mr-1.5 h-4 w-4" />
+                        {t("common.view")}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -419,13 +457,15 @@ export default function PackagesPage() {
             <p className="mt-1 text-sm text-gray-400">
               {t("packages.emptyDescription")}
             </p>
-            <Button
-              onClick={handleCreate}
-              className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("packages.newPackage")}
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={handleCreate}
+                className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("packages.newPackage")}
+              </Button>
+            )}
           </div>
         </Card>
       )}

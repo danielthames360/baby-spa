@@ -156,7 +156,7 @@ export function WeekView({
       const aptDateStr = typeof aptDateValue === "string"
         ? aptDateValue.split("T")[0]
         : `${aptDateValue.getFullYear()}-${String(aptDateValue.getMonth() + 1).padStart(2, "0")}-${String(aptDateValue.getDate()).padStart(2, "0")}`;
-      return aptDateStr === dateStr && apt.status !== "CANCELLED";
+      return aptDateStr === dateStr;
     });
   };
 

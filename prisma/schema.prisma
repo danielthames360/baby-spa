@@ -17,9 +17,10 @@ datasource db {
 // ============================================================
 
 enum UserRole {
-  ADMIN
-  RECEPTION
-  THERAPIST
+  OWNER      // Socios - acceso total al sistema
+  ADMIN      // Administrador contratado - operaciones + finanzas limitadas
+  RECEPTION  // Recepcionista - operaciones diarias
+  THERAPIST  // Terapeuta - solo su agenda
 }
 
 enum Gender {
@@ -247,14 +248,15 @@ enum ActivityType {
 // ============================================================
 
 model User {
-  id           String    @id @default(cuid())
-  username     String    @unique
-  email        String?
-  passwordHash String
-  name         String
-  role         UserRole
-  phone        String?
-  isActive     Boolean   @default(true)
+  id                 String    @id @default(cuid())
+  username           String    @unique
+  email              String?
+  passwordHash       String
+  name               String
+  role               UserRole
+  phone              String?
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(true) // Forzar cambio en primer login
 
   // Para control de sueldos
   baseSalary   Decimal?      @db.Decimal(10, 2)

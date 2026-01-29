@@ -16,7 +16,7 @@ export class ApiError extends Error {
 }
 
 // All possible user roles
-export type UserRole = "ADMIN" | "RECEPTION" | "THERAPIST" | "PARENT";
+export type UserRole = "OWNER" | "ADMIN" | "RECEPTION" | "THERAPIST" | "PARENT";
 
 // Type for session with user info
 export type AuthSession = {

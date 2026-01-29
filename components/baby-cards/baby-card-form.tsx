@@ -75,6 +75,7 @@ interface ProductOption {
 }
 
 interface BabyCardFormProps {
+  readOnly?: boolean;
   babyCard?: {
     id: string;
     name: string;
@@ -111,7 +112,7 @@ const REWARD_TYPES = [
   { value: "CUSTOM", icon: Sparkles },
 ] as const;
 
-export function BabyCardForm({ babyCard }: BabyCardFormProps) {
+export function BabyCardForm({ babyCard, readOnly = false }: BabyCardFormProps) {
   const t = useTranslations();
   const params = useParams();
   const router = useRouter();
@@ -286,6 +287,7 @@ export function BabyCardForm({ babyCard }: BabyCardFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <fieldset disabled={readOnly} className="space-y-8">
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left column - Form fields */}
         <div className="lg:col-span-2 space-y-6">
@@ -817,25 +819,39 @@ export function BabyCardForm({ babyCard }: BabyCardFormProps) {
           </div>
         </div>
       </div>
+      </fieldset>
 
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          className="rounded-xl border-2"
-        >
-          {t("common.cancel")}
-        </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-8 text-white shadow-lg shadow-teal-300/50 hover:from-teal-600 hover:to-cyan-600"
-        >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {t("common.save")}
-        </Button>
+        {readOnly ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            className="rounded-xl border-2"
+          >
+            {t("common.close")}
+          </Button>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="rounded-xl border-2"
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-8 text-white shadow-lg shadow-teal-300/50 hover:from-teal-600 hover:to-cyan-600"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("common.save")}
+            </Button>
+          </>
+        )}
       </div>
     </form>
   );

@@ -2,6 +2,8 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,6 +24,8 @@ interface AdminHeaderProps {
 export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
   const { data: session } = useSession();
   const t = useTranslations();
+  const params = useParams();
+  const locale = params.locale as string;
 
   const userInitials = session?.user?.name
     ?.split(" ")
@@ -84,10 +88,12 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-teal-100" />
-            <DropdownMenuItem className="cursor-pointer rounded-lg hover:bg-teal-50">
-              <User className="mr-2 h-4 w-4 text-teal-600" />
-              {t("nav.profile")}
-            </DropdownMenuItem>
+            <Link href={`/${locale}/admin/profile`}>
+              <DropdownMenuItem className="cursor-pointer rounded-lg hover:bg-teal-50">
+                <User className="mr-2 h-4 w-4 text-teal-600" />
+                {t("nav.profile")}
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuSeparator className="bg-teal-100" />
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}

@@ -50,6 +50,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email || "",
           name: user.name,
           role: user.role,
+          mustChangePassword: user.mustChangePassword,
         };
       },
     }),
@@ -93,16 +94,29 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
         token.role = user.role;
+        token.mustChangePassword = user.mustChangePassword;
         if (user.parentId) {
           token.parentId = user.parentId;
         }
       }
+
+      // Cuando se actualiza la sesión, re-verificar mustChangePassword desde la BD
+      if (trigger === "update" && token.id && token.role !== "PARENT") {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { mustChangePassword: true },
+        });
+        if (dbUser) {
+          token.mustChangePassword = dbUser.mustChangePassword;
+        }
+      }
+
       return token;
     },
 
@@ -111,8 +125,9 @@ export const authOptions: NextAuthOptions = {
         id: token.id as string,
         email: token.email as string,
         name: token.name as string,
-        role: token.role as "ADMIN" | "RECEPTION" | "THERAPIST" | "PARENT",
+        role: token.role as "OWNER" | "ADMIN" | "RECEPTION" | "THERAPIST" | "PARENT",
         parentId: token.parentId as string | undefined,
+        mustChangePassword: token.mustChangePassword as boolean | undefined,
       };
       return session;
     },
@@ -161,11 +176,15 @@ export async function requireRole(allowedRoles: string[]) {
 }
 
 export async function requireStaff() {
-  return requireRole(["ADMIN", "RECEPTION", "THERAPIST"]);
+  return requireRole(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
 }
 
 export async function requireAdmin() {
-  return requireRole(["ADMIN"]);
+  return requireRole(["OWNER", "ADMIN"]);
+}
+
+export async function requireOwner() {
+  return requireRole(["OWNER"]);
 }
 
 export async function requireParent() {

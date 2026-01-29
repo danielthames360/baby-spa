@@ -64,6 +64,45 @@
     "hello": "Olá"
   },
 
+  "profile": {
+    "title": "Meu Perfil",
+    "subtitle": "Gerencie suas informações pessoais e segurança",
+    "personalInfo": "Informações Pessoais",
+    "accountInfo": "Informações da Conta",
+    "security": "Segurança",
+    "securityDesc": "Mantenha sua conta segura alterando sua senha periodicamente.",
+    "name": "Nome completo",
+    "username": "Nome de usuário",
+    "usernameReadOnly": "O nome de usuário não pode ser alterado",
+    "email": "E-mail",
+    "phone": "Telefone",
+    "role": "Função",
+    "memberSince": "Membro desde",
+    "lastLogin": "Último acesso",
+    "changePassword": "Alterar Senha",
+    "changePasswordDesc": "Digite sua senha atual e depois sua nova senha.",
+    "currentPassword": "Senha atual",
+    "newPassword": "Nova senha",
+    "confirmPassword": "Confirmar nova senha",
+    "passwordMinLength": "Mínimo 6 caracteres",
+    "passwordSecure": "Sua senha está atualizada",
+    "mustChangePassword": "Alteração de senha obrigatória",
+    "mustChangePasswordDesc": "Por segurança, você deve alterar sua senha antes de continuar.",
+    "profileUpdated": "Perfil atualizado com sucesso",
+    "passwordChanged": "Senha alterada com sucesso",
+    "errors": {
+      "loadFailed": "Erro ao carregar o perfil",
+      "updateFailed": "Erro ao atualizar",
+      "passwordsDoNotMatch": "As senhas não coincidem",
+      "CURRENT_PASSWORD_REQUIRED": "Digite sua senha atual",
+      "PASSWORD_TOO_SHORT": "A senha deve ter pelo menos 6 caracteres",
+      "CONFIRM_PASSWORD_REQUIRED": "Confirme sua nova senha",
+      "PASSWORDS_DO_NOT_MATCH": "As senhas não coincidem",
+      "CURRENT_PASSWORD_INCORRECT": "A senha atual está incorreta",
+      "NEW_PASSWORD_SAME_AS_CURRENT": "A nova senha deve ser diferente da atual"
+    }
+  },
+
   "auth": {
     "login": "Entrar",
     "logout": "Sair",
@@ -128,6 +167,7 @@
   },
 
   "roles": {
+    "owner": "Sócio",
     "admin": "Administrador",
     "reception": "Recepção",
     "therapist": "Terapeuta",
@@ -532,6 +572,7 @@
     "subtitle": "Configuração de pacotes de sessões",
     "newPackage": "Novo Pacote",
     "editPackage": "Editar Pacote",
+    "viewPackage": "Ver Pacote",
     "active": "Ativo",
     "inactive": "Inativo",
     "internalOnly": "Apenas interno",
@@ -2516,6 +2557,7 @@
     "neverLoggedIn": "Nunca acessou",
 
     "roles": {
+      "OWNER": "Sócio",
       "ADMIN": "Administrador",
       "RECEPTION": "Recepção",
       "THERAPIST": "Terapeuta"
@@ -2558,6 +2600,7 @@
       "emailPlaceholder": "email@exemplo.com",
       "password": "Senha",
       "leaveBlankToKeep": "deixe vazio para manter",
+      "passwordChangeRequired": "O usuário deverá alterar esta senha no primeiro acesso",
       "role": "Função",
       "phone": "Telefone",
       "salarySection": "Informações de Salário",
@@ -2594,6 +2637,8 @@
   "expenses": {
     "title": "Despesas Administrativas",
     "subtitle": "Registro e acompanhamento de despesas operacionais",
+    "subtitleReception": "Registre as despesas operacionais do dia",
+    "receptionMessage": "Use o botão 'Registrar Despesa' para adicionar uma nova despesa.",
     "newExpense": "Registrar Despesa",
     "empty": "Nenhuma despesa registrada neste período",
     "createSuccess": "Despesa registrada com sucesso",
@@ -2660,5 +2705,22 @@
       "createFailed": "Erro ao registrar a despesa",
       "deleteFailed": "Erro ao excluir a despesa"
     }
+  },
+
+  "dashboard": {
+    "welcomeOwner": "Painel de Controle - Vista Completa",
+    "welcomeAdmin": "Painel de Administração",
+    "welcomeReception": "Painel de Operações",
+    "todayAppointments": "Agendamentos de Hoje",
+    "pendingCheckouts": "Checkouts Pendentes",
+    "activeClients": "Clientes Ativos",
+    "registeredBabies": "Bebês Registrados",
+    "todayIncome": "Receita de Hoje",
+    "monthIncome": "Receita do Mês",
+    "pendingPayments": "Pagamentos Pendentes",
+    "todaySummary": "Resumo de Hoje",
+    "completedToday": "Concluídas",
+    "inProgress": "Em Progresso",
+    "scheduledRemaining": "Agendadas"
   }
 }

@@ -16,7 +16,7 @@ const statsSchema = z.object({
 // GET /api/staff-payments/stats?staffId=xxx&periodStart=2026-01-01&periodEnd=2026-01-31
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const { searchParams } = new URL(request.url);
 

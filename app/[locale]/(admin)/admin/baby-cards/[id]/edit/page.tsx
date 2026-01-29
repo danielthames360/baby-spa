@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BabyCardForm } from "@/components/baby-cards/baby-card-form";
+import { hasPermission } from "@/lib/permissions";
+import { UserRole } from "@prisma/client";
 
 interface BabyCardData {
   id: string;
@@ -39,8 +42,16 @@ interface BabyCardData {
 export default function EditBabyCardPage() {
   const t = useTranslations();
   const params = useParams();
+  const searchParams = useSearchParams();
   const locale = params.locale as string;
   const id = params.id as string;
+  const { data: session } = useSession();
+  const userRole = (session?.user?.role as UserRole) || "RECEPTION";
+
+  // Determinar si es modo solo lectura
+  const isViewMode = searchParams.get("view") === "true";
+  const canEdit = hasPermission(userRole, "baby-cards:create");
+  const readOnly = isViewMode || !canEdit;
 
   const [babyCard, setBabyCard] = useState<BabyCardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,14 +111,14 @@ export default function EditBabyCardPage() {
         </Link>
         <div>
           <h1 className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-nunito text-3xl font-bold text-transparent">
-            {t("babyCard.editCard")}
+            {readOnly ? t("babyCard.viewCard") : t("babyCard.editCard")}
           </h1>
           <p className="mt-1 text-gray-500">{babyCard.name}</p>
         </div>
       </div>
 
       {/* Form */}
-      <BabyCardForm babyCard={babyCard} />
+      <BabyCardForm babyCard={babyCard} readOnly={readOnly} />
     </div>
   );
 }

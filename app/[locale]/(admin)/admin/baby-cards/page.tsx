@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   IdCard,
@@ -11,6 +12,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Edit,
+  Eye,
   Gift,
   Tag,
   ShoppingBag,
@@ -19,6 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BabyCardVisual } from "@/components/baby-cards/baby-card-visual";
+import { hasPermission } from "@/lib/permissions";
+import { UserRole } from "@prisma/client";
 
 interface SpecialPrice {
   id: string;
@@ -60,6 +64,11 @@ export default function BabyCardsPage() {
   const params = useParams();
   const router = useRouter();
   const locale = params.locale as string;
+  const { data: session } = useSession();
+  const userRole = (session?.user?.role as UserRole) || "RECEPTION";
+
+  // Permisos
+  const canCreate = hasPermission(userRole, "baby-cards:create");
 
   const [babyCards, setBabyCards] = useState<BabyCardItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,12 +135,14 @@ export default function BabyCardsPage() {
           </h1>
           <p className="mt-1 text-gray-500">{t("babyCard.subtitle")}</p>
         </div>
-        <Link href={`/${locale}/admin/baby-cards/new`}>
-          <Button className="h-12 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-teal-400/40">
-            <Plus className="mr-2 h-5 w-5" />
-            {t("babyCard.newCard")}
-          </Button>
-        </Link>
+        {canCreate && (
+          <Link href={`/${locale}/admin/baby-cards/new`}>
+            <Button className="h-12 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 font-semibold text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-teal-400/40">
+              <Plus className="mr-2 h-5 w-5" />
+              {t("babyCard.newCard")}
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Filter */}
@@ -280,41 +291,59 @@ export default function BabyCardsPage() {
 
                   {/* Actions */}
                   <div className="mt-4 flex gap-2 pt-4 border-t border-gray-100">
-                    <Link
-                      href={`/${locale}/admin/baby-cards/${card.id}/edit`}
-                      className="flex-1"
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full h-9 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+                    {canCreate ? (
+                      <>
+                        <Link
+                          href={`/${locale}/admin/baby-cards/${card.id}/edit`}
+                          className="flex-1"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full h-9 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+                          >
+                            <Edit className="mr-1.5 h-4 w-4" />
+                            {t("common.edit")}
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleActive(card)}
+                          disabled={isToggling}
+                          className={`flex-1 h-9 rounded-xl border-2 ${
+                            card.isActive
+                              ? "border-gray-200 text-gray-600 hover:bg-gray-50"
+                              : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {isToggling ? (
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                          ) : card.isActive ? (
+                            <ToggleRight className="mr-1.5 h-4 w-4" />
+                          ) : (
+                            <ToggleLeft className="mr-1.5 h-4 w-4" />
+                          )}
+                          {card.isActive
+                            ? t("babyCard.list.deactivate")
+                            : t("babyCard.list.activate")}
+                        </Button>
+                      </>
+                    ) : (
+                      <Link
+                        href={`/${locale}/admin/baby-cards/${card.id}/edit?view=true`}
+                        className="flex-1"
                       >
-                        <Edit className="mr-1.5 h-4 w-4" />
-                        {t("common.edit")}
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(card)}
-                      disabled={isToggling}
-                      className={`flex-1 h-9 rounded-xl border-2 ${
-                        card.isActive
-                          ? "border-gray-200 text-gray-600 hover:bg-gray-50"
-                          : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                      }`}
-                    >
-                      {isToggling ? (
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      ) : card.isActive ? (
-                        <ToggleRight className="mr-1.5 h-4 w-4" />
-                      ) : (
-                        <ToggleLeft className="mr-1.5 h-4 w-4" />
-                      )}
-                      {card.isActive
-                        ? t("babyCard.list.deactivate")
-                        : t("babyCard.list.activate")}
-                    </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-9 rounded-xl border-2 border-teal-200 text-teal-600 hover:bg-teal-50"
+                        >
+                          <Eye className="mr-1.5 h-4 w-4" />
+                          {t("common.view")}
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -333,12 +362,14 @@ export default function BabyCardsPage() {
             <p className="mt-1 text-sm text-gray-400">
               {t("babyCard.list.emptyDesc")}
             </p>
-            <Link href={`/${locale}/admin/baby-cards/new`}>
-              <Button className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("babyCard.newCard")}
-              </Button>
-            </Link>
+            {canCreate && (
+              <Link href={`/${locale}/admin/baby-cards/new`}>
+                <Button className="mt-4 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("babyCard.newCard")}
+                </Button>
+              </Link>
+            )}
           </div>
         </Card>
       )}

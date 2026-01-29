@@ -1,16 +1,31 @@
 "use client";
 
-import { Bell, Clock, X, Calendar, Check } from "lucide-react";
+import { CalendarPlus, Clock, X, Calendar, Check, CalendarClock, CalendarX2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NotificationData } from "@/lib/stores/notification-store";
 import { useTranslations } from "next-intl";
+import { getNotificationStyle, getNotificationIconType } from "@/lib/utils/notification-utils";
 
 interface NotificationToastProps {
   notification: NotificationData;
   onMarkAsRead: (id: string) => void;
   onView: (notification: NotificationData) => void;
   onDismiss: (id: string) => void;
+}
+
+// Icon component based on notification type
+function NotificationIcon({ iconType }: { iconType: string }) {
+  switch (iconType) {
+    case "clock":
+      return <Clock className="h-3.5 w-3.5 text-white" />;
+    case "calendar-clock":
+      return <CalendarClock className="h-3.5 w-3.5 text-white" />;
+    case "calendar-x":
+      return <CalendarX2 className="h-3.5 w-3.5 text-white" />;
+    default:
+      return <CalendarPlus className="h-3.5 w-3.5 text-white" />;
+  }
 }
 
 export function NotificationToast({
@@ -21,6 +36,10 @@ export function NotificationToast({
 }: NotificationToastProps) {
   const t = useTranslations("notifications");
   const isPending = notification.metadata?.isPendingPayment;
+
+  // Get style based on notification type
+  const style = getNotificationStyle(notification.type, isPending);
+  const iconType = getNotificationIconType(notification.type, isPending);
 
   const handleView = () => {
     onView(notification);
@@ -37,9 +56,9 @@ export function NotificationToast({
       className={cn(
         "pointer-events-auto w-72 overflow-hidden rounded-xl border backdrop-blur-md",
         "animate-in slide-in-from-right-full fade-in duration-300",
-        isPending
-          ? "border-amber-200/50 bg-white/80 shadow-lg shadow-amber-500/10"
-          : "border-white/50 bg-white/80 shadow-lg shadow-teal-500/10"
+        style.border,
+        "bg-white/80 shadow-lg",
+        style.shadow
       )}
     >
       {/* Compact header */}
@@ -47,16 +66,10 @@ export function NotificationToast({
         <div
           className={cn(
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm",
-            isPending
-              ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-200/50"
-              : "bg-gradient-to-br from-teal-400 to-cyan-500 shadow-teal-200/50"
+            style.iconGradient
           )}
         >
-          {isPending ? (
-            <Clock className="h-3.5 w-3.5 text-white" />
-          ) : (
-            <Bell className="h-3.5 w-3.5 text-white" />
-          )}
+          <NotificationIcon iconType={iconType} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -64,7 +77,7 @@ export function NotificationToast({
             <span
               className={cn(
                 "text-sm font-semibold leading-tight",
-                isPending ? "text-amber-900" : "text-gray-900"
+                style.titleText
               )}
             >
               {notification.title}
@@ -97,10 +110,8 @@ export function NotificationToast({
         <Button
           size="sm"
           className={cn(
-            "h-7 gap-1 rounded-lg px-2.5 text-xs font-medium shadow-sm",
-            isPending
-              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
-              : "bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600"
+            "h-7 gap-1 rounded-lg px-2.5 text-xs font-medium shadow-sm text-white",
+            style.buttonGradient
           )}
           onClick={handleView}
         >

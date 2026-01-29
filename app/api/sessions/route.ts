@@ -22,8 +22,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const appointments = await sessionService.getPendingEvaluations();
-      const count = await sessionService.getPendingEvaluationsCount();
+      const [appointments, count] = await Promise.all([
+        sessionService.getPendingEvaluations(),
+        sessionService.getPendingEvaluationsCount(),
+      ]);
 
       return NextResponse.json({ appointments, count });
     }

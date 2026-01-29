@@ -31,8 +31,8 @@ export default async function ActivityPage({
     redirect(`/${locale}/login`);
   }
 
-  // Only ADMIN can access this page
-  if (session.user.role !== "ADMIN") {
+  // Only OWNER and ADMIN can access this page
+  if (!["OWNER", "ADMIN"].includes(session.user.role)) {
     redirect(`/${locale}/admin/dashboard`);
   }
 

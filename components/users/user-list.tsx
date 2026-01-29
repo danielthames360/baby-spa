@@ -41,11 +41,12 @@ import {
   Headset,
   Heart,
   Loader2,
+  Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { UserDialog } from "./user-dialog";
 
-type UserRole = "ADMIN" | "RECEPTION" | "THERAPIST";
+type UserRole = "OWNER" | "ADMIN" | "RECEPTION" | "THERAPIST";
 type PayFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 
 interface User {
@@ -78,6 +79,7 @@ interface UserListProps {
 }
 
 const ROLE_CONFIG: Record<UserRole, { icon: typeof Shield; color: string; bgColor: string }> = {
+  OWNER: { icon: Crown, color: "text-amber-700", bgColor: "bg-amber-100" },
   ADMIN: { icon: Shield, color: "text-purple-700", bgColor: "bg-purple-100" },
   RECEPTION: { icon: Headset, color: "text-blue-700", bgColor: "bg-blue-100" },
   THERAPIST: { icon: Heart, color: "text-pink-700", bgColor: "bg-pink-100" },

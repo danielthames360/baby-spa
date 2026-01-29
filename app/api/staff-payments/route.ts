@@ -95,7 +95,7 @@ function serializePayment(payment: any) {
 // ============================================================
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const { searchParams } = new URL(request.url);
     const filters = validateRequest(
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
 // ============================================================
 export async function POST(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN"]);
+    const session = await withAuth(["OWNER"]);
     const body = await request.json();
 
     // Determine which type of payment/movement to create

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import {
@@ -43,10 +44,18 @@ interface SystemSettings {
 
 export default function SettingsPage() {
   const t = useTranslations();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isAdmin = session?.user?.role === "ADMIN";
+  const isOwner = session?.user?.role === "OWNER";
+
+  // Redirect non-OWNER users
+  useEffect(() => {
+    if (status === "authenticated" && !isOwner) {
+      router.replace("/admin/dashboard");
+    }
+  }, [status, isOwner, router]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -157,7 +166,7 @@ export default function SettingsPage() {
           whatsappNumber,
           whatsappMessage,
           // Only include notification settings if user is ADMIN
-          ...(isAdmin && {
+          ...(isOwner && {
             notificationPollingInterval: pollingInterval,
             notificationExpirationDays: expirationDays,
           }),
@@ -346,7 +355,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Notification Configuration Card - Only for ADMIN */}
-      {isAdmin && (
+      {isOwner && (
         <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
           <div className="mb-6 flex items-center gap-2">
             <Bell className="h-5 w-5 text-teal-600" />

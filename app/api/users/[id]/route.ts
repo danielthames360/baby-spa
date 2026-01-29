@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const { id } = await params;
 
@@ -32,7 +32,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const { id } = await params;
     const body = await request.json();
@@ -54,7 +54,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const { id } = await params;
 

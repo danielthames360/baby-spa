@@ -6,7 +6,7 @@ import { UserRole } from "@prisma/client";
 import { z } from "zod";
 
 const listSchema = z.object({
-  role: z.enum(["ADMIN", "RECEPTION", "THERAPIST"]).optional(),
+  role: z.enum(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]).optional(),
   isActive: z.enum(["true", "false"]).optional(),
   search: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
@@ -15,7 +15,7 @@ const listSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const { searchParams } = new URL(request.url);
     const filters = validateRequest(
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER"]);
 
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);

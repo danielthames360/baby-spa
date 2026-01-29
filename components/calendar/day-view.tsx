@@ -265,7 +265,8 @@ export function DayView({
       <div className="flex-1 overflow-y-auto">
         {timeSlots.map(({ time }) => {
           // Get appointments that START at this slot time
-          const slotAppointments = activeAppointments.filter(
+          // Show ALL appointments (including cancelled) at this time slot
+          const slotAppointments = appointments.filter(
             (apt) => formatTime(apt.startTime) === time
           );
           // Count overlapping appointments for availability

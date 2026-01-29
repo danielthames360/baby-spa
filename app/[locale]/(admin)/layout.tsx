@@ -8,13 +8,15 @@ import { AdminHeader } from "@/components/layout/admin-header";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { FloatingBubbles } from "@/components/ui/floating-bubbles";
 import { NotificationToastContainer } from "@/components/notifications/notification-toast-container";
+import { ForcePasswordChange } from "@/components/auth/force-password-change";
 import { Loader2 } from "lucide-react";
+import { UserRole } from "@prisma/client";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const ALLOWED_ROLES = ["ADMIN", "RECEPTION", "THERAPIST"];
+const ALLOWED_ROLES = ["OWNER", "ADMIN", "RECEPTION", "THERAPIST"];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { data: session, status } = useSession();
@@ -76,6 +78,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          userRole={session.user.role as UserRole}
         />
       </div>
 
@@ -83,7 +86,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-          <AdminSidebar />
+          <AdminSidebar userRole={session.user.role as UserRole} />
         </SheetContent>
       </Sheet>
 
@@ -92,7 +95,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <AdminHeader onMenuClick={() => setMobileMenuOpen(true)} />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {children}
+          <ForcePasswordChange>
+            {children}
+          </ForcePasswordChange>
         </main>
       </div>
 

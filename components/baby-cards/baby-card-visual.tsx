@@ -18,7 +18,8 @@ const COLOR_THEMES = {
     gridBg: "bg-white/60 border-teal-100",
     sessionNormal: "border-teal-200 bg-white hover:border-teal-300",
     sessionNumber: "text-teal-400",
-    sessionReward: "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
+    sessionReward:
+      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
     statsText: "text-teal-500",
     statsDot: "from-teal-400 to-cyan-400",
     rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
@@ -33,7 +34,8 @@ const COLOR_THEMES = {
     gridBg: "bg-white/60 border-pink-100",
     sessionNormal: "border-pink-200 bg-white hover:border-pink-300",
     sessionNumber: "text-pink-400",
-    sessionReward: "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
+    sessionReward:
+      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
     statsText: "text-pink-500",
     statsDot: "from-pink-400 to-rose-400",
     rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
@@ -48,7 +50,8 @@ const COLOR_THEMES = {
     gridBg: "bg-white/60 border-violet-100",
     sessionNormal: "border-violet-200 bg-white hover:border-violet-300",
     sessionNumber: "text-violet-400",
-    sessionReward: "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
+    sessionReward:
+      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
     statsText: "text-violet-500",
     statsDot: "from-violet-400 to-purple-400",
     rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
@@ -63,7 +66,8 @@ const COLOR_THEMES = {
     gridBg: "bg-white/60 border-emerald-100",
     sessionNormal: "border-emerald-200 bg-white hover:border-emerald-300",
     sessionNumber: "text-emerald-400",
-    sessionReward: "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
+    sessionReward:
+      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
     statsText: "text-emerald-500",
     statsDot: "from-emerald-400 to-green-400",
     rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
@@ -78,7 +82,8 @@ const COLOR_THEMES = {
     gridBg: "bg-white/60 border-orange-100",
     sessionNormal: "border-orange-200 bg-white hover:border-orange-300",
     sessionNumber: "text-orange-400",
-    sessionReward: "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 shadow-teal-200/50",
+    sessionReward:
+      "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 shadow-teal-200/50",
     statsText: "text-orange-500",
     statsDot: "from-orange-400 to-amber-400",
     rewardBg: "from-teal-50 to-cyan-50 border-teal-200 text-teal-600",
@@ -174,7 +179,9 @@ function PreviewCard({
         onMouseLeave={handleMouseLeave}
         style={{
           transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${isHovering ? 1.02 : 1})`,
-          transition: isHovering ? "transform 0.1s ease-out" : "transform 0.5s ease-out",
+          transition: isHovering
+            ? "transform 0.1s ease-out"
+            : "transform 0.5s ease-out",
         }}
         className="relative overflow-hidden rounded-3xl cursor-pointer"
       >
@@ -221,7 +228,9 @@ function PreviewCard({
 
             {/* Card name - centered */}
             <div className="flex-1 text-center min-w-0">
-              <p className="text-[10px] sm:text-xs text-teal-700 font-medium">Baby Spa</p>
+              <p className="text-[10px] sm:text-xs text-teal-700 font-medium">
+                Baby Spa
+              </p>
               <h4 className="font-nunito text-sm sm:text-lg font-bold text-teal-900 truncate">
                 {name || "Baby Card"}
               </h4>
@@ -237,16 +246,22 @@ function PreviewCard({
           <div className="relative bg-white/30 backdrop-blur rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-white/50">
             <div className="space-y-2 sm:space-y-3">
               {Array.from({ length: rows }, (_, rowIndex) => (
-                <div key={rowIndex} className="flex justify-between gap-1.5 sm:gap-3">
+                <div
+                  key={rowIndex}
+                  className="flex justify-between gap-1.5 sm:gap-3"
+                >
                   {Array.from({ length: SESSIONS_PER_ROW }, (_, colIndex) => {
-                    const sessionNumber = rowIndex * SESSIONS_PER_ROW + colIndex + 1;
+                    const sessionNumber =
+                      rowIndex * SESSIONS_PER_ROW + colIndex + 1;
                     if (sessionNumber > totalSessions) return null;
 
                     const reward = rewardMap.get(sessionNumber);
                     const isCompleted = sessionNumber <= completedSessions;
                     // Reward unlocks when available to use IN that session (sessionNumber - 1 completed)
-                    const isRewardUnlocked = reward && sessionNumber <= completedSessions + 1;
-                    const isRewardUsed = reward && usedRewardIds.includes(reward.id);
+                    const isRewardUnlocked =
+                      reward && sessionNumber <= completedSessions + 1;
+                    const isRewardUsed =
+                      reward && usedRewardIds.includes(reward.id);
 
                     // Session #1 is ALWAYS reserved for first session discount
                     const isFirstSession = sessionNumber === 1;
@@ -262,7 +277,8 @@ function PreviewCard({
                         circleClass = "border-gray-300 bg-gray-100/50";
                       } else if (hasFirstDiscount) {
                         // Has discount, not used - glowing
-                        circleClass = "border-amber-400 bg-gradient-to-br from-amber-100 to-orange-100 shadow-lg shadow-amber-400/40 ring-2 ring-amber-300/50";
+                        circleClass =
+                          "border-amber-400 bg-gradient-to-br from-amber-100 to-orange-100 shadow-lg shadow-amber-400/40 ring-2 ring-amber-300/50";
                       } else {
                         // No discount configured - still show gift but dimmed
                         circleClass = "border-amber-300/50 bg-amber-50/30";
@@ -273,7 +289,8 @@ function PreviewCard({
                         circleClass = "border-gray-300 bg-gray-100/50";
                       } else if (isRewardUnlocked) {
                         // Unlocked reward - glowing green
-                        circleClass = "border-emerald-400 bg-emerald-100/70 shadow-lg shadow-emerald-400/40 ring-2 ring-emerald-300/50";
+                        circleClass =
+                          "border-emerald-400 bg-emerald-100/70 shadow-lg shadow-emerald-400/40 ring-2 ring-emerald-300/50";
                       } else {
                         // Locked reward - amber but dimmed
                         circleClass = "border-amber-300/50 bg-amber-50/30";
@@ -288,16 +305,24 @@ function PreviewCard({
                         key={sessionNumber}
                         className={cn(
                           "relative flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full border-2 transition-all backdrop-blur-sm",
-                          circleClass
+                          circleClass,
                         )}
-                        title={isFirstSession ? (hasFirstDiscount ? `Descuento 1ra sesión: ${firstSessionDiscount} Bs` : "Primera sesión") : reward?.displayName}
+                        title={
+                          isFirstSession
+                            ? hasFirstDiscount
+                              ? `Descuento 1ra sesión: ${firstSessionDiscount} Bs`
+                              : "Primera sesión"
+                            : reward?.displayName
+                        }
                       >
                         {isFirstSession ? (
                           // First session - always show gift icon for first session discount
                           firstSessionDiscountUsed || isCompleted ? (
                             // Used - emoji grayscale with check overlay (like used rewards)
                             <>
-                              <span className="text-sm sm:text-base opacity-60 grayscale">🎁</span>
+                              <span className="text-sm sm:text-base opacity-60 grayscale">
+                                🎁
+                              </span>
                               <Check className="absolute -bottom-1 -right-1 h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 bg-white rounded-full p-0.5" />
                             </>
                           ) : (
@@ -307,16 +332,22 @@ function PreviewCard({
                           isRewardUsed ? (
                             // Used reward - emoji in color with check overlay
                             <>
-                              <span className="text-sm sm:text-base opacity-60">{reward.displayIcon || "🎁"}</span>
+                              <span className="text-sm sm:text-base opacity-60">
+                                {reward.displayIcon || "🎁"}
+                              </span>
                               <Check className="absolute -bottom-1 -right-1 h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 bg-white rounded-full p-0.5" />
                             </>
                           ) : isRewardUnlocked ? (
                             // Unlocked reward - emoji with glow
-                            <span className="text-sm sm:text-base">{reward.displayIcon || "🎁"}</span>
+                            <span className="text-sm sm:text-base">
+                              {reward.displayIcon || "🎁"}
+                            </span>
                           ) : (
                             // Locked reward - emoji in color with lock overlay
                             <>
-                              <span className="text-sm sm:text-base opacity-50">{reward.displayIcon || "🎁"}</span>
+                              <span className="text-sm sm:text-base opacity-50">
+                                {reward.displayIcon || "🎁"}
+                              </span>
                               <Lock className="absolute -bottom-1 -right-1 h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 bg-white rounded-full p-0.5" />
                             </>
                           )
@@ -341,7 +372,9 @@ function PreviewCard({
           <div className="relative mt-3 sm:mt-4 flex items-center justify-between text-xs sm:text-sm">
             <div className="flex items-center gap-1.5 sm:gap-2 text-teal-700">
               <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-teal-500" />
-              <span>{completedSessions}/{totalSessions} sesiones</span>
+              <span>
+                {completedSessions}/{totalSessions} sesiones
+              </span>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2 text-amber-600">
               <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-amber-500" />
@@ -398,19 +431,32 @@ export function BabyCardVisual({
             isUsed
               ? "border-gray-300 bg-gray-100" // Used - gray like used rewards
               : hasFirstDiscount
-              ? "border-amber-400 bg-amber-100 ring-2 ring-amber-200"
-              : "border-amber-300 bg-amber-50"
+                ? "border-amber-400 bg-amber-100 ring-2 ring-amber-200"
+                : "border-amber-300 bg-amber-50",
           )}
-          title={hasFirstDiscount ? `Descuento 1ra sesión: ${firstSessionDiscount} Bs` : "Primera sesión"}
+          title={
+            hasFirstDiscount
+              ? `Descuento 1ra sesión: ${firstSessionDiscount} Bs`
+              : "Primera sesión"
+          }
         >
           {isUsed ? (
             // Used - emoji grayscale with check overlay (like used rewards)
             <>
-              <span className={cn(variant === "compact" ? "text-xs" : "text-sm", "grayscale opacity-50")}>🎁</span>
+              <span
+                className={cn(
+                  variant === "compact" ? "text-xs" : "text-sm",
+                  "grayscale opacity-50",
+                )}
+              >
+                🎁
+              </span>
               <Check className="absolute -bottom-1 -right-1 h-3.5 w-3.5 text-emerald-500 bg-white rounded-full p-0.5" />
             </>
           ) : (
-            <span className={variant === "compact" ? "text-xs" : "text-sm"}>🎁</span>
+            <span className={variant === "compact" ? "text-xs" : "text-sm"}>
+              🎁
+            </span>
           )}
         </div>
       );
@@ -427,17 +473,22 @@ export function BabyCardVisual({
             isRewardUsed
               ? "border-gray-300 bg-gray-100"
               : isRewardUnlocked
-              ? "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200"
-              : isCompleted
-              ? "border-teal-500 bg-teal-500"
-              : "border-gray-300 bg-white"
+                ? "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200"
+                : isCompleted
+                  ? "border-teal-500 bg-teal-500"
+                  : "border-gray-300 bg-white",
           )}
           title={reward.displayName}
         >
           {isRewardUsed ? (
             // Used reward - emoji grayscale with check overlay
             <>
-              <span className={cn(variant === "compact" ? "text-xs" : "text-sm", "grayscale opacity-50")}>
+              <span
+                className={cn(
+                  variant === "compact" ? "text-xs" : "text-sm",
+                  "grayscale opacity-50",
+                )}
+              >
                 {reward.displayIcon || "🎁"}
               </span>
               <Check className="absolute -bottom-1 -right-1 h-3.5 w-3.5 text-emerald-500 bg-white rounded-full p-0.5" />
@@ -450,7 +501,7 @@ export function BabyCardVisual({
             <Gift
               className={cn(
                 iconSize,
-                isRewardUnlocked ? "text-emerald-600" : "text-gray-400"
+                isRewardUnlocked ? "text-emerald-600" : "text-gray-400",
               )}
             />
           )}
@@ -470,7 +521,7 @@ export function BabyCardVisual({
           size,
           isCompleted
             ? "border-teal-500 bg-teal-500"
-            : "border-gray-300 bg-white"
+            : "border-gray-300 bg-white",
         )}
       >
         {isCompleted && <Check className={cn(iconSize, "text-white")} />}
@@ -506,7 +557,8 @@ export function BabyCardVisual({
           {Array.from({ length: rows }, (_, rowIndex) => (
             <div key={rowIndex} className="flex justify-center gap-1.5">
               {Array.from({ length: SESSIONS_PER_ROW }, (_, colIndex) => {
-                const sessionNumber = rowIndex * SESSIONS_PER_ROW + colIndex + 1;
+                const sessionNumber =
+                  rowIndex * SESSIONS_PER_ROW + colIndex + 1;
                 if (sessionNumber > totalSessions) return null;
                 return renderSession(sessionNumber);
               })}
@@ -538,7 +590,7 @@ export function BabyCardVisual({
     <div
       className={cn(
         "rounded-2xl border border-white/50 bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-6 shadow-lg shadow-teal-500/10",
-        className
+        className,
       )}
     >
       <h4 className="mb-4 text-center font-nunito text-xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
