@@ -1456,7 +1456,7 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 5.1: Sistema Baby Card
 - [x] Módulo 5.2: Pagos Divididos (Split Payments)
 
-## ⏳ Fase 6: Operaciones (~20 hrs)
+## ✅ Fase 6: Operaciones (COMPLETADA)
 - [x] Módulo 6.1: Notificaciones en Tiempo Real (COMPLETADO)
 - [x] Módulo 6.2: Actividad Reciente (COMPLETADO)
 
@@ -1464,12 +1464,14 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 7.1: Staff Payments (COMPLETADO)
 - [x] Módulo 7.2: Gastos Administrativos (COMPLETADO)
 
-## ⏳ Fase 8: Portal Padres Mejorado (~22 hrs)
-- [ ] Módulo 8.1: Cancelar/Reagendar Citas
-- [ ] Módulo 8.2: Saldo Financiero
-- [ ] Módulo 8.3: Perfil del Padre
-- [ ] Módulo 8.4: Mesversarios
-- [ ] Módulo 8.5: Dashboard Mejorado
+## ✅ Fase 8: Portal Padres Mejorado (COMPLETADA)
+- [x] Módulo 8.1: Cancelar/Reagendar Citas
+- [x] Módulo 8.2: Saldo Financiero
+- [x] Módulo 8.3: Perfil del Padre
+- [x] Módulo 8.4: Mesversarios
+- [x] Módulo 8.5: Dashboard Mejorado
+- [x] Módulo 8.6: Navegación Rediseñada (tabs desktop, bottom bar mobile)
+- [x] Módulo 8.7: Welcome Guide (primera visita)
 
 ## ⏳ Fase 9: Arqueo de Caja (~15 hrs)
 - [ ] Módulo 9.1: Arqueo de Caja
@@ -1668,50 +1670,58 @@ TRADUCCIONES:
 ✅ pt-BR.json completo
 ```
 
-## Fase 8: Portal Padres Mejorado
+## Fase 8: Portal Padres Mejorado ✅ COMPLETADO
 
-### Módulo 8.1-8.5: Portal Completo
+### Módulo 8.1-8.7: Portal Completo
 ```
 CANCELAR/REAGENDAR:
-□ PATCH /api/portal/appointments/:id/cancel
-□ PATCH /api/portal/appointments/:id/reschedule
-□ Validación de 24h de anticipación
-□ Modal de cancelación con motivo
-□ Modal de reagendar con selector fecha
-□ Integrar con notificaciones
+✅ POST /api/portal/appointments/:id/cancel
+✅ POST /api/portal/appointments/:id/reschedule
+✅ Validación de 24h de anticipación
+✅ Modal de cancelación con motivo obligatorio
+✅ Modal de reagendar con selector fecha/hora
+✅ Integrar con notificaciones (genera notif al staff)
 
 SALDO FINANCIERO:
-□ Página /portal/account
-□ GET /api/portal/financial-summary
-□ GET /api/portal/packages/:id/payments
-□ Resumen de deuda total
-□ Historial de pagos expandible
+✅ Página /portal/account
+✅ GET /api/portal/financial-summary
+✅ GET /api/portal/packages/:id/payments
+✅ Resumen de deuda total por paquete
+✅ Historial de pagos expandible
 
 PERFIL DEL PADRE:
-□ Página /portal/profile
-□ GET/PATCH /api/portal/profile
-□ Formulario editable (nombre, teléfono, email, dirección)
-□ Datos solo lectura (código, fecha registro)
+✅ Página /portal/profile
+✅ GET/PATCH /api/portal/profile
+✅ Editar info del padre (nombre, teléfono, email)
+✅ Editar info de bebés (datos médicos, autorizaciones)
+✅ Cerrar sesión desde perfil
 
 MESVERSARIOS:
-□ Función isMessiversary()
-□ MessiversaryBanner en dashboard
-□ Botón "Agendar Sesión de Cumple Mes"
-□ Confetti animation (opcional)
+✅ Función isMessiversary() en age.ts
+✅ MessiversaryBanner en dashboard
+✅ Botón "Agendar" que lleva a wizard de citas
 
 DASHBOARD MEJORADO:
-□ Banner mesversario
-□ Próxima cita destacada
-□ Sección saldo resumido
-□ Accesos rápidos actualizados
+✅ Banner mesversario destacado
+✅ Próxima cita con acciones (cancelar/reagendar)
+✅ Alerta de prepago si aplica
+✅ Baby Card promo integrada
+✅ Sección resumen con estadísticas
+✅ Accesos rápidos actualizados
+✅ Welcome Guide de una sola vez (localStorage)
 
-NAVEGACIÓN:
-□ Link "Mi Cuenta" en menú
-□ Link "Mi Perfil" en menú
+NAVEGACIÓN REDISEÑADA:
+✅ Desktop: Tabs horizontales centrados + logout
+✅ Mobile: Barra inferior fija estilo Instagram (5 iconos)
+✅ Iconos: Dashboard, Citas, Historial, Cuenta, Perfil
+
+TOASTS:
+✅ Estilo pastel consistente con design system
+✅ Colores: success (verde), error (rosa), warning (amber), info (cyan)
 
 TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
+✅ es.json completo
+✅ pt-BR.json completo
 ```
 
 ## Fase 9: Arqueo de Caja
