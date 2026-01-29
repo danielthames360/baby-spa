@@ -3,6 +3,8 @@
  * Used across baby-form, parent-form, and other form components
  */
 
+import { formatLocalDateString, fromDateOnly } from "@/lib/utils/date-utils";
+
 /**
  * Translate Zod error messages to localized strings
  * @param error - The error message key from Zod validation
@@ -58,32 +60,42 @@ export function getNumberValue(value: unknown): number | undefined {
 }
 
 /**
- * Convert value to ISO date string for date inputs
+ * Convert value to YYYY-MM-DD string for date inputs
  * Handles Date objects, strings, and timestamps
+ * Uses UTC for dates stored at noon UTC (database dates)
  */
 export function getDateValue(value: unknown): string {
   if (!value) return "";
 
   try {
     if (value instanceof Date) {
-      return value.toISOString().split("T")[0];
+      // Use fromDateOnly for dates stored at UTC noon (database dates)
+      return fromDateOnly(value);
     }
     if (typeof value === "string") {
       // Already in YYYY-MM-DD format
       if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return value;
       }
-      // Parse and convert
-      return new Date(value).toISOString().split("T")[0];
+      // Parse ISO string and extract UTC date
+      return fromDateOnly(new Date(value));
     }
     if (typeof value === "number") {
-      return new Date(value).toISOString().split("T")[0];
+      return fromDateOnly(new Date(value));
     }
   } catch {
     // Invalid date
   }
 
   return "";
+}
+
+/**
+ * Get today's date as YYYY-MM-DD string using local date
+ * Use this for date input max/min attributes
+ */
+export function getTodayDateString(): string {
+  return formatLocalDateString(new Date());
 }
 
 /**

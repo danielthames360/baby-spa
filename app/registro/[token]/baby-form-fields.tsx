@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getStringValue, getDateValue } from "@/lib/form-utils";
+import { getStringValue, getDateValue, getTodayDateString } from "@/lib/form-utils";
 
 // Translations for the form
 const translations = {
@@ -212,9 +212,9 @@ export function PublicBabyFormFields<T extends FieldValues>({
                     onBlur={field.onBlur}
                     value={getDateValue(field.value)}
                     onChange={(e) =>
-                      field.onChange(e.target.value ? new Date(e.target.value) : undefined)
+                      field.onChange(e.target.value ? new Date(e.target.value + "T12:00:00Z") : undefined)
                     }
-                    max={new Date().toISOString().split("T")[0]}
+                    max={getTodayDateString()}
                     className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
                   />
                 </FormControl>

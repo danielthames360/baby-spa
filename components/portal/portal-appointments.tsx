@@ -70,6 +70,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { cn } from "@/lib/utils";
 import { formatLocalDateString, formatDateForDisplay } from "@/lib/utils/date-utils";
+import { getGenderGradient } from "@/lib/utils/gender-utils";
 import {
   PackageSelector,
   type PackageData,
@@ -77,8 +78,24 @@ import {
   type SpecialPriceInfo,
 } from "@/components/packages/package-selector";
 import confetti from "canvas-confetti";
+import dynamic from "next/dynamic";
 import { SchedulePreferenceSelector } from "@/components/appointments/schedule-preference-selector";
 import { SchedulePreference } from "@/lib/types/scheduling";
+import {
+  canModifyAppointment,
+  type AppointmentForActions,
+} from "@/components/portal/appointment-actions";
+
+// Dynamic imports for heavy dialog components (bundle-dynamic-imports)
+const CancelAppointmentDialog = dynamic(
+  () => import("@/components/portal/appointment-actions").then((m) => m.CancelAppointmentDialog),
+  { ssr: false }
+);
+
+const RescheduleAppointmentDialog = dynamic(
+  () => import("@/components/portal/appointment-actions").then((m) => m.RescheduleAppointmentDialog),
+  { ssr: false }
+);
 
 export interface BabyPackage {
   id: string;
@@ -183,28 +200,50 @@ export function PortalAppointments() {
   const [paymentSettingsForDialog, setPaymentSettingsForDialog] = useState<PaymentSettings | null>(null);
   const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Cancel/Reschedule dialog state
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [selectedAppointmentForAction, setSelectedAppointmentForAction] = useState<AppointmentForActions | null>(null);
 
-  const fetchData = async () => {
+  // Payment settings for WhatsApp contact
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+
+  // Fetch all data in parallel using Promise.all (async-parallel)
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/portal/appointments");
-      if (!response.ok) throw new Error("Failed to fetch");
-      const data = await response.json();
+
+      // Parallel fetch for all independent requests (async-parallel)
+      const [appointmentsRes, settingsRes] = await Promise.all([
+        fetch("/api/portal/appointments"),
+        fetch("/api/settings/payment"),
+      ]);
+
+      // Process appointments data (critical)
+      if (!appointmentsRes.ok) throw new Error("Failed to fetch");
+      const data = await appointmentsRes.json();
       setUpcoming(data.upcoming);
       setPast(data.past);
       setBabies(data.babies);
       setParentInfo(data.parentInfo);
       setCanSchedule(data.canSchedule);
       setRequiresPrepayment(data.requiresPrepayment);
+
+      // Process payment settings (non-critical)
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        setPaymentSettings(settingsData.settings);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const formatDate = (dateString: string) => {
     // Use formatDateForDisplay to avoid timezone shift
@@ -247,6 +286,45 @@ export function PortalAppointments() {
     } finally {
       setLoadingPaymentSettings(false);
     }
+  };
+
+  // Handle cancel appointment
+  const handleCancelAppointment = (appointment: Appointment) => {
+    setSelectedAppointmentForAction({
+      id: appointment.id,
+      date: appointment.date,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      status: appointment.status,
+      baby: appointment.baby,
+      parent: appointment.parent,
+      selectedPackage: appointment.selectedPackage ? {
+        id: appointment.selectedPackage.id,
+        name: appointment.selectedPackage.name,
+      } : null,
+      hasPayments: false, // Will be checked by API
+    });
+    setShowCancelDialog(true);
+  };
+
+  // Handle reschedule appointment
+  const handleRescheduleAppointment = (appointment: Appointment) => {
+    setSelectedAppointmentForAction({
+      id: appointment.id,
+      date: appointment.date,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      status: appointment.status,
+      baby: appointment.baby,
+      parent: appointment.parent,
+      selectedPackage: appointment.selectedPackage ? {
+        id: appointment.selectedPackage.id,
+        name: appointment.selectedPackage.name,
+        duration: 60, // Default, could be fetched from package
+      } : null,
+      hasPayments: false,
+    });
+    setShowRescheduleDialog(true);
   };
 
   // Generate WhatsApp URL for payment instructions dialog
@@ -394,6 +472,8 @@ export function PortalAppointments() {
                 formatDate={formatDate}
                 getStatusBadge={getStatusBadge}
                 onViewPaymentInstructions={handleViewPaymentInstructions}
+                onCancel={handleCancelAppointment}
+                onReschedule={handleRescheduleAppointment}
               />
             ))}
           </div>
@@ -552,6 +632,30 @@ export function PortalAppointments() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Appointment Dialog */}
+      <CancelAppointmentDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        appointment={selectedAppointmentForAction}
+        onSuccess={() => {
+          fetchData();
+        }}
+        whatsappNumber={paymentSettings?.whatsappNumber}
+        whatsappCountryCode={paymentSettings?.whatsappCountryCode}
+      />
+
+      {/* Reschedule Appointment Dialog */}
+      <RescheduleAppointmentDialog
+        open={showRescheduleDialog}
+        onOpenChange={setShowRescheduleDialog}
+        appointment={selectedAppointmentForAction}
+        onSuccess={() => {
+          fetchData();
+        }}
+        whatsappNumber={paymentSettings?.whatsappNumber}
+        whatsappCountryCode={paymentSettings?.whatsappCountryCode}
+      />
     </div>
   );
 }
@@ -562,17 +666,20 @@ interface AppointmentCardProps {
   getStatusBadge: (status: string) => React.ReactNode;
   isPast?: boolean;
   onViewPaymentInstructions?: (appointment: Appointment) => void;
+  onCancel?: (appointment: Appointment) => void;
+  onReschedule?: (appointment: Appointment) => void;
 }
 
-function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onViewPaymentInstructions }: AppointmentCardProps) {
+function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onViewPaymentInstructions, onCancel, onReschedule }: AppointmentCardProps) {
   const t = useTranslations();
-  const getGenderColor = (gender: string) => {
-    switch (gender) {
-      case "MALE": return "from-sky-400 to-blue-500";
-      case "FEMALE": return "from-rose-400 to-pink-500";
-      default: return "from-teal-400 to-cyan-500";
-    }
-  };
+
+  // Check if appointment can be modified (more than 24h before)
+  // Extract YYYY-MM-DD from ISO string (handles both "2026-01-30" and "2026-01-30T12:00:00.000Z")
+  const dateOnly = appointment.date.split("T")[0];
+  const appointmentDateTime = new Date(`${dateOnly}T${appointment.startTime}:00`);
+  const hoursUntil = Math.floor((appointmentDateTime.getTime() - Date.now()) / (1000 * 60 * 60));
+  const canModify = hoursUntil >= 24 && (appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT");
+  const isLessThan24h = hoursUntil < 24 && hoursUntil > 0;
 
   const isPendingPayment = appointment.status === "PENDING_PAYMENT";
   const advanceAmount = appointment.selectedPackage?.advancePaymentAmount
@@ -600,7 +707,7 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onVi
               ? "bg-gray-300"
               : isParentAppointment
                 ? "bg-gradient-to-br from-rose-400 to-pink-500"
-                : `bg-gradient-to-br ${getGenderColor(appointment.baby?.gender || "OTHER")}`
+                : `bg-gradient-to-br ${getGenderGradient(appointment.baby?.gender || "OTHER")}`
           )}
         >
           {isParentAppointment ? (
@@ -667,6 +774,44 @@ function AppointmentCard({ appointment, formatDate, getStatusBadge, isPast, onVi
               {t("payment.viewPaymentInstructions")}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Action Buttons (Cancel/Reschedule) - Only for upcoming, non-past appointments */}
+      {!isPast && (appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT") && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          {canModify ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => onReschedule?.(appointment)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-100"
+              >
+                <CalendarClock className="h-3.5 w-3.5" />
+                {t("portal.appointments.rescheduleAppointment")}
+              </button>
+              <button
+                onClick={() => onCancel?.(appointment)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("portal.appointments.cancelAppointment")}
+              </button>
+            </div>
+          ) : isLessThan24h ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="text-xs font-medium">{t("portal.appointments.lessThan24h")}</span>
+              </div>
+              <button
+                onClick={() => onCancel?.(appointment)}
+                className="flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-200"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                {t("portal.appointments.contactForChanges")}
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
@@ -923,11 +1068,12 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
     return null;
   }, [babyCardInfo]);
 
-  // Generate next 14 days
+  // Generate today + next 14 days (allows same-day booking)
   const getAvailableDates = () => {
     const dates: Date[] = [];
     const today = new Date();
-    for (let i = 1; i <= 14; i++) {
+    // Start from 0 (today) instead of 1 (tomorrow)
+    for (let i = 0; i <= 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       // Skip Sundays
@@ -1483,8 +1629,9 @@ export function ScheduleDialog({ open, onOpenChange, babies, parentInfo, onSucce
                     {step === 'package' && t("packages.selectPackage")}
                     {step === 'preferences' && t("portal.appointments.wizard.schedulePreferences")}
                     {step === 'datetime' && t("portal.appointments.wizard.selectDateTime")}
+                    {step === 'payment' && t("payment.required")}
                   </h2>
-                  {step !== 'client' && step !== 'baby' && (
+                  {step !== 'client' && step !== 'baby' && step !== 'payment' && (
                     <p className="text-xs text-gray-500">
                       {t("portal.appointments.wizard.step")} {getStepNumber()} {t("portal.appointments.wizard.of")} {getTotalSteps()}
                     </p>

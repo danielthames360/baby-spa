@@ -97,13 +97,14 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
         <PortalNav />
 
         <main className="flex-1">
-          <div className="mx-auto max-w-5xl px-4 py-6">
+          {/* pb-24 on mobile for bottom nav bar clearance */}
+          <div className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
             {children}
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-white/50 bg-white/50 py-6 backdrop-blur-sm">
+        {/* Footer - hidden on mobile (bottom nav takes its place) */}
+        <footer className="hidden md:block border-t border-white/50 bg-white/50 py-6 backdrop-blur-sm">
           <div className="mx-auto max-w-5xl px-4 text-center">
             <div className="flex items-center justify-center gap-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-nunito text-lg font-bold text-transparent">

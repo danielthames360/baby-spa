@@ -34,10 +34,13 @@ export async function GET(request: Request) {
     }
 
     // Get sessions with evaluations (excluding internal notes)
+    // Include both COMPLETED and EVALUATED statuses
     const sessions = await prisma.session.findMany({
       where: {
         babyId: babyId || { in: babyIds },
-        status: "COMPLETED",
+        status: {
+          in: ["COMPLETED", "EVALUATED"],
+        },
       },
       include: {
         baby: {

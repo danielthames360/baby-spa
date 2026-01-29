@@ -165,3 +165,21 @@ export function isBabyEligible(birthDate: Date | string): boolean {
   const age = calculateExactAge(birthDate);
   return age.totalMonths <= 36;
 }
+
+/**
+ * Check if today is a "mesversario" (monthly birthday) for a baby
+ * A mesversario occurs when today's day matches the birth day (exactly N months old)
+ *
+ * @param birthDate - Date of birth (Date object or ISO string)
+ * @returns true if today is the baby's monthly birthday
+ *
+ * @example
+ * // Baby born on January 15th
+ * // On February 15th: isMesversario returns true (1 month exactly)
+ * // On February 16th: isMesversario returns false
+ */
+export function isMesversario(birthDate: Date | string): boolean {
+  const age = calculateExactAge(birthDate);
+  // Es mesversario cuando los días restantes son 0 (exactamente N meses)
+  return age.days === 0;
+}

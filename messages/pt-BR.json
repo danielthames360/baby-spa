@@ -60,7 +60,8 @@
     "sessionsWillAppear": "As sessões aparecerão aqui conforme o calendário do dia",
     "available": "disponíveis",
     "used": "Usado",
-    "seeMore": "Ver mais"
+    "seeMore": "Ver mais",
+    "hello": "Olá"
   },
 
   "auth": {
@@ -122,7 +123,8 @@
     "profile": "Meu Perfil",
     "help": "Ajuda",
     "history": "Histórico",
-    "activity": "Atividade"
+    "activity": "Atividade",
+    "account": "Minha Conta"
   },
 
   "roles": {
@@ -1105,6 +1107,10 @@
       "PARENT_REQUIRED": "Deve selecionar ou criar um pai/mãe",
       "AT_LEAST_ONE_PARENT": "Deve registrar pelo menos um pai/mãe/responsável",
       "PHONE_EXISTS": "Já existe um pai/mãe com este telefone"
+    },
+    "validation": {
+      "birthWeeksRange": "As semanas de gestação devem estar entre 20 e 45",
+      "birthWeightRange": "O peso ao nascer deve estar entre 0,5 kg e 10 kg"
     }
   },
 
@@ -1385,7 +1391,47 @@
       "scheduleNow": "Agendar agora",
       "sessionsAvailable": "sessões disponíveis",
       "viewHistory": "Ver histórico",
-      "viewAppointments": "Ver consultas"
+      "viewAppointments": "Ver consultas",
+      "happyMesversario": "Feliz Mesversário!",
+      "mesversarioMessage": "{name} completa {months} meses hoje! 🎉",
+      "scheduleCelebration": "Agendar",
+      "myAccount": "Minha Conta",
+      "pendingBalance": "saldo pendente",
+      "pendingLabel": "Pendente:",
+      "noPendingBalance": "Sem saldo pendente",
+      "viewAccount": "Ver minha conta",
+      "hello": "Olá",
+      "viewDetails": "Ver detalhes",
+      "noUpcomingAppointments": "Você não tem consultas próximas",
+      "summary": "Resumo",
+      "babiesCount": "Bebês",
+      "packagesCount": "Pacotes",
+      "sessionsAvailableShort": "Sessões disponíveis",
+      "quickAccess": "Acesso Rápido",
+      "myAppointments": "Minhas Consultas"
+    },
+    "welcome": {
+      "title": "Olá {name}! 👋",
+      "subtitle": "Bem-vindo/a ao seu portal. Aqui você poderá gerenciar tudo relacionado às sessões do seu bebê.",
+      "cta": "Entendi!",
+      "feature": {
+        "appointments": {
+          "title": "Gerenciar Consultas",
+          "desc": "Agende, reagende ou cancele consultas"
+        },
+        "history": {
+          "title": "Histórico",
+          "desc": "Veja todas as sessões anteriores"
+        },
+        "account": {
+          "title": "Minha Conta",
+          "desc": "Consulte pacotes e saldos"
+        },
+        "profile": {
+          "title": "Perfil",
+          "desc": "Atualize os dados da sua família"
+        }
+      }
     },
     "babyCardPromo": {
       "title": "✨ Baby Spa Card",
@@ -1475,7 +1521,42 @@
         "generic": "Ocorreu um erro. Por favor tente novamente",
         "autoScheduleFailed": "Não há disponibilidade para esse dia. Por favor selecione outra data.",
         "autoScheduleSlotFull": "O horário selecionado não está disponível. Por favor escolha outro horário."
-      }
+      },
+      "cancel": "Cancelar",
+      "reschedule": "Reagendar",
+      "cancelAppointment": "Cancelar Consulta",
+      "cancelDescription": "Tem certeza de que deseja cancelar esta consulta?",
+      "cancelReason": "Motivo do cancelamento",
+      "cancelReasonPlaceholder": "Ex: Bebê doente, viagem, etc.",
+      "cancelWarning": "Esta ação não pode ser desfeita. Você precisará agendar uma nova consulta se necessário.",
+      "confirmCancel": "Cancelar Consulta",
+      "confirmCancelTitle": "Confirmar cancelamento?",
+      "confirmCancelMessage": "A consulta será cancelada e a recepção será notificada.",
+      "yesCancel": "Sim, cancelar",
+      "cancelSuccess": "Consulta cancelada com sucesso",
+      "cancelTooLate": "Não é possível cancelar com menos de 24 horas de antecedência",
+      "reasonRequired": "Por favor, insira o motivo do cancelamento",
+      "rescheduleAppointment": "Reagendar Consulta",
+      "rescheduleDescription": "Selecione uma nova data e hora para sua consulta",
+      "currentAppointment": "Consulta atual",
+      "selectNewDate": "Selecione nova data",
+      "availableTimes": "Horários disponíveis",
+      "noAvailableSlots": "Não há horários disponíveis para esta data",
+      "newAppointment": "Nova consulta",
+      "confirmReschedule": "Confirmar Alteração",
+      "rescheduleSuccess": "Consulta reagendada com sucesso",
+      "rescheduleTooLate": "Não é possível reagendar com menos de 24 horas de antecedência",
+      "slotNotAvailable": "Este horário não está mais disponível",
+      "cannotCancel": "Não é possível cancelar",
+      "cannotReschedule": "Não é possível reagendar",
+      "tooLateMessage": "As consultas só podem ser modificadas com pelo menos {hours} horas de antecedência.",
+      "hoursRemaining": "Faltam aproximadamente {hours} horas para sua consulta.",
+      "hasPaymentsMessage": "Esta consulta tem um pagamento associado. Por favor entre em contato com a recepção para fazer alterações.",
+      "hasPaymentsError": "Esta consulta tem pagamentos associados. Entre em contato com a recepção.",
+      "invalidStatusMessage": "Esta consulta não pode ser modificada no seu estado atual.",
+      "contactWhatsApp": "Contato por WhatsApp",
+      "contactForChanges": "Contato para alterações",
+      "lessThan24h": "Menos de 24h"
     },
     "history": {
       "title": "Histórico de Sessões",
@@ -1489,6 +1570,8 @@
       "therapist": "Terapeuta",
       "activities": "Atividades realizadas",
       "evaluation": "Avaliação",
+      "evaluated": "Avaliada",
+      "pendingEvaluation": "Pendente",
       "notes": "Observações",
       "noNotes": "Sem observações",
       "babyAge": "Idade do bebê",
@@ -1528,6 +1611,62 @@
       "motorStimulation": "Estimulação motora",
       "sensoryStimulation": "Estimulação sensorial",
       "relaxation": "Relaxamento"
+    },
+    "profile": {
+      "title": "Meu Perfil",
+      "subtitle": "Gerencie suas informações pessoais e dos seus bebês",
+      "personalData": "Dados Pessoais",
+      "name": "Nome",
+      "phone": "Telefone",
+      "email": "E-mail",
+      "accountInfo": "Informações da Conta",
+      "accessCode": "Código de Acesso",
+      "memberSince": "Membro desde",
+      "registeredBabies": "Bebês registrados",
+      "myBabies": "Meus Bebês",
+      "phoneExists": "Este número de telefone já está registrado",
+      "saveSuccess": "Perfil atualizado com sucesso",
+      "babySaveSuccess": "Dados do bebê atualizados com sucesso",
+      "editingBaby": "Editando dados do bebê",
+      "medicalNotes": "Notas médicas",
+      "medicalNotesPlaceholder": "Alergias, condições especiais, observações importantes...",
+      "birthDateLocked": "A data de nascimento não pode ser alterada após a primeira consulta",
+      "weeks": "semanas de gestação",
+      "prepaymentRequired": "Pagamento antecipado necessário",
+      "prepaymentDescription": "Devido a ausências anteriores, as futuras consultas requerem pagamento antecipado.",
+      "specialObservations": "Observações especiais",
+      "specialObservationsPlaceholder": "Qualquer informação adicional importante...",
+      "socialMediaAuthorized": "Autoriza publicação nas redes sociais"
+    },
+    "account": {
+      "title": "Minha Conta",
+      "subtitle": "Confira seu status financeiro e pagamentos",
+      "summary": "Resumo",
+      "totalPending": "Total Pendente",
+      "pendingPackages": "{count, plural, =1 {1 pacote com saldo} other {# pacotes com saldo}}",
+      "allPaid": "Sem saldo pendente",
+      "packagesWithBalance": "Pacotes com Saldo",
+      "paidPackages": "Pacotes Pagos",
+      "pending": "Pendente",
+      "paid": "pago",
+      "totalPrice": "Preço total",
+      "paidAmount": "Pago",
+      "remaining": "Pendente",
+      "nextInstallment": "Próxima parcela",
+      "atSession": "Ao completar sessão #{session}",
+      "showHistory": "Ver histórico de pagamentos",
+      "hideHistory": "Ocultar histórico",
+      "paymentHistory": "Histórico de Pagamentos",
+      "installment": "Parcela",
+      "noPaymentsYet": "Ainda não há pagamentos registrados",
+      "fullyPaid": "Pago completo",
+      "total": "Total",
+      "sessionsUsed": "Sessões usadas",
+      "sessionsRemaining": "restantes",
+      "noPackages": "Você não tem pacotes registrados",
+      "questions": "Dúvidas sobre sua conta?",
+      "contactWhatsApp": "Contato por WhatsApp",
+      "whatsappMessage": "Olá, tenho uma dúvida sobre minha conta financeira no Baby Spa."
     }
   },
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parseDateToUTCNoon } from "@/lib/utils/date-utils";
+import { parseDateToUTCNoon, formatLocalDateString } from "@/lib/utils/date-utils";
 
 const MAX_SLOTS_PER_HOUR = 2;
 
@@ -124,6 +124,12 @@ export async function GET(request: Request) {
     // For each slot, count appointments that OVERLAP with it
     // A 60-min appointment occupies 2 consecutive 30-min slots
     const SLOT_DURATION = 30; // minutes
+    const MIN_BUFFER_MINUTES = 60; // Minimum 1 hour from now for same-day bookings
+
+    // Check if requested date is today (for filtering past slots)
+    const now = new Date();
+    const isToday = dateStr === formatLocalDateString(now);
+    const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() + MIN_BUFFER_MINUTES : 0;
 
     const availableSlots = slots.map((slot) => {
       const slotStart = toMinutes(slot);
@@ -151,10 +157,13 @@ export async function GET(request: Request) {
       // Reduce capacity based on events - if event blocks >= 2, slot is unavailable for parents
       const effectiveCapacity = Math.max(0, MAX_SLOTS_PER_HOUR - maxBlockedByEvents);
 
+      // For today, filter out slots that have already passed (with buffer)
+      const isPastSlot = isToday && slotStart < currentMinutes;
+
       return {
         time: slot,
-        available: overlappingCount < effectiveCapacity,
-        remaining: Math.max(0, effectiveCapacity - overlappingCount),
+        available: !isPastSlot && overlappingCount < effectiveCapacity,
+        remaining: isPastSlot ? 0 : Math.max(0, effectiveCapacity - overlappingCount),
       };
     });
 
