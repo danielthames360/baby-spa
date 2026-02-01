@@ -136,25 +136,62 @@ messages/pt-BR.json       # Portugués
 
 ## 📅 Fechas (UTC Noon Strategy)
 
-**TODAS las fechas se almacenan a las 12:00:00 UTC:**
+> **Documentación completa:** `docs/DATE-HANDLING.md`
+
+**TODAS las fechas se almacenan a las 12:00:00 UTC. Las horas son strings separados.**
+
+### 🚨 REGLA CRÍTICA: Backend SIEMPRE usa métodos UTC
 
 ```typescript
-import { toDateOnly, fromDateOnly, formatDateForDisplay } from '@/lib/utils/date-utils';
+// ✅ CORRECTO - En lib/services/ y app/api/
+const dayOfWeek = date.getUTCDay();        // Día de semana
+const day = date.getUTCDate();              // Día del mes
+const month = date.getUTCMonth();           // Mes (0-11)
+const year = date.getUTCFullYear();         // Año
+date.setUTCDate(date.getUTCDate() + 1);    // Avanzar día
 
-// Guardar en DB:
-const date = toDateOnly("2026-02-06"); // → 2026-02-06T12:00:00Z
-
-// Leer de DB:
-const str = fromDateOnly(dbDate); // → "2026-02-06"
-
-// Mostrar al usuario:
-const display = formatDateForDisplay(dbDate, locale); // → "viernes, 6 de febrero"
+// ❌ INCORRECTO - NUNCA en backend para fechas de BD
+const dayOfWeek = date.getDay();    // ¡BUG! Convierte a hora local
+const day = date.getDate();         // ¡BUG! Puede dar día incorrecto
 ```
 
-**Reglas:**
-- ❌ NUNCA usar `toISOString()` para fechas del usuario
-- ❌ NUNCA usar `new Date(string)` sin especificar hora
-- ✅ SIEMPRE enviar fechas como "YYYY-MM-DD" a la API
+**¿Por qué?** Las fechas se guardan en UTC. En timezone negativo (ej: Bolivia UTC-4),
+`2026-02-06T12:00:00Z` con `getDay()` retorna día 5 (incorrecto) en vez de día 6.
+
+### Utilidades principales
+
+```typescript
+import {
+  parseDateToUTCNoon,      // Crear fecha para guardar
+  formatDateForDisplay,     // Mostrar fecha de BD
+  formatLocalDateString,    // Enviar fecha desde frontend
+  getStartOfDayUTC,         // Inicio de día para queries
+  getEndOfDayUTC            // Fin de día para queries
+} from '@/lib/utils/date-utils';
+
+// Guardar en DB:
+const date = parseDateToUTCNoon(2026, 2, 6); // → 2026-02-06T12:00:00Z
+
+// Query por rango:
+const from = getStartOfDayUTC(date);  // 2026-02-06T00:00:00Z
+const to = getEndOfDayUTC(date);      // 2026-02-06T23:59:59Z
+
+// Mostrar al usuario:
+formatDateForDisplay(dbDate, "es-ES"); // → "viernes, 6 de febrero"
+
+// Enviar desde frontend:
+formatLocalDateString(selectedDate);   // → "2026-02-06"
+```
+
+### Reglas rápidas
+
+| Contexto | Usar |
+|----------|------|
+| Backend procesando fechas BD | `getUTCDay()`, `getUTCDate()`, `setUTCDate()` |
+| Crear fecha para guardar | `parseDateToUTCNoon(year, month, day)` |
+| Mostrar fecha de BD | `formatDateForDisplay(date, locale)` |
+| Frontend enviando a API | `formatLocalDateString(date)` → "YYYY-MM-DD" |
+| Frontend UI (calendario) | Métodos locales OK (es interacción del usuario) |
 
 ---
 

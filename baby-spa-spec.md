@@ -1473,17 +1473,50 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 - [x] Módulo 8.6: Navegación Rediseñada (tabs desktop, bottom bar mobile)
 - [x] Módulo 8.7: Welcome Guide (primera visita)
 
-## ⏳ Fase 9: Arqueo de Caja (~15 hrs)
-- [ ] Módulo 9.1: Arqueo de Caja
-- Nota: Movido al final porque depende de entender cómo ADMIN interactúa con pagos
-- Ver decisiones tomadas en: PlanificacionesBabySpa/PLANIFICACION-ARQUEO-CAJA.md
+## ✅ Fase 9: Reportes (COMPLETADA)
 
-## 🔮 Fase 10: Reportes y Automatización (FUTURO)
-- [ ] Módulo 10.1: Reportes Financieros
-- [ ] Módulo 10.2: Cron Jobs
-- [ ] Módulo 10.3: Notificaciones Push
-- [ ] Módulo 10.4: Configuración del Sistema
-- [ ] Módulo 10.5: QR de Pago
+Dashboard centralizado con KPIs y 16 módulos de reportes organizados en 3 tiers.
+Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
+
+### TIER 1 - Críticos (6 módulos) ✅ COMPLETADO
+| Módulo | Ruta | Permiso |
+|--------|------|---------|
+| Dashboard | `/admin/reports` | ADMIN, RECEPTION |
+| Ingresos | `/admin/reports/income` | ADMIN |
+| Cuentas por Cobrar | `/admin/reports/receivables` | ADMIN |
+| Asistencia/No-Shows | `/admin/reports/attendance` | ADMIN, RECEPTION |
+| Inventario | `/admin/reports/inventory` | ADMIN, RECEPTION |
+| Evaluaciones Pendientes | `/admin/reports/evaluations` | ADMIN |
+
+### TIER 2 - Importantes (6 módulos) ✅ COMPLETADO
+| Módulo | Ruta | Permiso |
+|--------|------|---------|
+| P&L | `/admin/reports/pnl` | ADMIN |
+| Terapeutas | `/admin/reports/therapists` | ADMIN |
+| Cartera Clientes | `/admin/reports/clients` | ADMIN |
+| Paquetes | `/admin/reports/packages` | ADMIN |
+| Adquisición | `/admin/reports/acquisition` | ADMIN |
+| Ocupación | `/admin/reports/occupancy` | ADMIN |
+
+### TIER 3 - Avanzados (4 módulos) ✅ COMPLETADO
+| Módulo | Ruta | Permiso |
+|--------|------|---------|
+| Baby Cards | `/admin/reports/baby-cards` | ADMIN |
+| Eventos | `/admin/reports/events` | ADMIN |
+| Nómina | `/admin/reports/payroll` | ADMIN |
+| Flujo de Caja | `/admin/reports/cashflow` | ADMIN |
+
+**Pendiente:** Exportación PDF/Excel (Fase futura)
+
+## ⏳ Fase 10: Arqueo de Caja
+- [ ] Módulo 10.1: Arqueo de Caja
+- Ver decisiones en: PlanificacionesBabySpa/PLANIFICACION-ARQUEO-CAJA.md
+
+## 🔮 Fase 11: Automatización y Extras (FUTURO)
+- [ ] Cron Jobs (limpieza, recordatorios)
+- [ ] Notificaciones Push
+- [ ] Configuración del Sistema
+- [ ] QR de Pago
 
 ---
 

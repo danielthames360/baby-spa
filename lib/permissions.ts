@@ -71,7 +71,12 @@ export type Permission =
   | "settings:edit"
   // Arqueo de Caja (futuro)
   | "cash-register:operate"
-  | "cash-register:approve";
+  | "cash-register:approve"
+  // Reportes
+  | "reports:view"
+  | "reports:view-financial"
+  | "reports:view-operational"
+  | "reports:export";
 
 // Permisos por rol
 const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
@@ -127,6 +132,10 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     "settings:edit",
     "cash-register:operate",
     "cash-register:approve",
+    "reports:view",
+    "reports:view-financial",
+    "reports:view-operational",
+    "reports:export",
   ],
 
   ADMIN: [
@@ -175,6 +184,10 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     // NO: settings (solo OWNER)
     "cash-register:operate",
     "cash-register:approve",
+    "reports:view",
+    "reports:view-financial",
+    "reports:view-operational",
+    "reports:export",
   ],
 
   RECEPTION: [
@@ -217,6 +230,10 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     // NO: settings
     "cash-register:operate",
     // NO: cash-register:approve
+    "reports:view",
+    "reports:view-operational",
+    // NO: reports:view-financial
+    // NO: reports:export
   ],
 
   THERAPIST: [
@@ -356,6 +373,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
     href: "/admin/activity",
     icon: "History",
     requiredPermissions: ["activity:view"],
+  },
+  {
+    key: "reports",
+    href: "/admin/reports",
+    icon: "BarChart3",
+    requiredPermissions: ["reports:view"],
   },
   {
     key: "settings",

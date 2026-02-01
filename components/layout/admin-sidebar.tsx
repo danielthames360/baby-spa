@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   IdCard,
   History,
+  BarChart3,
   LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   PartyPopper,
   IdCard,
   History,
+  BarChart3,
 };
 
 interface AdminSidebarProps {

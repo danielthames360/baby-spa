@@ -131,18 +131,19 @@ const staffPaymentInclude = {
 
 /**
  * Calculate work days in a period (Mon-Sat)
+ * Uses UTC methods to avoid timezone issues with database dates
  */
 function getWorkDaysInPeriod(start: Date, end: Date): number[] {
   const workDays: number[] = [];
   const current = new Date(start);
 
   while (current <= end) {
-    const dayOfWeek = current.getDay();
+    const dayOfWeek = current.getUTCDay();
     // 1-6 = Mon-Sat (work days), 0 = Sunday (closed)
     if (dayOfWeek >= 1 && dayOfWeek <= 6) {
-      workDays.push(current.getDate());
+      workDays.push(current.getUTCDate());
     }
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return workDays;
@@ -150,11 +151,13 @@ function getWorkDaysInPeriod(start: Date, end: Date): number[] {
 
 /**
  * Calculate period dates based on frequency and a reference date
+ * Uses UTC methods to avoid timezone issues with database dates
  */
 function calculatePeriodDates(date: Date, frequency: PayFrequency): PeriodDates {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const day = date.getDate();
+  // Use UTC methods to avoid timezone issues
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
 
   switch (frequency) {
     case "DAILY":
@@ -166,16 +169,14 @@ function calculatePeriodDates(date: Date, frequency: PayFrequency): PeriodDates 
 
     case "WEEKLY": {
       // Monday to Sunday of that week
-      const dayOfWeek = date.getDay();
+      const dayOfWeek = date.getUTCDay();
       const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const monday = new Date(date);
-      monday.setDate(day + diffToMonday);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
+      const monday = new Date(Date.UTC(year, month, day + diffToMonday, 12, 0, 0));
+      const sunday = new Date(Date.UTC(year, month, day + diffToMonday + 6, 12, 0, 0));
 
       return {
-        start: new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate(), 12, 0, 0)),
-        end: new Date(Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate(), 12, 0, 0)),
+        start: monday,
+        end: sunday,
       };
     }
 
@@ -187,7 +188,8 @@ function calculatePeriodDates(date: Date, frequency: PayFrequency): PeriodDates 
           end: new Date(Date.UTC(year, month, 15, 12, 0, 0)),
         };
       } else {
-        const lastDay = new Date(year, month + 1, 0).getDate();
+        // Get last day of month using UTC
+        const lastDay = new Date(Date.UTC(year, month + 1, 0, 12, 0, 0)).getUTCDate();
         return {
           start: new Date(Date.UTC(year, month, 16, 12, 0, 0)),
           end: new Date(Date.UTC(year, month, lastDay, 12, 0, 0)),
@@ -197,8 +199,8 @@ function calculatePeriodDates(date: Date, frequency: PayFrequency): PeriodDates 
 
     case "MONTHLY":
     default: {
-      // Full month
-      const lastDay = new Date(year, month + 1, 0).getDate();
+      // Full month - get last day using UTC
+      const lastDay = new Date(Date.UTC(year, month + 1, 0, 12, 0, 0)).getUTCDate();
       return {
         start: new Date(Date.UTC(year, month, 1, 12, 0, 0)),
         end: new Date(Date.UTC(year, month, lastDay, 12, 0, 0)),

@@ -602,8 +602,8 @@ export const activityService = {
    * To be called by cron job in Fase 10
    */
   async cleanupOld(retentionDays: number = 365) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+    // Use timestamp math to avoid timezone issues
+    const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
     const result = await prisma.activity.deleteMany({
       where: {

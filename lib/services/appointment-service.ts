@@ -362,7 +362,8 @@ export const appointmentService = {
   // Get availability for a specific date
   // maxAppointments: defaults to staff limit (5). For parents portal, pass MAX_APPOINTMENTS_FOR_PARENTS (2)
   async getAvailability(date: Date, maxAppointments: number = MAX_APPOINTMENTS_FOR_STAFF): Promise<DayAvailability> {
-    const dayOfWeek = date.getDay();
+    // Use getUTCDay() to avoid timezone issues with database dates
+    const dayOfWeek = date.getUTCDay();
     const dateStr = formatDateString(date);
 
     // Check if closed

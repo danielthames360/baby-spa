@@ -746,7 +746,8 @@
       "cash": "Efectivo",
       "transfer": "Transferencia",
       "qr": "QR",
-      "card": "Tarjeta"
+      "card": "Tarjeta",
+      "other": "Otro"
     },
     "types": {
       "advance": "Anticipo",
@@ -2722,5 +2723,415 @@
     "completedToday": "Completadas",
     "inProgress": "En Progreso",
     "scheduledRemaining": "Programadas"
+  },
+
+  "reports": {
+    "title": "Centro de Reportes",
+    "subtitle": "Analiza el rendimiento de tu negocio",
+    "availableReports": "Reportes Disponibles",
+    "allReports": "Todos los Reportes",
+
+    "alerts": {
+      "title": "Requiere Atención",
+      "receivables": "por cobrar",
+      "outOfStock": "productos agotados",
+      "lowStock": "stock bajo",
+      "pendingEvaluations": "evaluaciones pendientes",
+      "noShows": "inasistencias"
+    },
+
+    "categories": {
+      "finance": "Finanzas",
+      "operations": "Operaciones",
+      "services": "Servicios",
+      "management": "Gestión"
+    },
+
+    "filters": {
+      "from": "Desde",
+      "to": "Hasta",
+      "period": "Período seleccionado",
+      "last7Days": "7 días",
+      "last30Days": "30 días",
+      "thisMonth": "Este mes",
+      "thisYear": "Este año"
+    },
+
+    "kpi": {
+      "totalIncome": "Ingresos Totales",
+      "receivables": "Por Cobrar",
+      "completedSessions": "Sesiones Completadas",
+      "noShows": "Inasistencias",
+      "activeBabies": "Bebés Activos",
+      "lowStock": "Stock Bajo",
+      "pendingEvaluations": "Evaluaciones Pendientes",
+      "cancelled": "Canceladas",
+      "inPeriod": "en el período",
+      "pending": "pendiente",
+      "totalAppointments": "citas totales",
+      "requiresAttention": "requiere atención",
+      "allGood": "todo en orden",
+      "newThisMonth": "nuevos este mes",
+      "outOfStock": "agotados",
+      "needsEvaluation": "por evaluar",
+      "allEvaluated": "todo evaluado",
+      "attendanceRate": "Tasa de Asistencia"
+    },
+
+    "reports": {
+      "income": {
+        "title": "Reporte de Ingresos",
+        "description": "Análisis de ingresos por método de pago y período"
+      },
+      "receivables": {
+        "title": "Cuentas por Cobrar",
+        "description": "Clientes con pagos pendientes de cuotas"
+      },
+      "attendance": {
+        "title": "Asistencia y No-Shows",
+        "description": "Seguimiento de inasistencias y cancelaciones"
+      },
+      "inventory": {
+        "title": "Estado del Inventario",
+        "description": "Productos con stock bajo o agotados"
+      },
+      "evaluations": {
+        "title": "Evaluaciones Pendientes",
+        "description": "Sesiones completadas sin evaluación"
+      },
+      "pnl": {
+        "title": "Estado de Resultados",
+        "description": "Ingresos, gastos y resultado neto del período"
+      },
+      "therapists": {
+        "title": "Rendimiento de Terapeutas",
+        "description": "Sesiones, horas y tasa de evaluación por terapeuta"
+      },
+      "clients": {
+        "title": "Cartera de Clientes",
+        "description": "Clientes activos, VIP y en riesgo"
+      },
+      "packages": {
+        "title": "Paquetes y Servicios",
+        "description": "Ventas, utilización y descuentos"
+      },
+      "acquisition": {
+        "title": "Adquisición de Clientes",
+        "description": "Nuevos clientes y conversión de leads"
+      },
+      "occupancy": {
+        "title": "Ocupación del Calendario",
+        "description": "Tasa de ocupación por día y horario"
+      },
+      "babyCards": {
+        "title": "Baby Cards",
+        "description": "Ventas, ingresos y uso de tarjetas de progreso"
+      },
+      "events": {
+        "title": "Eventos",
+        "description": "Análisis de eventos, asistencia y conversión"
+      },
+      "payroll": {
+        "title": "Nómina",
+        "description": "Pagos de personal por tipo y empleado"
+      },
+      "cashflow": {
+        "title": "Flujo de Caja",
+        "description": "Ingresos, egresos y proyección"
+      }
+    },
+
+    "advancedReports": "Reportes Avanzados",
+    "tier3Reports": "Reportes Operativos",
+
+    "income": {
+      "totalIncome": "Ingresos Totales",
+      "transactions": "transacciones",
+      "dailyIncome": "Ingresos por Día",
+      "noData": "No hay ingresos registrados en este período"
+    },
+
+    "receivables": {
+      "totalPending": "Total Pendiente",
+      "overdue": "Vencido",
+      "clientsWithDebt": "Clientes con Deuda",
+      "clients": "clientes",
+      "requiresAction": "requiere seguimiento",
+      "allOnTime": "todo al día",
+      "overduePlural": "vencidos",
+      "client": "Cliente",
+      "package": "Paquete",
+      "total": "Total",
+      "paid": "Pagado",
+      "pending": "Pendiente",
+      "installments": "Cuotas",
+      "pendingLabel": "pend.",
+      "date": "Fecha",
+      "noData": "No hay cuentas por cobrar"
+    },
+
+    "attendance": {
+      "completed": "Completadas",
+      "noShow": "Inasistencias",
+      "noShows": "Inasistencias",
+      "cancelled": "Canceladas",
+      "dailyAttendance": "Asistencia por Día",
+      "noData": "No hay datos de asistencia en este período",
+      "noShowList": "Lista de Inasistencias",
+      "noShowListDescription": "Clientes que no asistieron a sus citas",
+      "noNoShows": "Sin inasistencias",
+      "allAttended": "Todos los clientes asistieron a sus citas",
+      "date": "Fecha",
+      "time": "Hora",
+      "baby": "Bebé",
+      "parent": "Padre/Madre",
+      "ofTotal": "de",
+      "requiresFollowUp": "requiere seguimiento",
+      "perfect": "excelente",
+      "inPeriod": "en el período",
+      "rate": "Tasa de Asistencia",
+      "attendanceRate": "porcentaje de asistencia"
+    },
+
+    "inventory": {
+      "totalProducts": "Total Productos",
+      "inStock": "con stock",
+      "lowStock": "Stock Bajo",
+      "outOfStock": "Agotados",
+      "totalValue": "Valor Total",
+      "needsReorder": "necesita reposición",
+      "urgent": "urgente",
+      "allGood": "todo en orden",
+      "atCost": "a precio de costo",
+      "filters": {
+        "all": "Todos",
+        "low-stock": "Stock Bajo",
+        "out-of-stock": "Agotados"
+      },
+      "product": "Producto",
+      "category": "Categoría",
+      "stock": "Stock",
+      "minStock": "Mín.",
+      "costPrice": "Costo",
+      "salePrice": "Venta",
+      "status": "Estado",
+      "lastMovement": "Últ. Mov.",
+      "statuses": {
+        "ok": "OK",
+        "low": "Bajo",
+        "out": "Agotado"
+      },
+      "noData": "No hay productos registrados"
+    },
+
+    "evaluations": {
+      "total": "Total Pendientes",
+      "urgent": "Urgentes",
+      "warning": "Advertencia",
+      "recent": "Recientes",
+      "allComplete": "Todo evaluado",
+      "pending": "pendientes",
+      "moreThan7Days": "más de 7 días",
+      "between3And7Days": "entre 3 y 7 días",
+      "lessThan3Days": "menos de 3 días",
+      "none": "ninguna",
+      "pendingList": "Evaluaciones Pendientes",
+      "pendingListDescription": "Sesiones completadas que requieren evaluación",
+      "noDataDescription": "Todas las sesiones han sido evaluadas",
+      "date": "Fecha",
+      "session": "Sesión",
+      "baby": "Bebé",
+      "therapist": "Terapeuta",
+      "daysPending": "Días",
+      "days": "días"
+    },
+
+    "pnl": {
+      "statement": "Estado de Resultados",
+      "income": "INGRESOS",
+      "sessions": "Sesiones completadas",
+      "babyCards": "Baby Cards",
+      "events": "Eventos",
+      "installments": "Cuotas de paquetes",
+      "totalIncome": "Total Ingresos",
+      "directCosts": "COSTOS DIRECTOS",
+      "sessionProducts": "Productos en sesiones",
+      "eventProducts": "Productos en eventos",
+      "totalDirectCosts": "Total Costos Directos",
+      "grossMargin": "Margen Bruto",
+      "operatingExpenses": "GASTOS OPERATIVOS",
+      "payroll": "Nómina",
+      "totalOperatingExpenses": "Total Gastos Operativos",
+      "totalExpenses": "Total Gastos",
+      "netResult": "Resultado Neto",
+      "margin": "margen",
+      "categories": {
+        "rent": "Alquiler",
+        "utilities": "Servicios",
+        "supplies": "Insumos",
+        "maintenance": "Mantenimiento",
+        "marketing": "Marketing",
+        "taxes": "Impuestos",
+        "insurance": "Seguros",
+        "equipment": "Equipos",
+        "other": "Otros"
+      }
+    },
+
+    "therapists": {
+      "totalSessions": "Total Sesiones",
+      "activeTherapists": "Terapeutas Activos",
+      "avgEvaluationRate": "Tasa Promedio Eval.",
+      "rank": "#",
+      "therapist": "Terapeuta",
+      "sessions": "Sesiones",
+      "hours": "Horas",
+      "evaluations": "Evaluaciones",
+      "evalRate": "% Eval",
+      "workload": "Carga",
+      "noData": "No hay datos de terapeutas en este período",
+      "alert": "Alerta de Rendimiento",
+      "belowTarget": "tienen tasa de evaluación por debajo del objetivo (80%)"
+    },
+
+    "clients": {
+      "total": "Total Clientes",
+      "active": "Activos",
+      "inactive": "Inactivos",
+      "newThisMonth": "Nuevos este mes",
+      "topClients": "Clientes VIP",
+      "noTopClients": "Sin clientes VIP en este período",
+      "atRisk": "En Riesgo",
+      "noAtRisk": "No hay clientes en riesgo",
+      "sessions": "sesiones",
+      "lastVisit": "Última visita",
+      "noVisit": "Sin visitas registradas"
+    },
+
+    "packages": {
+      "totalSold": "Paquetes Vendidos",
+      "revenue": "Ingresos",
+      "utilizationRate": "Tasa de Uso",
+      "discountsGiven": "Descuentos",
+      "discountsCount": "otorgados",
+      "salesByPackage": "Ventas por Paquete",
+      "noSales": "No hay ventas en este período",
+      "unitsSold": "vendidos",
+      "utilization": "Utilización de Sesiones",
+      "sessionsSold": "Sesiones vendidas",
+      "sessionsUsed": "Sesiones usadas",
+      "dormantPackages": "Paquetes Dormidos",
+      "dormantDescription": "paquetes sin actividad en 60+ días"
+    },
+
+    "acquisition": {
+      "newClients": "Nuevos Clientes",
+      "activeLeads": "Leads Activos",
+      "conversionRate": "Tasa de Conversión",
+      "converted": "convertidos",
+      "noNewClients": "No hay nuevos clientes en este período",
+      "leadsFunnel": "Embudo de Leads",
+      "totalLeads": "Leads totales",
+      "activeLeadsList": "Lista de Leads Activos",
+      "noLeads": "No hay leads activos",
+      "weeks": "semanas"
+    },
+
+    "occupancy": {
+      "totalAppointments": "Citas Totales",
+      "totalSlots": "Slots Disponibles",
+      "rate": "Tasa de Ocupación",
+      "heatmap": "Mapa de Calor",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja",
+      "opportunity": "Oportunidad de Mejora",
+      "lowOccupancySlots": "Horarios con baja ocupación",
+      "suggestion": "Considera promociones especiales para estos horarios"
+    },
+
+    "babyCards": {
+      "sold": "Tarjetas Vendidas",
+      "revenue": "Ingresos",
+      "active": "Activas",
+      "completed": "Completadas",
+      "progress": "Progreso de Tarjetas",
+      "noCards": "No hay Baby Cards en este período",
+      "baby": "Bebé",
+      "parent": "Padre/Madre",
+      "purchaseDate": "Compra",
+      "stamps": "Sellos",
+      "status": "Estado",
+      "activeLabel": "Activa",
+      "completedLabel": "Completa",
+      "redemptions": "Recompensas Canjeadas",
+      "pendingRedemptions": "Pendientes",
+      "claimed": "canjeadas",
+      "pending": "pendientes de canjear"
+    },
+
+    "events": {
+      "totalEvents": "Total Eventos",
+      "totalAttendees": "Asistentes",
+      "revenue": "Ingresos",
+      "conversion": "Conversión",
+      "eventsList": "Lista de Eventos",
+      "noEvents": "No hay eventos en este período",
+      "event": "Evento",
+      "type": "Tipo",
+      "date": "Fecha",
+      "capacity": "Capacidad",
+      "attended": "Asistieron",
+      "cancelledLabel": "Cancelados",
+      "incomeLabel": "Ingresos",
+      "margin": "Margen",
+      "conversionLabel": "Conversión",
+      "converted": "convertidos",
+      "types": {
+        "BABY": "Bebés",
+        "PARENT": "Padres"
+      }
+    },
+
+    "payroll": {
+      "totalPaid": "Total Pagado",
+      "paymentsByType": "Por Tipo",
+      "byEmployee": "Por Empleado",
+      "pendingAdvances": "Adelantos Pendientes",
+      "noPayments": "No hay pagos en este período",
+      "employee": "Empleado",
+      "role": "Rol",
+      "regularPay": "Regular",
+      "advances": "Adelantos",
+      "bonuses": "Bonos",
+      "deductions": "Deducciones",
+      "net": "Neto",
+      "advancesAlert": "Adelantos por descontar",
+      "types": {
+        "SALARY": "Salario",
+        "ADVANCE": "Adelanto",
+        "BONUS": "Bono",
+        "COMMISSION": "Comisión"
+      }
+    },
+
+    "cashflow": {
+      "netCashflow": "Flujo de Caja Neto",
+      "income": "Ingresos",
+      "expenses": "Egresos",
+      "sessions": "Sesiones",
+      "babyCards": "Baby Cards",
+      "events": "Eventos",
+      "installments": "Cuotas",
+      "payroll": "Nómina",
+      "operating": "Gastos Operativos",
+      "projection": "Proyección",
+      "next30Days": "próximos 30 días",
+      "upcomingAppointments": "Citas Próximas",
+      "pendingInstallments": "Cuotas Pendientes",
+      "projectedTotal": "Total Proyectado",
+      "toCollect": "por cobrar",
+      "potentialIncome": "ingreso potencial"
+    }
   }
 }
