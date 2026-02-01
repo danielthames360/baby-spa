@@ -119,6 +119,31 @@ export function ParentFormFields<T extends FieldValues>({ form, prefix = "", isP
         )}
       />
 
+      {/* Birth Date */}
+      <FormField
+        control={form.control}
+        name={fieldName("birthDate")}
+        render={({ field, fieldState }) => (
+          <FormItem>
+            <FormLabel className="text-gray-700">
+              {t("babyForm.parentForm.birthDateOptional")}
+            </FormLabel>
+            <FormControl>
+              <Input
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={field.value ? new Date(field.value).toISOString().split("T")[0] : ""}
+                type="date"
+                className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+              />
+            </FormControl>
+            <FormMessage>{translateError(fieldState.error?.message)}</FormMessage>
+          </FormItem>
+        )}
+      />
+
       {/* Relationship - hide when managed externally */}
       {!hideRelationshipFields && (
         <FormField

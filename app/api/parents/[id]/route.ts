@@ -49,6 +49,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       name: validatedData.name,
       phone: validatedData.phone,
       email: validatedData.email ?? undefined,
+      birthDate: validatedData.birthDate ?? undefined,
       status: validatedData.status as "LEAD" | "ACTIVE" | "INACTIVE" | undefined,
       pregnancyWeeks: validatedData.pregnancyWeeks ?? undefined,
       leadSource: validatedData.leadSource ?? undefined,

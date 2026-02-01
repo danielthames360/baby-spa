@@ -61,6 +61,7 @@ export function AddParentDialog({
       name: "",
       phone: "",
       email: "",
+      birthDate: undefined,
       relationship: "GUARDIAN",
       isPrimary: false,
     } as ParentFormValues,

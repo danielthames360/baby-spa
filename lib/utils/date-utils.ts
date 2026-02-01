@@ -37,6 +37,26 @@ export function fromDateOnly(date: Date): string {
 }
 
 /**
+ * Extract YYYY-MM-DD from a Date object OR ISO date string
+ * Use this when data may come as Date (from Prisma) or string (from JSON serialization)
+ *
+ * @param input - Date object or ISO date string (e.g., "2026-01-23" or "2026-01-23T12:00:00.000Z")
+ * @returns Date string in YYYY-MM-DD format
+ *
+ * @example
+ * extractDateString(new Date("2026-01-23T12:00:00.000Z")) // Returns: "2026-01-23"
+ * extractDateString("2026-01-23T12:00:00.000Z") // Returns: "2026-01-23"
+ * extractDateString("2026-01-23") // Returns: "2026-01-23"
+ */
+export function extractDateString(input: Date | string): string {
+  if (input instanceof Date) {
+    return input.toISOString().split("T")[0];
+  }
+  // Handle both "2026-01-23" and "2026-01-23T12:00:00.000Z"
+  return input.split("T")[0];
+}
+
+/**
  * Parse date components and return a Date at UTC noon
  * Use this when you have year, month, day separately
  *

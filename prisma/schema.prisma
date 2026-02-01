@@ -404,6 +404,9 @@ model BabyParent {
   createdAt DateTime @default(now())
 
   @@unique([babyId, parentId])
+  // Performance indexes
+  @@index([babyId, isPrimary])
+  @@index([parentId, isPrimary])
   @@map("baby_parents")
 }
 
@@ -579,6 +582,9 @@ model PackagePurchase {
   appointments       Appointment[]
   installmentPayments PackagePayment[]
 
+  // Performance indexes
+  @@index([babyId, isActive])
+  @@index([parentId, isActive])
   @@map("package_purchases")
 }
 
@@ -638,6 +644,13 @@ model Appointment {
   history  AppointmentHistory[]
   payments AppointmentPayment[]
 
+  // Performance indexes
+  @@index([date, status])
+  @@index([babyId, status])
+  @@index([therapistId, date, status])
+  @@index([parentId, date, status])
+  @@index([status])
+  @@index([isPendingPayment])
   @@map("appointments")
 }
 
@@ -738,6 +751,11 @@ model Session {
   payment            Payment?
   babyCardSessionLog BabyCardSessionLog?
 
+  // Performance indexes
+  @@index([therapistId, status])
+  @@index([babyId, status])
+  @@index([packagePurchaseId, status])
+  @@index([status])
   @@map("sessions")
 }
 
@@ -1234,6 +1252,10 @@ model EventParticipant {
 
   @@unique([eventId, babyId])
   @@unique([eventId, parentId])
+  // Performance indexes
+  @@index([eventId, status])
+  @@index([babyId, status])
+  @@index([parentId, status])
   @@map("event_participants")
 }
 

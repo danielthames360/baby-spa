@@ -18,26 +18,29 @@ interface FloatingBubblesProps {
 
 export function FloatingBubbles({ count = 15, className = '' }: FloatingBubblesProps) {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Generate random bubbles
-    const generateBubbles = () => {
-      const newBubbles: Bubble[] = [];
-      for (let i = 0; i < count; i++) {
-        newBubbles.push({
-          id: i,
-          x: Math.random() * 100, // Random horizontal position (%)
-          size: 10 + Math.random() * 28, // Size between 10-38px (slightly larger)
-          delay: Math.random() * 8, // Random delay 0-8s
-          duration: 10 + Math.random() * 15, // Duration 10-25s (a bit faster)
-          opacity: 0.35 + Math.random() * 0.35, // Opacity 0.35-0.7 (more visible)
-        });
-      }
-      setBubbles(newBubbles);
-    };
-
-    generateBubbles();
+    // Generate random bubbles only on client
+    const newBubbles: Bubble[] = [];
+    for (let i = 0; i < count; i++) {
+      newBubbles.push({
+        id: i,
+        x: Math.random() * 100, // Random horizontal position (%)
+        size: 10 + Math.random() * 28, // Size between 10-38px (slightly larger)
+        delay: Math.random() * 8, // Random delay 0-8s
+        duration: 10 + Math.random() * 15, // Duration 10-25s (a bit faster)
+        opacity: 0.35 + Math.random() * 0.35, // Opacity 0.35-0.7 (more visible)
+      });
+    }
+    setBubbles(newBubbles);
+    setMounted(true);
   }, [count]);
+
+  // Return null until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className={`pointer-events-none fixed inset-0 overflow-hidden ${className}`}>

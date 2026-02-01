@@ -63,13 +63,13 @@ const translations = {
     title: "Registro de Bebé",
     subtitle: "Complete los datos para registrar a su bebé en Baby Spa",
     steps: {
-      parent1: "Sus Datos",
-      parent2: "Segundo Padre",
+      parent1: "Mamá o Papá",
+      parent2: "Segundo Tutor",
       baby: "Datos del Bebé",
       confirm: "Confirmar",
     },
     parent1: {
-      title: "Sus Datos",
+      title: "Mamá o Papá",
       subtitle: "Por favor verifique y complete su información",
     },
     parent2: {
@@ -123,13 +123,13 @@ const translations = {
     title: "Cadastro de Bebê",
     subtitle: "Complete os dados para cadastrar seu bebê no Baby Spa",
     steps: {
-      parent1: "Seus Dados",
+      parent1: "Mamãe ou Papai",
       parent2: "Segundo Responsável",
       baby: "Dados do Bebê",
       confirm: "Confirmar",
     },
     parent1: {
-      title: "Seus Dados",
+      title: "Mamãe ou Papai",
       subtitle: "Por favor verifique e complete suas informações",
     },
     parent2: {
@@ -245,6 +245,7 @@ export default function PublicRegistrationPage() {
       name: "",
       phone: "",
       email: "",
+      birthDate: undefined as Date | undefined,
       relationship: "MOTHER" as const,
     },
   });
@@ -256,6 +257,7 @@ export default function PublicRegistrationPage() {
       name: "",
       phone: "",
       email: "",
+      birthDate: undefined as Date | undefined,
       relationship: "FATHER" as const,
     },
   });

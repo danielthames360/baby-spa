@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn, getSession } from "next-auth/react";
+import { signIn, getSession, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -31,7 +31,24 @@ import { staffLoginSchema, type StaffLoginInput } from "@/lib/validations";
 export default function StaffLoginPage() {
   const t = useTranslations();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [serverError, setServerError] = useState("");
+
+  // Redirect if already authenticated (any role)
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      const role = session.user.role;
+      // Redirect staff to their dashboard
+      if (role === "ADMIN" || role === "OWNER" || role === "RECEPTION") {
+        router.replace("/admin/dashboard");
+      } else if (role === "THERAPIST") {
+        router.replace("/therapist/today");
+      } else if (role === "PARENT") {
+        // Parent trying to access staff login → redirect to parent portal
+        router.replace("/portal/dashboard");
+      }
+    }
+  }, [status, session, router]);
 
   const form = useForm<StaffLoginInput>({
     resolver: zodResolver(staffLoginSchema),

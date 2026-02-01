@@ -123,12 +123,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         where: { phone: validatedParent1.phone },
       });
 
-      // If found an existing parent, optionally update email if not set
-      if (parent1 && validatedParent1.email && !parent1.email) {
-        parent1 = await tx.parent.update({
-          where: { id: parent1.id },
-          data: { email: validatedParent1.email },
-        });
+      // If found an existing parent, optionally update email and birthDate if not set
+      if (parent1 && (validatedParent1.email || validatedParent1.birthDate)) {
+        const updateData: { email?: string; birthDate?: Date } = {};
+        if (validatedParent1.email && !parent1.email) {
+          updateData.email = validatedParent1.email;
+        }
+        if (validatedParent1.birthDate && !parent1.birthDate) {
+          updateData.birthDate = validatedParent1.birthDate;
+        }
+        if (Object.keys(updateData).length > 0) {
+          parent1 = await tx.parent.update({
+            where: { id: parent1.id },
+            data: updateData,
+          });
+        }
       }
 
       if (!parent1) {
@@ -149,6 +158,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             name: validatedParent1.name,
             phone: validatedParent1.phone,
             email: validatedParent1.email || null,
+            birthDate: validatedParent1.birthDate || null,
             accessCode,
           },
         });
@@ -163,12 +173,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             where: { phone: validatedParent2.phone },
           });
 
-          // If found, optionally update email if not set
-          if (parent2 && validatedParent2.email && !parent2.email) {
-            parent2 = await tx.parent.update({
-              where: { id: parent2.id },
-              data: { email: validatedParent2.email },
-            });
+          // If found, optionally update email and birthDate if not set
+          if (parent2 && (validatedParent2.email || validatedParent2.birthDate)) {
+            const updateData: { email?: string; birthDate?: Date } = {};
+            if (validatedParent2.email && !parent2.email) {
+              updateData.email = validatedParent2.email;
+            }
+            if (validatedParent2.birthDate && !parent2.birthDate) {
+              updateData.birthDate = validatedParent2.birthDate;
+            }
+            if (Object.keys(updateData).length > 0) {
+              parent2 = await tx.parent.update({
+                where: { id: parent2.id },
+                data: updateData,
+              });
+            }
           }
         }
 
@@ -190,6 +209,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               name: validatedParent2.name,
               phone: validatedParent2.phone || null,
               email: validatedParent2.email || null,
+              birthDate: validatedParent2.birthDate || null,
               accessCode: accessCode2,
             },
           });

@@ -196,7 +196,7 @@ const display = formatDateForDisplay(dbDate, locale); // → "viernes, 6 de febr
 **ANTES de escribir código, verificar si ya existe una utilidad:**
 
 ```
-lib/utils/date-utils.ts    → Fechas (formatLocalDateString, formatDateForDisplay, toDateOnly, fromDateOnly)
+lib/utils/date-utils.ts    → Fechas (formatLocalDateString, formatDateForDisplay, toDateOnly, fromDateOnly, extractDateString)
 lib/utils/age.ts           → Edad (calculateExactAge, formatAge, isMesversario)
 lib/utils/currency-utils.ts → Moneda (getCurrencySymbol, formatCurrency)
 lib/utils/gender-utils.ts  → Género (getGenderGradient)

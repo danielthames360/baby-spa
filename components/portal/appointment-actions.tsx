@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { differenceInHours, format, addDays, startOfDay, isBefore } from "date-fns";
 import { es, ptBR } from "date-fns/locale";
-import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatDateForDisplay, extractDateString } from "@/lib/utils/date-utils";
 import {
   Calendar,
   Clock,
@@ -91,8 +91,7 @@ export function canModifyAppointment(appointment: AppointmentForActions): {
   }
 
   // Calculate hours until appointment
-  // Extract YYYY-MM-DD from ISO string (handles both "2026-01-30" and "2026-01-30T12:00:00.000Z")
-  const dateOnly = appointment.date.split("T")[0];
+  const dateOnly = extractDateString(appointment.date);
   const appointmentDateTime = new Date(`${dateOnly}T${appointment.startTime}:00`);
   const hoursRemaining = differenceInHours(appointmentDateTime, new Date());
 

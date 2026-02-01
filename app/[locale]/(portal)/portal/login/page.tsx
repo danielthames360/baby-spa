@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -31,7 +31,25 @@ import { parentLoginSchema, type ParentLoginInput } from "@/lib/validations";
 export default function ParentLoginPage() {
   const t = useTranslations();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [serverError, setServerError] = useState("");
+
+  // Redirect if already authenticated (any role)
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      const role = session.user.role;
+      if (role === "PARENT") {
+        // Parent → redirect to parent portal
+        router.replace("/portal/dashboard");
+      } else if (role === "ADMIN" || role === "OWNER" || role === "RECEPTION") {
+        // Staff trying to access parent login → redirect to admin
+        router.replace("/admin/dashboard");
+      } else if (role === "THERAPIST") {
+        // Therapist trying to access parent login → redirect to therapist dashboard
+        router.replace("/therapist/today");
+      }
+    }
+  }, [status, session, router]);
 
   const form = useForm<ParentLoginInput>({
     resolver: zodResolver(parentLoginSchema),

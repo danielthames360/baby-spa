@@ -28,6 +28,7 @@ const translations = {
     phoneOptional: "Teléfono (opcional)",
     emailOptional: "Correo electrónico (opcional)",
     emailPlaceholder: "ejemplo@correo.com",
+    birthDateOptional: "Fecha de nacimiento (opcional)",
     relationship: "Relación con el bebé",
     mother: "Madre",
     father: "Padre",
@@ -40,6 +41,7 @@ const translations = {
       PHONE_REQUIRED: "El teléfono es requerido",
       PHONE_INVALID: "Teléfono inválido",
       EMAIL_INVALID: "Correo electrónico inválido",
+      BIRTH_DATE_FUTURE: "La fecha no puede ser en el futuro",
     },
   },
   "pt-BR": {
@@ -49,6 +51,7 @@ const translations = {
     phoneOptional: "Telefone (opcional)",
     emailOptional: "E-mail (opcional)",
     emailPlaceholder: "exemplo@email.com",
+    birthDateOptional: "Data de nascimento (opcional)",
     relationship: "Relação com o bebê",
     mother: "Mãe",
     father: "Pai",
@@ -61,6 +64,7 @@ const translations = {
       PHONE_REQUIRED: "O telefone é obrigatório",
       PHONE_INVALID: "Telefone inválido",
       EMAIL_INVALID: "E-mail inválido",
+      BIRTH_DATE_FUTURE: "A data não pode ser no futuro",
     },
   },
 };
@@ -151,6 +155,29 @@ export function PublicParentFormFields<T extends FieldValues>({
                 value={getStringValue(field.value)}
                 type="email"
                 placeholder={t.emailPlaceholder}
+                className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+              />
+            </FormControl>
+            <FormMessage>{translateError(fieldState.error?.message)}</FormMessage>
+          </FormItem>
+        )}
+      />
+
+      {/* Birth Date */}
+      <FormField
+        control={form.control}
+        name={fieldName("birthDate")}
+        render={({ field, fieldState }) => (
+          <FormItem>
+            <FormLabel className="text-gray-700">{t.birthDateOptional}</FormLabel>
+            <FormControl>
+              <Input
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={field.value ? new Date(field.value).toISOString().split("T")[0] : ""}
+                type="date"
                 className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
               />
             </FormControl>

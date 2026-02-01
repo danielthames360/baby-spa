@@ -173,6 +173,13 @@ export const parentWithLeadSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
+  birthDate: z.coerce
+    .date()
+    .optional()
+    .nullable()
+    .refine((date) => !date || date <= new Date(), {
+      message: "BIRTH_DATE_FUTURE",
+    }),
   // LEAD fields
   status: z.enum(["LEAD", "ACTIVE", "INACTIVE"]).optional(),
   pregnancyWeeks: z.coerce

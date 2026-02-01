@@ -6,8 +6,12 @@ import { useTranslations, useLocale } from "next-intl";
 // Hook for mobile fullscreen modal (iOS Safari compatible)
 function useMobileViewport() {
   const [styles, setStyles] = useState<{ height?: number; isMobile: boolean }>({ isMobile: false });
+  const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
+    // Mark as mounted first to avoid hydration mismatch
+    setMounted(true);
+
     function update() {
       const isMobile = window.innerWidth < 640;
       // Use visualViewport for most accurate height (handles iOS Safari toolbar)
@@ -33,6 +37,11 @@ function useMobileViewport() {
       window.removeEventListener('orientationchange', update);
     };
   }, []);
+
+  // Return safe defaults until mounted
+  if (!mounted) {
+    return { isMobile: false, height: undefined };
+  }
 
   return styles;
 }

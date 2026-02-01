@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { extractDateString } from "@/lib/utils/date-utils";
 
 interface ParentDialogProps {
   open: boolean;
@@ -38,6 +39,7 @@ interface ParentDialogProps {
     name: string;
     phone: string | null;
     email: string | null;
+    birthDate: Date | string | null;
     status: string;
     pregnancyWeeks: number | null;
     leadSource: string | null;
@@ -51,6 +53,7 @@ interface FormData {
   name: string;
   phone: string;
   email: string;
+  birthDate: string;
   status: "LEAD" | "ACTIVE" | "INACTIVE";
   pregnancyWeeks: string;
   leadSource: string;
@@ -83,6 +86,7 @@ export function ParentDialog({
       name: "",
       phone: "",
       email: "",
+      birthDate: "",
       status: "LEAD",
       pregnancyWeeks: "",
       leadSource: "",
@@ -93,10 +97,17 @@ export function ParentDialog({
   // Reset form when parent changes
   useEffect(() => {
     if (open) {
+      // Format birthDate for input
+      let birthDateStr = "";
+      if (parent?.birthDate) {
+        birthDateStr = extractDateString(parent.birthDate);
+      }
+
       form.reset({
         name: parent?.name ?? "",
         phone: parent?.phone ?? "",
         email: parent?.email ?? "",
+        birthDate: birthDateStr,
         status: (parent?.status as "LEAD" | "ACTIVE" | "INACTIVE") ?? "LEAD",
         pregnancyWeeks: parent?.pregnancyWeeks?.toString() ?? "",
         leadSource: parent?.leadSource ?? "",
@@ -127,6 +138,7 @@ export function ParentDialog({
         name: data.name,
         phone: data.phone,
         email: data.email || undefined,
+        birthDate: data.birthDate || undefined,
         status: data.status,
         pregnancyWeeks: data.pregnancyWeeks ? parseInt(data.pregnancyWeeks) : null,
         leadSource: data.leadSource || null,
@@ -223,6 +235,24 @@ export function ParentDialog({
                       {...field}
                       type="email"
                       placeholder={t("parents.fields.email")}
+                      className="h-12 rounded-xl border-2 border-teal-100"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Birth Date */}
+            <FormField
+              control={form.control}
+              name="birthDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("babyForm.parentForm.birthDateOptional")}</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="date"
                       className="h-12 rounded-xl border-2 border-teal-100"
                     />
                   </FormControl>

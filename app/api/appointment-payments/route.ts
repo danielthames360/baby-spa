@@ -49,9 +49,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate payment method
+    // Validate payment method (only if provided directly, not when using paymentDetails)
     const validMethods: PaymentMethod[] = ["CASH", "TRANSFER", "CARD", "OTHER"];
-    if (!validMethods.includes(paymentMethod as PaymentMethod)) {
+    if (paymentMethod && !validMethods.includes(paymentMethod as PaymentMethod)) {
       return NextResponse.json(
         { error: "INVALID_PAYMENT_METHOD" },
         { status: 400 }

@@ -44,6 +44,7 @@ interface SerializedParent {
   name: string;
   phone: string | null;
   email: string | null;
+  birthDate: string | null;
   accessCode: string;
   noShowCount: number;
   status: string;

@@ -12,12 +12,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { updateParentSchema } from "@/lib/validations/baby";
+import { extractDateString } from "@/lib/utils/date-utils";
 
 // Use explicit type to avoid zod coerce.date() type inference issues
 interface ParentFormValues {
   name?: string;
   phone?: string;
   email?: string;
+  birthDate?: string;
 }
 
 interface ParentData {
@@ -46,6 +48,7 @@ export default function EditParentPage() {
       name: "",
       phone: "",
       email: "",
+      birthDate: "",
     },
   });
 
@@ -64,6 +67,7 @@ export default function EditParentPage() {
           name: data.name,
           phone: data.phone,
           email: data.email || "",
+          birthDate: data.birthDate ? extractDateString(data.birthDate) : "",
         });
       } catch {
         setError("Error loading parent data");
@@ -195,6 +199,28 @@ export default function EditParentPage() {
                     <Input
                       {...field}
                       type="email"
+                      value={field.value || ""}
+                      className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Birth Date */}
+            <FormField
+              control={form.control}
+              name="birthDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">
+                    {t("babyForm.parentForm.birthDateOptional")}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="date"
                       value={field.value || ""}
                       className="h-12 rounded-xl border-2 border-teal-100 transition-all focus:border-teal-400 focus:ring-4 focus:ring-teal-500/20"
                     />

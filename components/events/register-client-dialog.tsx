@@ -70,6 +70,7 @@ export function RegisterClientDialog({
       name: "",
       phone: "",
       email: "",
+      birthDate: undefined,
       relationship: "MOTHER",
       isPrimary: true,
     } as PrimaryParentFormValues,

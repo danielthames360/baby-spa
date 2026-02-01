@@ -28,6 +28,13 @@ export const publicPrimaryParentSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
+  birthDate: z.coerce
+    .date()
+    .optional()
+    .nullable()
+    .refine((date) => !date || date <= new Date(), {
+      message: "BIRTH_DATE_FUTURE",
+    }),
   relationship: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("MOTHER"),
 });
 
@@ -50,6 +57,13 @@ export const publicSecondaryParentSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
+  birthDate: z.coerce
+    .date()
+    .optional()
+    .nullable()
+    .refine((date) => !date || date <= new Date(), {
+      message: "BIRTH_DATE_FUTURE",
+    }),
   relationship: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("FATHER"),
 });
 
