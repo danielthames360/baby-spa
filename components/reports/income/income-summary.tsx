@@ -7,7 +7,7 @@ import {
   Banknote,
   CreditCard,
   ArrowRightLeft,
-  CircleDollarSign,
+  QrCode,
   DollarSign
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,16 +20,16 @@ interface IncomeSummaryProps {
 
 const METHOD_ICONS = {
   CASH: Banknote,
+  QR: QrCode,
   CARD: CreditCard,
   TRANSFER: ArrowRightLeft,
-  OTHER: CircleDollarSign,
 };
 
 const METHOD_COLORS = {
   CASH: "bg-emerald-100 text-emerald-700",
+  QR: "bg-purple-100 text-purple-700",
   CARD: "bg-blue-100 text-blue-700",
-  TRANSFER: "bg-purple-100 text-purple-700",
-  OTHER: "bg-gray-100 text-gray-700",
+  TRANSFER: "bg-amber-100 text-amber-700",
 };
 
 export function IncomeSummary({ total, byMethod, locale }: IncomeSummaryProps) {
@@ -55,7 +55,7 @@ export function IncomeSummary({ total, byMethod, locale }: IncomeSummaryProps) {
 
       {/* By Method */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {(["CASH", "CARD", "TRANSFER", "OTHER"] as PaymentMethod[]).map((method) => {
+        {(["CASH", "QR", "CARD", "TRANSFER"] as PaymentMethod[]).map((method) => {
           const data = byMethod.find((m) => m.method === method) || {
             amount: 0,
             count: 0,
@@ -89,9 +89,9 @@ export function IncomeSummary({ total, byMethod, locale }: IncomeSummaryProps) {
                     className={cn(
                       "h-full rounded-full transition-all",
                       method === "CASH" && "bg-gradient-to-r from-emerald-200 to-emerald-300",
+                      method === "QR" && "bg-gradient-to-r from-purple-200 to-purple-300",
                       method === "CARD" && "bg-gradient-to-r from-blue-200 to-blue-300",
-                      method === "TRANSFER" && "bg-gradient-to-r from-purple-200 to-purple-300",
-                      method === "OTHER" && "bg-gradient-to-r from-gray-200 to-gray-300"
+                      method === "TRANSFER" && "bg-gradient-to-r from-amber-200 to-amber-300"
                     )}
                     style={{ width: `${percentage}%` }}
                   />

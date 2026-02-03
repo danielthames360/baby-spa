@@ -46,11 +46,11 @@ export function NotificationBell() {
     }
   }, [isPanelOpen]);
 
-  // Handle view notification - navigate to calendar with that date and appointment
+  // Handle view notification - navigate to appropriate page based on entity type
   const handleView = (notification: NotificationData) => {
     closePanel();
 
-    // Navigate to calendar with the appointment date and ID
+    // Navigate based on entity type
     if (notification.entityType === "appointment") {
       const params = new URLSearchParams();
 
@@ -64,6 +64,9 @@ export function NotificationBell() {
 
       const queryString = params.toString();
       router.push(`/${locale}/admin/calendar${queryString ? `?${queryString}` : ""}`);
+    } else if (notification.entityType === "cash_register") {
+      // Navigate to cash register page
+      router.push(`/${locale}/admin/cash-register`);
     } else {
       // Default: just go to calendar
       router.push(`/${locale}/admin/calendar`);

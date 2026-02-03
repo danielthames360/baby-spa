@@ -78,7 +78,7 @@ const { active, total } = items.reduce((acc, i) => {
 
 ```
 Next.js 14 (App Router) | TypeScript | PostgreSQL | Prisma
-NextAuth.js | shadcn/ui | TailwindCSS | next-intl
+NextAuth.js | shadcn/ui | TailwindCSS | next-intl | Zustand
 ```
 
 ---
@@ -239,6 +239,7 @@ lib/utils/currency-utils.ts → Moneda (getCurrencySymbol, formatCurrency)
 lib/utils/gender-utils.ts  → Género (getGenderGradient)
 lib/form-utils.ts          → Forms (getStringValue, getDateValue, getTodayDateString)
 lib/api-utils.ts           → APIs (withAuth, handleApiError)
+lib/stores/                → Zustand stores (notification-store, cash-register-store)
 ```
 
 **Reglas:**

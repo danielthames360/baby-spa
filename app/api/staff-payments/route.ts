@@ -43,7 +43,7 @@ const createAdvanceSchema = z.object({
   description: z.string().min(1),
   paymentDetails: z.array(z.object({
     amount: z.number().positive(),
-    paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+    paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
     reference: z.string().optional(),
   })).optional(),
 });
@@ -65,7 +65,7 @@ const createSalarySchema = z.object({
   description: z.string().min(1),
   paymentDetails: z.array(z.object({
     amount: z.number().positive(),
-    paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+    paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
     reference: z.string().optional(),
   })).optional(),
 });

@@ -375,6 +375,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["activity:view"],
   },
   {
+    key: "cashRegister",
+    href: "/admin/cash-register",
+    icon: "CircleDollarSign",
+    requiredPermissions: ["cash-register:approve"],
+  },
+  {
     key: "reports",
     href: "/admin/reports",
     icon: "BarChart3",

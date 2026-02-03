@@ -33,7 +33,7 @@ import {
   CreditCard,
   Banknote,
   Building,
-  MoreHorizontal,
+  QrCode,
   Percent,
   Search,
   AlertTriangle,
@@ -187,9 +187,9 @@ interface BabyCardCheckoutInfo {
 
 const paymentMethods = [
   { value: "CASH", icon: Banknote, color: "emerald" },
-  { value: "TRANSFER", icon: Building, color: "blue" },
+  { value: "QR", icon: QrCode, color: "purple" },
   { value: "CARD", icon: CreditCard, color: "violet" },
-  { value: "OTHER", icon: MoreHorizontal, color: "gray" },
+  { value: "TRANSFER", icon: Building, color: "blue" },
 ] as const;
 
 export function CompleteSessionDialog({

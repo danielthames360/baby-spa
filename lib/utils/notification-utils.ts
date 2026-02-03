@@ -69,6 +69,17 @@ const NOTIFICATION_STYLES: Record<string, NotificationStyle> = {
     buttonGradient: "bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600",
     indicator: "bg-rose-500",
   },
+  // Cash register difference (purple/violet)
+  CASH_REGISTER_DIFFERENCE: {
+    iconGradient: "bg-gradient-to-br from-purple-400 to-violet-500",
+    iconBg: "bg-purple-100",
+    iconText: "text-purple-600",
+    border: "border-purple-200/50",
+    shadow: "shadow-purple-500/10",
+    titleText: "text-purple-900",
+    buttonGradient: "bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600",
+    indicator: "bg-purple-500",
+  },
 };
 
 /**
@@ -90,7 +101,7 @@ export function getNotificationStyle(
  * Icon names for each notification type
  * Components should import the actual icons from lucide-react
  */
-export type NotificationIconType = "calendar-plus" | "clock" | "calendar-clock" | "calendar-x";
+export type NotificationIconType = "calendar-plus" | "clock" | "calendar-clock" | "calendar-x" | "banknotes";
 
 export function getNotificationIconType(
   type: StaffNotificationType,
@@ -105,6 +116,8 @@ export function getNotificationIconType(
       return "calendar-clock";
     case "CANCELLED_APPOINTMENT":
       return "calendar-x";
+    case "CASH_REGISTER_DIFFERENCE":
+      return "banknotes";
     default:
       return "calendar-plus";
   }

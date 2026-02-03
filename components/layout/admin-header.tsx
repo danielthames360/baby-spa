@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { CashRegisterHeaderIndicator } from "@/components/cash-register";
 
 interface AdminHeaderProps {
   onMenuClick?: () => void;
@@ -56,6 +57,11 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
 
       {/* Right side actions */}
       <div className="flex items-center gap-2">
+        {/* Cash Register Indicator (only for RECEPTION) */}
+        {session?.user?.role && (
+          <CashRegisterHeaderIndicator userRole={session.user.role} />
+        )}
+
         {/* Notifications */}
         <NotificationBell />
 

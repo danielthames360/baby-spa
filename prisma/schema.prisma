@@ -50,10 +50,10 @@ enum SessionStatus {
 }
 
 enum PaymentMethod {
-  CASH
-  TRANSFER
-  CARD
-  OTHER
+  CASH      // Efectivo / Dinheiro
+  QR        // QR Bolivia / PIX Brasil (pago instantáneo)
+  CARD      // Tarjeta POS / Cartão
+  TRANSFER  // Transferencia / TED-DOC
 }
 
 // Tipos de pago a staff (más específicos)
@@ -200,6 +200,23 @@ enum StaffNotificationType {
   NEW_APPOINTMENT           // Cita agendada desde portal
   CANCELLED_APPOINTMENT     // Cita cancelada desde portal
   RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
+  CASH_REGISTER_DIFFERENCE  // Arqueo cerrado con diferencia
+}
+
+// Para Arqueo de Caja
+enum CashRegisterStatus {
+  OPEN              // Caja abierta
+  CLOSED            // Cerrada, pendiente revisión (si diferencia ≠ 0)
+  APPROVED          // Aprobada (diferencia = 0 o admin aprobó)
+  FORCE_CLOSED      // Cerrada forzadamente por admin
+}
+
+enum CashExpenseCategory {
+  SUPPLIES      // Insumos
+  FOOD          // Comida/Refrigerios
+  TRANSPORT     // Transporte (taxi, delivery)
+  BANK_DEPOSIT  // Depósito a banco / Entrega a dueño
+  OTHER         // Otro (descripción obligatoria)
 }
 
 // Para Activity (registro de actividad/auditoría)
@@ -223,9 +240,12 @@ enum ActivityType {
   // Pagos
   INSTALLMENT_PAID
 
-  // Caja (se integrarán en Fase 9)
+  // Caja (Fase 10)
   CASH_REGISTER_OPENED
   CASH_REGISTER_CLOSED
+  CASH_REGISTER_EXPENSE_ADDED
+  CASH_REGISTER_FORCE_CLOSED
+  CASH_REGISTER_REVIEWED
 
   // Eventos
   EVENT_REGISTRATION
@@ -285,6 +305,12 @@ model User {
   activitiesPerformed        Activity[]            @relation("ActivitiesPerformed")
   expensesCreated            Expense[]             @relation("ExpensesCreated")
   expensesDeleted            Expense[]             @relation("ExpensesDeleted")
+
+  // Cash Register relations (Fase 10)
+  cashRegistersOpened        CashRegister[]        @relation("CashRegisterOpenedBy")
+  cashRegistersReviewed      CashRegister[]        @relation("CashRegisterReviewedBy")
+  cashRegistersForceClosed   CashRegister[]        @relation("CashRegisterForcedBy")
+  cashRegisterExpenses       CashRegisterExpense[] @relation("CashRegisterExpenseCreatedBy")
 
   @@map("users")
 }
@@ -1455,7 +1481,7 @@ model PaymentDetail {
 
   // Detalle del pago
   amount          Decimal           @db.Decimal(10, 2)
-  paymentMethod   PaymentMethod     // CASH, TRANSFER, CARD, OTHER
+  paymentMethod   PaymentMethod     // CASH, QR, CARD, TRANSFER
   reference       String?           // Número de comprobante
 
   // Auditoría
@@ -1499,4 +1525,69 @@ model Activity {
   @@index([type, createdAt])
   @@index([performedById, createdAt])
   @@map("activities")
+}
+
+// ============================================================
+// ARQUEO DE CAJA (Fase 10)
+// ============================================================
+
+model CashRegister {
+  id                String              @id @default(cuid())
+
+  // Apertura
+  openedById        String
+  openedBy          User                @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
+  openedAt          DateTime            @default(now())
+  initialFund       Decimal             @default(0) @db.Decimal(10, 2)
+
+  // Cierre
+  closedAt          DateTime?
+  declaredAmount    Decimal?            @db.Decimal(10, 2)
+  expectedAmount    Decimal?            @db.Decimal(10, 2)
+  difference        Decimal?            @db.Decimal(10, 2)
+  closingNotes      String?             @db.Text
+
+  // Estado
+  status            CashRegisterStatus  @default(OPEN)
+
+  // Revisión (solo si hay diferencia)
+  reviewedById      String?
+  reviewedBy        User?               @relation("CashRegisterReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  reviewNotes       String?             @db.Text
+
+  // Forzar cierre (si aplica)
+  forcedCloseById   String?
+  forcedCloseBy     User?               @relation("CashRegisterForcedBy", fields: [forcedCloseById], references: [id])
+  forcedCloseNotes  String?             @db.Text
+
+  // Relaciones
+  expenses          CashRegisterExpense[]
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([openedById, openedAt])
+  @@index([status])
+  @@index([openedAt])
+  @@map("cash_registers")
+}
+
+model CashRegisterExpense {
+  id                String              @id @default(cuid())
+
+  cashRegisterId    String
+  cashRegister      CashRegister        @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+
+  amount            Decimal             @db.Decimal(10, 2)
+  category          CashExpenseCategory
+  description       String
+
+  createdById       String
+  createdBy         User                @relation("CashRegisterExpenseCreatedBy", fields: [createdById], references: [id])
+  createdAt         DateTime            @default(now())
+
+  @@index([cashRegisterId])
+  @@index([createdAt])
+  @@map("cash_register_expenses")
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 // Single payment detail (one "line" of a split payment)
 export const paymentDetailSchema = z.object({
   amount: z.number().min(0.01, "AMOUNT_MIN"),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"], {
     message: "PAYMENT_METHOD_REQUIRED",
   }),
   reference: z.string().max(100).optional().nullable(),
@@ -44,7 +44,7 @@ export function validatePaymentDetailsSum(
 // Schema for API requests that include payment details
 export const paymentWithDetailsSchema = z.object({
   // Legacy single payment method (for backwards compatibility)
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]).optional(),
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"]).optional(),
   paymentReference: z.string().max(100).optional().nullable(),
   // New split payment support
   paymentDetails: paymentDetailsArraySchema.optional(),
@@ -63,7 +63,7 @@ export const createPaymentDetailSchema = z.object({
   ]),
   parentId: z.string().min(1, "PARENT_ID_REQUIRED"),
   amount: z.number().min(0.01, "AMOUNT_MIN"),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"]),
   reference: z.string().max(100).optional().nullable(),
   createdById: z.string().optional().nullable(),
 });

@@ -24,7 +24,7 @@ export const participantStatusEnum = z.enum([
 export const discountTypeEnum = z.enum(["COURTESY", "FIXED"]);
 
 // Payment method enum (reuse from existing)
-export const paymentMethodEnum = z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]);
+export const paymentMethodEnum = z.enum(["CASH", "CARD", "QR", "TRANSFER"]);
 
 // Create event schema
 export const createEventSchema = z.object({

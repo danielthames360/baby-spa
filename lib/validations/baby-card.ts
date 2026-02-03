@@ -16,7 +16,7 @@ export const babyCardStatusEnum = z.enum([
 ]);
 
 // Payment method enum (reuse)
-export const paymentMethodEnum = z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]);
+export const paymentMethodEnum = z.enum(["CASH", "CARD", "QR", "TRANSFER"]);
 
 // ============================================================
 // SPECIAL PRICE SCHEMA (embedded)

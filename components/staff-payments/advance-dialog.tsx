@@ -44,7 +44,7 @@ interface StaffMember {
 
 interface PaymentDetail {
   amount: number;
-  paymentMethod: "CASH" | "TRANSFER" | "CARD" | "OTHER";
+  paymentMethod: "CASH" | "QR" | "CARD" | "TRANSFER";
   reference?: string;
 }
 

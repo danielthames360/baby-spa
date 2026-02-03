@@ -42,7 +42,7 @@ const EXPENSE_CATEGORIES = [
 
 interface PaymentDetail {
   amount: number;
-  paymentMethod: "CASH" | "TRANSFER" | "CARD" | "OTHER";
+  paymentMethod: "CASH" | "QR" | "CARD" | "TRANSFER";
   reference?: string;
 }
 

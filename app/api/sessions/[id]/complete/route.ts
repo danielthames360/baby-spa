@@ -10,14 +10,14 @@ interface RouteParams {
 
 const paymentDetailSchema = z.object({
   amount: z.number().min(0.01),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
   reference: z.string().optional(),
 });
 
 const completeSessionSchema = z.object({
   packageId: z.string().optional(), // Package to sell (if baby has no active package)
   packagePurchaseId: z.string().optional(), // Existing package purchase to use for this session
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]).optional(),
+  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]).optional(),
   paymentDetails: z.array(paymentDetailSchema).optional(), // Split payment support
   paymentNotes: z.string().optional(),
   discountAmount: z.number().min(0).optional(),

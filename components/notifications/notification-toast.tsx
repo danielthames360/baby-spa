@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, Clock, X, Calendar, Check, CalendarClock, CalendarX2 } from "lucide-react";
+import { CalendarPlus, Clock, X, Calendar, Check, CalendarClock, CalendarX2, Banknote, CircleDollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NotificationData } from "@/lib/stores/notification-store";
@@ -23,6 +23,8 @@ function NotificationIcon({ iconType }: { iconType: string }) {
       return <CalendarClock className="h-3.5 w-3.5 text-white" />;
     case "calendar-x":
       return <CalendarX2 className="h-3.5 w-3.5 text-white" />;
+    case "banknotes":
+      return <Banknote className="h-3.5 w-3.5 text-white" />;
     default:
       return <CalendarPlus className="h-3.5 w-3.5 text-white" />;
   }
@@ -115,7 +117,11 @@ export function NotificationToast({
           )}
           onClick={handleView}
         >
-          <Calendar className="h-3 w-3" />
+          {notification.entityType === "cash_register" ? (
+            <CircleDollarSign className="h-3 w-3" />
+          ) : (
+            <Calendar className="h-3 w-3" />
+          )}
           {t("view")}
         </Button>
       </div>

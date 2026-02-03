@@ -11,7 +11,7 @@ import {
   CreditCard,
   Banknote,
   Building,
-  MoreHorizontal,
+  QrCode,
   Check,
   Sparkles,
   Percent,
@@ -76,9 +76,9 @@ interface SellPackageDialogProps {
 
 const paymentMethods = [
   { value: "CASH", icon: Banknote, color: "emerald" },
-  { value: "TRANSFER", icon: Building, color: "blue" },
+  { value: "QR", icon: QrCode, color: "purple" },
   { value: "CARD", icon: CreditCard, color: "violet" },
-  { value: "OTHER", icon: MoreHorizontal, color: "gray" },
+  { value: "TRANSFER", icon: Building, color: "blue" },
 ] as const;
 
 // Payment plan options (SINGLE = full payment, INSTALLMENTS = use package config)

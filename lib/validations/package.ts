@@ -105,7 +105,7 @@ export const sellPackageSchema = z.object({
     .max(200, "REASON_TOO_LONG")
     .optional()
     .or(z.literal("")),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"], {
     message: "PAYMENT_METHOD_REQUIRED",
   }),
   paymentNotes: z
@@ -134,7 +134,7 @@ export type SellPackageFormData = z.infer<typeof sellPackageSchema>;
 // Payment detail for split payments
 const paymentDetailSchema = z.object({
   amount: z.number().min(0.01, "AMOUNT_MIN"),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"], {
     message: "PAYMENT_METHOD_REQUIRED",
   }),
   reference: z.string().max(100).optional().nullable(),
@@ -151,7 +151,7 @@ export const registerInstallmentPaymentSchema = z.object({
     .number()
     .min(0.01, "AMOUNT_MIN"),
   // Legacy single method (optional if paymentDetails is provided)
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"], {
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"], {
     message: "PAYMENT_METHOD_REQUIRED",
   }).optional(),
   reference: z

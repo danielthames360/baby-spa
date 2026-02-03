@@ -308,11 +308,10 @@ enum BabyCardStatus {
 }
 
 enum PaymentMethod {
-  CASH
-  CARD
-  TRANSFER
-  QR
-  OTHER
+  CASH      // Efectivo / Dinheiro
+  QR        // QR Bolivia / PIX Brasil (pago instantáneo)
+  CARD      // Tarjeta POS / Cartão
+  TRANSFER  // Transferencia / TED-DOC
 }
 
 enum PaymentStatus {
@@ -339,20 +338,22 @@ enum NotificationType {
   NEW_APPOINTMENT           // Cita agendada desde portal
   CANCELLED_APPOINTMENT     // Cita cancelada desde portal
   RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
+  CASH_REGISTER_DIFFERENCE  // Arqueo cerrado con diferencia
 }
 
 enum CashRegisterStatus {
-  OPEN              // Turno abierto
-  PENDING_APPROVAL  // Cerrado con diferencia, esperando admin
-  CLOSED            // Cerrado y aprobado
-  REJECTED          // Rechazado por admin, debe revisar
+  OPEN              // Caja abierta
+  CLOSED            // Cerrada, pendiente revisión (si diferencia ≠ 0)
+  APPROVED          // Aprobada (diferencia = 0 o admin aprobó)
+  FORCE_CLOSED      // Cerrada forzadamente por admin
 }
 
 enum CashExpenseCategory {
   SUPPLIES      // Insumos
   FOOD          // Comida/Refrigerios
-  BANK_DEPOSIT  // Depósito a cuenta bancaria (efectivo → banco)
-  OTHER         // Otro
+  TRANSPORT     // Transporte (taxi, delivery)
+  BANK_DEPOSIT  // Depósito a banco / Entrega a dueño
+  OTHER         // Otro (descripción obligatoria)
 }
 
 enum StaffPaymentType {
@@ -404,6 +405,9 @@ enum ActivityType {
   INSTALLMENT_PAID
   CASH_REGISTER_OPENED
   CASH_REGISTER_CLOSED
+  CASH_REGISTER_EXPENSE_ADDED
+  CASH_REGISTER_FORCE_CLOSED
+  CASH_REGISTER_REVIEWED
   EVENT_REGISTRATION
   BABY_CREATED
   PACKAGE_ASSIGNED
@@ -947,65 +951,69 @@ model Notification {
 }
 ```
 
-### CashRegisterSession (Arqueo de Caja)
+### CashRegister (Arqueo de Caja)
 
 ```prisma
-model CashRegisterSession {
-  id                String    @id @default(cuid())
-  
+model CashRegister {
+  id                String              @id @default(cuid())
+
+  // Apertura
   openedById        String
-  openedBy          User      @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
-  openedAt          DateTime  @default(now())
-  initialFund       Decimal   @db.Decimal(10, 2) @default(0)
-  
-  previousSessionId String?   @unique
-  previousSession   CashRegisterSession? @relation("SessionTransfer", fields: [previousSessionId], references: [id])
-  nextSession       CashRegisterSession? @relation("SessionTransfer")
-  
+  openedBy          User                @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
+  openedAt          DateTime            @default(now())
+  initialFund       Decimal             @db.Decimal(10, 2) @default(0)
+
+  // Cierre (arqueo ciego)
   closedAt          DateTime?
-  expectedCash      Decimal?  @db.Decimal(10, 2)
-  actualCash        Decimal?  @db.Decimal(10, 2)
-  difference        Decimal?  @db.Decimal(10, 2)
-  notes             String?   @db.Text
-  
-  status            CashRegisterStatus @default(OPEN)
-  approvedById      String?
-  approvedBy        User?     @relation("CashRegisterApprovedBy", fields: [approvedById], references: [id])
-  approvedAt        DateTime?
-  rejectionReason   String?
-  
-  transferToNext    Boolean   @default(false)
-  transferAmount    Decimal?  @db.Decimal(10, 2)
-  
+  declaredAmount    Decimal?            @db.Decimal(10, 2)  // Lo que contó recepción
+  expectedAmount    Decimal?            @db.Decimal(10, 2)  // Calculado por sistema
+  difference        Decimal?            @db.Decimal(10, 2)  // declaredAmount - expectedAmount
+  closingNotes      String?             @db.Text
+
+  // Estado
+  status            CashRegisterStatus  @default(OPEN)
+
+  // Revisión (solo si hay diferencia)
+  reviewedById      String?
+  reviewedBy        User?               @relation("CashRegisterReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  reviewNotes       String?             @db.Text
+
+  // Forzar cierre (si recepción olvidó cerrar)
+  forcedCloseById   String?
+  forcedCloseBy     User?               @relation("CashRegisterForcedBy", fields: [forcedCloseById], references: [id])
+  forcedCloseNotes  String?             @db.Text
+
+  // Relaciones
   expenses          CashRegisterExpense[]
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([openedById, openedAt])
   @@index([status])
   @@index([openedAt])
 }
 ```
 
-### CashRegisterExpense (Egresos de Caja)
+### CashRegisterExpense (Gastos de Caja)
 
 ```prisma
 model CashRegisterExpense {
-  id                String    @id @default(cuid())
-  
-  sessionId         String
-  session           CashRegisterSession @relation(fields: [sessionId], references: [id])
-  
-  amount            Decimal   @db.Decimal(10, 2)
-  paymentMethod     PaymentMethod
+  id                String              @id @default(cuid())
+
+  cashRegisterId    String
+  cashRegister      CashRegister        @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+
+  amount            Decimal             @db.Decimal(10, 2)
   category          CashExpenseCategory
   description       String
-  
+
   createdById       String
-  createdBy         User      @relation(fields: [createdById], references: [id])
-  createdAt         DateTime  @default(now())
-  
-  @@index([sessionId])
+  createdBy         User                @relation("CashRegisterExpenseCreatedBy", fields: [createdById], references: [id])
+  createdAt         DateTime            @default(now())
+
+  @@index([cashRegisterId])
   @@index([createdAt])
 }
 ```
@@ -1508,15 +1516,19 @@ Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
 
 **Pendiente:** Exportación PDF/Excel (Fase futura)
 
-## ⏳ Fase 10: Arqueo de Caja
-- [ ] Módulo 10.1: Arqueo de Caja
-- Ver decisiones en: PlanificacionesBabySpa/PLANIFICACION-ARQUEO-CAJA.md
+## ✅ Fase 10: Arqueo de Caja (COMPLETADA)
+- [x] Módulo 10.1: Arqueo de Caja Ciego para RECEPTION
+- [x] Módulo 10.2: Revisión de Arqueos para ADMIN
+- [x] Resumen del Turno con todos los métodos de pago
+- [x] Migración de métodos de pago: OTHER → QR (Bolivia) / PIX (Brasil)
 
-## 🔮 Fase 11: Automatización y Extras (FUTURO)
+## 🔮 Fase 11: Exportación y Extras (FUTURO)
+- [ ] Exportación PDF/Excel de Reportes
 - [ ] Cron Jobs (limpieza, recordatorios)
 - [ ] Notificaciones Push
 - [ ] Configuración del Sistema
 - [ ] QR de Pago
+- Ver planificación de exportación en: `PlanificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
 
 ---
 
@@ -1757,64 +1769,85 @@ TRADUCCIONES:
 ✅ pt-BR.json completo
 ```
 
-## Fase 9: Arqueo de Caja
+## Fase 10: Arqueo de Caja ✅ COMPLETADO
 
-> **Nota:** Este módulo se movió al final porque depende de entender cómo ADMIN interactúa con el sistema de pagos.
-> Las decisiones de diseño tomadas están documentadas en: `PlanificacionesBabySpa/PLANIFICACION-ARQUEO-CAJA.md`
-
-### Módulo 9.1: Arqueo de Caja
+### Módulo 10.1: Arqueo de Caja Ciego
 ```
+CONCEPTO:
+- Solo RECEPTION debe abrir/cerrar caja
+- Arqueo CIEGO: recepción NO ve cuánto debería tener
+- Solo cuenta el efectivo y declara el monto
+- ADMIN revisa diferencias después
+
 MODELOS:
-□ Enum CashRegisterStatus
-□ Enum CashExpenseCategory (con BANK_DEPOSIT)
-□ Modelo CashRegisterSession
-□ Modelo CashRegisterExpense
-□ Migración ejecutada
+✅ Enum CashRegisterStatus (OPEN, CLOSED, APPROVED, FORCE_CLOSED)
+✅ Enum CashExpenseCategory (SUPPLIES, FOOD, TRANSPORT, BANK_DEPOSIT, OTHER)
+✅ Modelo CashRegister
+✅ Modelo CashRegisterExpense
+✅ Nuevos tipos en NotificationType (CASH_REGISTER_DIFFERENCE)
+✅ Nuevos tipos en ActivityType (CASH_REGISTER_*)
+✅ Migración ejecutada
 
 BACKEND:
-□ CashRegisterService
-□ POST /api/cash-register/open
-□ GET /api/cash-register/current
-□ GET /api/cash-register/summary (dashboard en tiempo real)
-□ POST /api/cash-register/expenses
-□ POST /api/cash-register/close
-□ GET /api/cash-register/history
-□ PATCH /api/cash-register/:id/approve
-□ PATCH /api/cash-register/:id/reject
+✅ CashRegisterService (lib/services/cash-register-service.ts)
+✅ GET /api/cash-register (lista para admin)
+✅ GET /api/cash-register/current (caja actual del usuario)
+✅ POST /api/cash-register (abrir caja)
+✅ POST /api/cash-register/[id]/close (cerrar caja)
+✅ POST /api/cash-register/[id]/review (aprobar/revisar)
+✅ POST /api/cash-register/[id]/force-close (admin fuerza cierre)
+✅ POST /api/cash-register/[id]/expenses (registrar gasto)
 
-FRONTEND:
-□ Página /admin/cash-register
-□ CashRegisterOpenDialog
-□ CashRegisterExpenseDialog
-□ CashRegisterCloseDialog
-□ CashRegisterSummary (dashboard en tiempo real)
-□ CashRegisterHistory (admin)
-□ Indicador en header (turno abierto/cerrado)
-□ Modal obligatorio para RECEPTION si no hay caja abierta
+FRONTEND RECEPTION:
+✅ Indicador en header (caja abierta/cerrada)
+✅ Warning si no hay caja abierta
+✅ Modal abrir caja (con fondo inicial)
+✅ Modal cerrar caja (CIEGO - solo pide monto)
+✅ Modal registrar gasto de caja
+✅ Bloqueo en session start/complete si no hay caja
 
-DECISIONES TOMADAS:
-✓ Una caja global (solo un turno activo a la vez)
-✓ RECEPTION debe tener caja abierta para operar (bloqueo obligatorio)
-✓ Depósitos a banco como categoría BANK_DEPOSIT en CashExpenseCategory
-✓ Dashboard de caja en tiempo real
-✓ Ingresos calculados por timestamp (createdAt entre openedAt y closedAt)
-⏳ PENDIENTE: Definir si ADMIN necesita caja abierta para cobrar
+FRONTEND ADMIN:
+✅ Página /admin/cash-register
+✅ Lista de arqueos (pendientes, aprobados)
+✅ Detalle con Resumen del Turno (todos los métodos de pago)
+✅ Modal aprobar / aprobar con nota
+✅ Modal forzar cierre
+
+REFACTOR MÉTODOS DE PAGO:
+✅ Eliminado OTHER del enum PaymentMethod
+✅ Agregado QR (Bolivia) / PIX (Brasil) para pagos instantáneos
+✅ Orden por frecuencia: CASH → QR → CARD → TRANSFER
+✅ Actualizado en 17+ archivos (services, validations, components)
+✅ Migración de BD: 2 registros OTHER → QR
+✅ Traducciones actualizadas (es.json, pt-BR.json)
+
+DECISIONES FINALES:
+✓ Solo RECEPTION necesita caja para cobrar (ADMIN no)
+✓ Arqueo 100% ciego (sin emoji ni feedback)
+✓ Fondo inicial editable
+✓ Múltiples turnos por día (cada persona su caja)
+✓ Auto-aprobación si diferencia = 0
+✓ Notificación a admin si hay diferencia
+✓ Admin puede forzar cierre si olvidan cerrar
+✓ Sin límite en gastos de caja
+✓ Sin fotos de comprobantes (por ahora)
 
 TRADUCCIONES:
-□ es.json completo
-□ pt-BR.json completo
+✅ es.json completo
+✅ pt-BR.json completo
 ```
 
-## Fase 10: Reportes y Automatización (FUTURO)
+## Fase 11: Exportación y Automatización (FUTURO)
 
-> Esta fase se implementará después del Arqueo de Caja
+> Ver planificación: `PlanificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
 
 ```
-□ Módulo 10.1: Reportes Financieros
-□ Módulo 10.2: Cron Jobs
-□ Módulo 10.3: Notificaciones Push
-□ Módulo 10.4: Configuración del Sistema
-□ Módulo 10.5: QR de Pago
+□ Módulo 11.1: Exportación PDF de Reportes
+□ Módulo 11.2: Exportación Excel de Reportes
+□ Módulo 11.3: Cron Jobs (limpieza, recordatorios)
+□ Módulo 11.4: Notificaciones Push
+□ Módulo 11.5: Configuración del Sistema
+□ Módulo 11.6: QR de Pago
 ```
 
 ---
@@ -1872,10 +1905,13 @@ Al iniciar cada sesión, Claude Code debe entender:
    - Precio especial solo para sesiones individuales
 
 7. ARQUEO DE CAJA:
-   - Una caja abierta a la vez
-   - Diferencia requiere aprobación de admin
-   - Solo egresos en EFECTIVO afectan el arqueo
-   - Recepcionista puede irse con arqueo pendiente
+   - Solo RECEPTION necesita caja abierta para cobrar
+   - ADMIN puede cobrar sin caja abierta
+   - Arqueo CIEGO: recepción no ve el monto esperado
+   - Solo EFECTIVO cuenta para el arqueo
+   - Auto-aprobación si diferencia = 0
+   - Notificación a admin si hay diferencia
+   - Múltiples turnos por día permitidos
 
 8. PORTAL DE PADRES:
    - Cancelar/reagendar solo con 24h de anticipación

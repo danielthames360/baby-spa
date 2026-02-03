@@ -35,7 +35,7 @@ interface CompleteSessionInput {
   sessionId: string;
   packageId?: string; // Package to sell (if baby has no active package)
   packagePurchaseId?: string; // Existing package purchase to use for this session
-  paymentMethod?: "CASH" | "TRANSFER" | "CARD" | "OTHER"; // Legacy single method
+  paymentMethod?: "CASH" | "QR" | "CARD" | "TRANSFER"; // Legacy single method
   paymentNotes?: string;
   paymentDetails?: PaymentDetailInput[]; // NEW: Split payment support
   discountAmount?: number;

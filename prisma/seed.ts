@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, Gender, BirthType, MovementType, CategoryType } from "@prisma/client";
+import { PrismaClient, UserRole, Gender, BirthType, MovementType, CategoryType, RewardType } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "bcryptjs";
 import "dotenv/config";
@@ -66,12 +66,23 @@ async function main() {
   if (existingUsers === 0) {
     console.log("👤 Creating users...");
 
+    const ownerPassword = await hash("owner123", 12);
     const adminPassword = await hash("admin123", 12);
     const recepPassword = await hash("recep123", 12);
     const therapistPassword = await hash("terapeuta123", 12);
 
     await prisma.user.createMany({
       data: [
+        {
+          username: "owner",
+          email: "owner@babyspa.com",
+          passwordHash: ownerPassword,
+          name: "Propietario",
+          role: UserRole.OWNER,
+          phone: "+591 70000000",
+          baseSalary: null, // Owner no tiene salario base
+          mustChangePassword: false, // Usuario de prueba
+        },
         {
           username: "admin",
           email: "admin@babyspa.com",
@@ -80,6 +91,7 @@ async function main() {
           role: UserRole.ADMIN,
           phone: "+591 70000001",
           baseSalary: 5000,
+          mustChangePassword: false, // Usuario de prueba
         },
         {
           username: "recepcion",
@@ -89,6 +101,7 @@ async function main() {
           role: UserRole.RECEPTION,
           phone: "+591 70000002",
           baseSalary: 2500,
+          mustChangePassword: false, // Usuario de prueba
         },
         {
           username: "terapeuta1",
@@ -98,6 +111,7 @@ async function main() {
           role: UserRole.THERAPIST,
           phone: "+591 70000003",
           baseSalary: 3000,
+          mustChangePassword: false, // Usuario de prueba
         },
         {
           username: "terapeuta2",
@@ -107,11 +121,12 @@ async function main() {
           role: UserRole.THERAPIST,
           phone: "+591 70000004",
           baseSalary: 3000,
+          mustChangePassword: false, // Usuario de prueba
         },
       ],
     });
 
-    console.log("   ✅ 4 users created");
+    console.log("   ✅ 5 users created (1 owner, 1 admin, 1 reception, 2 therapists)");
   } else {
     console.log(`👤 Users table already has ${existingUsers} records - skipping`);
   }
@@ -602,6 +617,106 @@ async function main() {
   }
 
   // ============================================================
+  // BABY CARD (Plantilla de Fidelización) - Check if table is empty
+  // ============================================================
+  const existingBabyCards = await prisma.babyCard.count();
+
+  if (existingBabyCards === 0) {
+    console.log("🎴 Creating Baby Card template...");
+
+    // Get individual session package for special pricing
+    const individualPackage = await prisma.package.findFirst({
+      where: { name: "Sesión Individual" },
+    });
+
+    // Create Baby Card template
+    const babyCard = await prisma.babyCard.create({
+      data: {
+        name: "Baby Spa Card",
+        description: "Tarjeta de fidelización Baby Spa. Incluye primera sesión con descuento especial, precios preferenciales en todas las sesiones individuales y premios desbloqueables a medida que completes sesiones.",
+        price: 100, // Precio de la tarjeta
+        totalSessions: 24, // 24 sesiones para completar
+        firstSessionDiscount: 100, // Primera sesión gratis (100 Bs de descuento)
+        isActive: true,
+        sortOrder: 0,
+      },
+    });
+
+    // Create special price for individual sessions (if package exists)
+    if (individualPackage) {
+      await prisma.babyCardSpecialPrice.create({
+        data: {
+          babyCardId: babyCard.id,
+          packageId: individualPackage.id,
+          specialPrice: 120, // Precio especial: 120 Bs en lugar de 150 Bs
+        },
+      });
+      console.log("   ✅ Special price created: Sesión Individual → 120 Bs");
+    }
+
+    // Create rewards at different session milestones
+    const rewards = [
+      {
+        sessionNumber: 5,
+        rewardType: RewardType.CUSTOM,
+        displayName: "🎨 Sesión de Pintura con Piecitos",
+        displayIcon: "Palette",
+        customName: "Pintura con Piecitos",
+        customDescription: "Actividad especial donde el bebé crea arte con sus piecitos. Incluye materiales y cuadro enmarcado.",
+      },
+      {
+        sessionNumber: 10,
+        rewardType: RewardType.SERVICE,
+        displayName: "🎁 Sesión Individual Gratis",
+        displayIcon: "Gift",
+        packageId: individualPackage?.id || null,
+      },
+      {
+        sessionNumber: 15,
+        rewardType: RewardType.CUSTOM,
+        displayName: "📸 Sesión de Fotos Acuáticas",
+        displayIcon: "Camera",
+        customName: "Fotos Acuáticas",
+        customDescription: "Sesión fotográfica profesional del bebé en la piscina. Incluye 10 fotos editadas en alta resolución.",
+      },
+      {
+        sessionNumber: 20,
+        rewardType: RewardType.SERVICE,
+        displayName: "🏆 Sesión Individual Gratis",
+        displayIcon: "Trophy",
+        packageId: individualPackage?.id || null,
+      },
+      {
+        sessionNumber: 24,
+        rewardType: RewardType.CUSTOM,
+        displayName: "🎓 Diploma de Graduación Baby Spa",
+        displayIcon: "GraduationCap",
+        customName: "Graduación Baby Spa",
+        customDescription: "Diploma oficial de graduación Baby Spa + Sesión especial de celebración + Fotos + Regalo sorpresa.",
+      },
+    ];
+
+    for (const reward of rewards) {
+      await prisma.babyCardReward.create({
+        data: {
+          babyCardId: babyCard.id,
+          sessionNumber: reward.sessionNumber,
+          rewardType: reward.rewardType,
+          displayName: reward.displayName,
+          displayIcon: reward.displayIcon,
+          packageId: reward.packageId,
+          customName: reward.customName,
+          customDescription: reward.customDescription,
+        },
+      });
+    }
+
+    console.log(`   ✅ Baby Card template created with ${rewards.length} rewards`);
+  } else {
+    console.log(`🎴 BabyCard table already has ${existingBabyCards} records - skipping`);
+  }
+
+  // ============================================================
   // HORARIOS DE ATENCIÓN - Check if table is empty
   // ============================================================
   const existingHours = await prisma.businessHours.count();
@@ -754,6 +869,8 @@ async function main() {
     packages: await prisma.package.count(),
     packagePurchases: await prisma.packagePurchase.count(),
     products: await prisma.product.count(),
+    babyCards: await prisma.babyCard.count(),
+    babyCardRewards: await prisma.babyCardReward.count(),
     businessHours: await prisma.businessHours.count(),
     systemConfig: await prisma.systemConfig.count(),
     systemSettings: await prisma.systemSettings.count(),
@@ -773,6 +890,8 @@ async function main() {
   console.log(`   Packages:          ${finalCounts.packages}`);
   console.log(`   Package Purchases: ${finalCounts.packagePurchases}`);
   console.log(`   Products:          ${finalCounts.products}`);
+  console.log(`   Baby Cards:        ${finalCounts.babyCards}`);
+  console.log(`   Baby Card Rewards: ${finalCounts.babyCardRewards}`);
   console.log(`   Business Hours:    ${finalCounts.businessHours}`);
   console.log(`   System Configs:    ${finalCounts.systemConfig}`);
   console.log(`   System Settings:   ${finalCounts.systemSettings}`);
@@ -784,10 +903,13 @@ async function main() {
 
   console.log("\n🔐 Credenciales de acceso (Staff):");
   console.log("----------------------------------------");
+  console.log("   OWNER:       owner / owner123");
   console.log("   ADMIN:       admin / admin123");
   console.log("   RECEPCIÓN:   recepcion / recep123");
   console.log("   TERAPEUTA 1: terapeuta1 / terapeuta123");
   console.log("   TERAPEUTA 2: terapeuta2 / terapeuta123");
+  console.log("----------------------------------------");
+  console.log("   ⚠️  Usuarios de prueba: NO requieren cambio de contraseña");
   console.log("----------------------------------------");
 
   // List parent access codes

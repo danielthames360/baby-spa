@@ -39,12 +39,15 @@ export function DateRangeFilter({
     router.push(`/${locale}${basePath}?${params.toString()}`);
   };
 
-  const handleQuickFilter = (days: number | "month" | "year") => {
+  const handleQuickFilter = (days: number | "today" | "month" | "year") => {
     const today = new Date();
     let newFrom: Date;
     let newTo: Date = today;
 
-    if (days === "month") {
+    if (days === "today") {
+      newFrom = today;
+      newTo = today;
+    } else if (days === "month") {
       newFrom = new Date(today.getFullYear(), today.getMonth(), 1);
       newTo = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     } else if (days === "year") {
@@ -91,6 +94,14 @@ export function DateRangeFilter({
 
         {/* Quick filters */}
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleQuickFilter("today")}
+            className="h-9 text-xs"
+          >
+            {t("filters.today")}
+          </Button>
           <Button
             variant="outline"
             size="sm"

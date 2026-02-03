@@ -100,7 +100,7 @@ export interface SellPackageInput {
   packageId: string;
   discountAmount?: number;
   discountReason?: string;
-  paymentMethod: "CASH" | "TRANSFER" | "CARD" | "OTHER";
+  paymentMethod: "CASH" | "QR" | "CARD" | "TRANSFER";
   paymentNotes?: string;
   // Payment plan options
   paymentPlan?: "SINGLE" | "INSTALLMENTS"; // SINGLE = full payment, INSTALLMENTS = use package config

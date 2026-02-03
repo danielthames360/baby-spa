@@ -9,7 +9,7 @@ const saleSchema = z.object({
     quantity: z.number().int().positive(),
     unitPrice: z.number().positive(),
   })).min(1),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
   babyId: z.string().optional(),
 });
 

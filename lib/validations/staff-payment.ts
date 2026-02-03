@@ -3,7 +3,7 @@ import { z } from "zod";
 // Payment detail schema (for split payments)
 const paymentDetailSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]),
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"]),
   reference: z.string().optional().nullable(),
 });
 
@@ -29,7 +29,7 @@ export const createStaffPaymentSchema = z.object({
   periodYear: z.number().min(2020).max(2100).optional(),
   advanceDeducted: z.number().min(0).optional(),
   paymentDetails: z.array(paymentDetailSchema).optional(),
-  paymentMethod: z.enum(["CASH", "TRANSFER", "CARD", "OTHER"]).optional(),
+  paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"]).optional(),
   paymentReference: z.string().optional(),
 });
 

@@ -163,6 +163,7 @@
     "help": "Ajuda",
     "history": "Histórico",
     "activity": "Atividade",
+    "cashRegister": "Fechamento de Caixa",
     "account": "Minha Conta"
   },
 
@@ -716,9 +717,9 @@
     "amount": "Valor",
     "method": "Forma de pagamento",
     "cash": "Dinheiro",
-    "transfer": "Transferência",
+    "qr": "PIX",
     "card": "Cartão",
-    "other": "Outro",
+    "transfer": "Transferência",
     "paid": "Pago",
     "pending": "Pendente",
     "required": "Pagamento Antecipado Obrigatório",
@@ -744,10 +745,9 @@
     "confirmationWarning": "Ao registrar o pagamento, a consulta será confirmada e bloqueará o horário.",
     "methods": {
       "cash": "Dinheiro",
-      "transfer": "Transferência",
-      "qr": "QR",
+      "qr": "PIX",
       "card": "Cartão",
-      "other": "Outro"
+      "transfer": "Transferência"
     },
     "types": {
       "advance": "Adiantamento",
@@ -1894,9 +1894,9 @@
       "register": "Registrar Pagamento",
       "methods": {
         "cash": "Dinheiro",
-        "transfer": "Transferência",
+        "qr": "PIX",
         "card": "Cartão",
-        "other": "Outro"
+        "transfer": "Transferência"
       }
     },
 
@@ -2751,6 +2751,7 @@
       "from": "De",
       "to": "Até",
       "period": "Período selecionado",
+      "today": "Hoje",
       "last7Days": "7 dias",
       "last30Days": "30 dias",
       "thisMonth": "Este mês",
@@ -3132,6 +3133,141 @@
       "projectedTotal": "Total Projetado",
       "toCollect": "a receber",
       "potentialIncome": "receita potencial"
+    }
+  },
+
+  "cashRegister": {
+    "title": "Fechamento de Caixa",
+    "open": "Abrir Caixa",
+    "close": "Fechar Caixa",
+    "addExpense": "Registrar Despesa",
+
+    "status": {
+      "open": "Aberto",
+      "closed": "Fechado",
+      "approved": "Aprovado",
+      "forceClosed": "Fechado pelo Admin"
+    },
+
+    "header": {
+      "open": "Caixa Aberto desde {time}",
+      "closed": "Caixa não aberto",
+      "warning": "Você não pode processar pagamentos sem caixa aberto"
+    },
+
+    "openModal": {
+      "title": "Abrir Caixa",
+      "initialFund": "Fundo inicial",
+      "initialFundHelp": "Com quanto dinheiro você está começando?",
+      "later": "Mais tarde",
+      "openNow": "Abrir Agora",
+      "success": "Caixa aberto com sucesso",
+      "error": "Erro ao abrir o caixa",
+      "errorNegative": "O fundo inicial não pode ser negativo"
+    },
+
+    "closeModal": {
+      "title": "Fechar Caixa",
+      "instruction": "Conte todo o dinheiro no caixa e registre o valor total.",
+      "declaredAmount": "Dinheiro no caixa",
+      "notes": "Observações (opcional)",
+      "notesPlaceholder": "Observações sobre o fechamento...",
+      "cancel": "Cancelar",
+      "close": "Fechar Caixa",
+      "error": "Erro ao fechar o caixa",
+      "errorInvalidAmount": "O valor declarado não é válido"
+    },
+
+    "closedSuccess": {
+      "title": "Caixa fechado com sucesso",
+      "message": "Seu fechamento foi registrado e será revisado pelo administrador.",
+      "understood": "Entendido"
+    },
+
+    "expenseModal": {
+      "title": "Registrar Despesa de Caixa",
+      "description": "Registre uma despesa que sai do dinheiro do caixa.",
+      "category": "Categoria",
+      "selectCategory": "Selecione uma categoria",
+      "amount": "Valor",
+      "descriptionPlaceholder": "Detalhe da despesa...",
+      "cancel": "Cancelar",
+      "register": "Registrar",
+      "success": "Despesa registrada com sucesso",
+      "error": "Erro ao registrar a despesa",
+      "errorInvalidAmount": "O valor deve ser maior que 0",
+      "errorNoCategory": "Selecione uma categoria",
+      "errorNoDescription": "A descrição é obrigatória"
+    },
+
+    "expenseCategories": {
+      "SUPPLIES": "Suprimentos",
+      "FOOD": "Alimentação",
+      "TRANSPORT": "Transporte",
+      "BANK_DEPOSIT": "Depósito bancário",
+      "OTHER": "Outro"
+    },
+
+    "admin": {
+      "title": "Fechamentos de Caixa",
+      "subtitle": "Revise e aprove os fechamentos de caixa da equipe",
+      "pending": "Pendentes de revisão",
+      "all": "Todos",
+      "today": "Hoje",
+      "thisWeek": "Esta semana",
+      "thisMonth": "Este mês",
+      "noRecords": "Nenhum fechamento para mostrar",
+      "openSince": "Aberto desde {time}",
+      "hoursOpen": "há {hours} horas",
+
+      "detail": {
+        "initialFund": "Fundo inicial",
+        "cashIncome": "Receitas em dinheiro",
+        "expenses": "Despesas de caixa",
+        "expected": "Esperado",
+        "declared": "Declarado",
+        "difference": "Diferença",
+        "closingNotes": "Observações do fechamento",
+        "reviewNotes": "Observações do revisor",
+        "forcedCloseNotes": "Observações do fechamento forçado",
+        "autoApproved": "Auto-aprovado (diferença = 0)",
+        "cashIncomeDetails": "Detalhe das receitas em dinheiro",
+        "expenseDetails": "Detalhe das despesas"
+      },
+
+      "approve": "Aprovar",
+      "approveWithNote": "Aprovar com observação",
+      "forceClose": "Forçar Fechamento",
+
+      "reviewModal": {
+        "title": "Aprovar fechamento com observação",
+        "note": "Observação do administrador",
+        "notePlaceholder": "Explique a diferença ou deixe uma observação...",
+        "approve": "Aprovar",
+        "success": "Fechamento aprovado com sucesso",
+        "error": "Erro ao aprovar o fechamento"
+      },
+
+      "forceCloseModal": {
+        "title": "Forçar fechamento de caixa",
+        "warning": "Este caixa será fechado sem declaração de dinheiro. Ficará marcado como 'Fechado pelo Admin'.",
+        "noteRequired": "Observação obrigatória",
+        "notePlaceholder": "Explique por que está forçando o fechamento...",
+        "confirm": "Forçar Fechamento",
+        "success": "Caixa fechado forçadamente",
+        "error": "Erro ao forçar o fechamento"
+      }
+    },
+
+    "blockModal": {
+      "title": "Caixa não aberto",
+      "message": "Você precisa abrir o caixa para processar pagamentos.",
+      "openNow": "Abrir Caixa Agora"
+    },
+
+    "notification": {
+      "differenceTitle": "Fechamento com diferença",
+      "differenceMessage": "{user} fechou caixa com diferença de {amount}"
     }
   }
 }

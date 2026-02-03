@@ -163,6 +163,7 @@
     "help": "Ayuda",
     "history": "Historial",
     "activity": "Actividad",
+    "cashRegister": "Arqueo de Caja",
     "account": "Mi Cuenta"
   },
 
@@ -716,9 +717,9 @@
     "amount": "Monto",
     "method": "Método de pago",
     "cash": "Efectivo",
-    "transfer": "Transferencia",
+    "qr": "QR",
     "card": "Tarjeta",
-    "other": "Otro",
+    "transfer": "Transferencia",
     "paid": "Pagado",
     "pending": "Pendiente",
     "required": "Pago Anticipado Requerido",
@@ -744,10 +745,9 @@
     "confirmationWarning": "Al registrar el pago, la cita pasará a estado confirmada y bloqueará el horario.",
     "methods": {
       "cash": "Efectivo",
-      "transfer": "Transferencia",
       "qr": "QR",
       "card": "Tarjeta",
-      "other": "Otro"
+      "transfer": "Transferencia"
     },
     "types": {
       "advance": "Anticipo",
@@ -2751,6 +2751,7 @@
       "from": "Desde",
       "to": "Hasta",
       "period": "Período seleccionado",
+      "today": "Hoy",
       "last7Days": "7 días",
       "last30Days": "30 días",
       "thisMonth": "Este mes",
@@ -3132,6 +3133,141 @@
       "projectedTotal": "Total Proyectado",
       "toCollect": "por cobrar",
       "potentialIncome": "ingreso potencial"
+    }
+  },
+
+  "cashRegister": {
+    "title": "Arqueo de Caja",
+    "open": "Abrir Caja",
+    "close": "Cerrar Caja",
+    "addExpense": "Registrar Gasto",
+
+    "status": {
+      "open": "Abierta",
+      "closed": "Cerrada",
+      "approved": "Aprobada",
+      "forceClosed": "Cerrada por Admin"
+    },
+
+    "header": {
+      "open": "Caja Abierta desde {time}",
+      "closed": "Caja no abierta",
+      "warning": "No puedes procesar pagos sin caja abierta"
+    },
+
+    "openModal": {
+      "title": "Abrir Caja",
+      "initialFund": "Fondo inicial",
+      "initialFundHelp": "¿Con cuánto efectivo inicias?",
+      "later": "Más tarde",
+      "openNow": "Abrir Ahora",
+      "success": "Caja abierta correctamente",
+      "error": "Error al abrir la caja",
+      "errorNegative": "El fondo inicial no puede ser negativo"
+    },
+
+    "closeModal": {
+      "title": "Cerrar Caja",
+      "instruction": "Cuenta todo el efectivo en caja y registra el monto total.",
+      "declaredAmount": "Efectivo en caja",
+      "notes": "Notas (opcional)",
+      "notesPlaceholder": "Observaciones sobre el cierre...",
+      "cancel": "Cancelar",
+      "close": "Cerrar Caja",
+      "error": "Error al cerrar la caja",
+      "errorInvalidAmount": "El monto declarado no es válido"
+    },
+
+    "closedSuccess": {
+      "title": "Caja cerrada exitosamente",
+      "message": "Tu arqueo ha sido registrado y será revisado por el administrador.",
+      "understood": "Entendido"
+    },
+
+    "expenseModal": {
+      "title": "Registrar Gasto de Caja",
+      "description": "Registra un gasto que sale del efectivo de la caja.",
+      "category": "Categoría",
+      "selectCategory": "Selecciona una categoría",
+      "amount": "Monto",
+      "descriptionPlaceholder": "Detalle del gasto...",
+      "cancel": "Cancelar",
+      "register": "Registrar",
+      "success": "Gasto registrado correctamente",
+      "error": "Error al registrar el gasto",
+      "errorInvalidAmount": "El monto debe ser mayor a 0",
+      "errorNoCategory": "Selecciona una categoría",
+      "errorNoDescription": "La descripción es obligatoria"
+    },
+
+    "expenseCategories": {
+      "SUPPLIES": "Insumos",
+      "FOOD": "Comida/Refrigerios",
+      "TRANSPORT": "Transporte",
+      "BANK_DEPOSIT": "Depósito a banco",
+      "OTHER": "Otro"
+    },
+
+    "admin": {
+      "title": "Arqueos de Caja",
+      "subtitle": "Revisa y aprueba los cierres de caja del equipo",
+      "pending": "Pendientes de revisión",
+      "all": "Todos",
+      "today": "Hoy",
+      "thisWeek": "Esta semana",
+      "thisMonth": "Este mes",
+      "noRecords": "No hay arqueos para mostrar",
+      "openSince": "Abierta desde {time}",
+      "hoursOpen": "hace {hours} horas",
+
+      "detail": {
+        "initialFund": "Fondo inicial",
+        "cashIncome": "Ingresos efectivo",
+        "expenses": "Gastos de caja",
+        "expected": "Esperado",
+        "declared": "Declarado",
+        "difference": "Diferencia",
+        "closingNotes": "Notas del cierre",
+        "reviewNotes": "Notas del revisor",
+        "forcedCloseNotes": "Notas del cierre forzado",
+        "autoApproved": "Auto-aprobado (diferencia = 0)",
+        "cashIncomeDetails": "Detalle de ingresos en efectivo",
+        "expenseDetails": "Detalle de gastos"
+      },
+
+      "approve": "Aprobar",
+      "approveWithNote": "Aprobar con nota",
+      "forceClose": "Forzar Cierre",
+
+      "reviewModal": {
+        "title": "Aprobar arqueo con nota",
+        "note": "Nota del administrador",
+        "notePlaceholder": "Explica la diferencia o deja una observación...",
+        "approve": "Aprobar",
+        "success": "Arqueo aprobado correctamente",
+        "error": "Error al aprobar el arqueo"
+      },
+
+      "forceCloseModal": {
+        "title": "Forzar cierre de caja",
+        "warning": "Esta caja será cerrada sin declaración de efectivo. Quedará marcada como 'Cerrada por Admin'.",
+        "noteRequired": "Nota obligatoria",
+        "notePlaceholder": "Explica por qué estás forzando el cierre...",
+        "confirm": "Forzar Cierre",
+        "success": "Caja cerrada forzadamente",
+        "error": "Error al forzar el cierre"
+      }
+    },
+
+    "blockModal": {
+      "title": "Caja no abierta",
+      "message": "Debes abrir caja para procesar pagos.",
+      "openNow": "Abrir Caja Ahora"
+    },
+
+    "notification": {
+      "differenceTitle": "Arqueo con diferencia",
+      "differenceMessage": "{user} cerró caja con diferencia de {amount}"
     }
   }
 }

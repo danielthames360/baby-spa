@@ -53,7 +53,7 @@ export function NotificationToastContainer() {
     setDismissedIds((prev) => new Set([...prev, id]));
   }, []);
 
-  // Handle view - navigate to calendar with date and appointment ID
+  // Handle view - navigate to appropriate page based on entity type
   const handleView = useCallback(
     (notification: NotificationData) => {
       handleDismiss(notification.id);
@@ -71,6 +71,8 @@ export function NotificationToastContainer() {
 
         const queryString = params.toString();
         router.push(`/${locale}/admin/calendar${queryString ? `?${queryString}` : ""}`);
+      } else if (notification.entityType === "cash_register") {
+        router.push(`/${locale}/admin/cash-register`);
       } else {
         router.push(`/${locale}/admin/calendar`);
       }

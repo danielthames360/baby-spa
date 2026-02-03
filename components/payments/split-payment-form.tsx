@@ -17,12 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Payment method options
+// Payment method options (CASH, QR, CARD, TRANSFER) - ordered by usage frequency
 const PAYMENT_METHODS = [
   { value: "CASH", icon: Banknote, labelKey: "cash" },
-  { value: "TRANSFER", icon: Building2, labelKey: "transfer" },
-  { value: "OTHER", icon: QrCode, labelKey: "qr" },
+  { value: "QR", icon: QrCode, labelKey: "qr" },
   { value: "CARD", icon: CreditCard, labelKey: "card" },
+  { value: "TRANSFER", icon: Building2, labelKey: "transfer" },
 ] as const;
 
 type PaymentMethodValue = (typeof PAYMENT_METHODS)[number]["value"];
