@@ -66,11 +66,11 @@
 18. ✅ Pagos a staff con control de adelantos
 19. ✅ Actividad reciente (registro de operaciones)
 20. ✅ Portal de padres mejorado (cancelar/reagendar, saldo, perfil, mesversarios)
-21. 🚧 Recordatorios automáticos de citas (email + WhatsApp manual)
-22. 🚧 Mensajes de mesversarios automatizados
-23. 🚧 Re-engagement de clientes inactivos
-24. 🚧 Gestión automatizada de leads
-25. 🚧 Mantenimiento automático (NO-SHOW, limpieza, desactivación)
+21. ✅ Recordatorios automáticos de citas (email + WhatsApp manual)
+22. ✅ Mensajes de mesversarios automatizados
+23. ✅ Re-engagement de clientes inactivos
+24. ✅ Gestión automatizada de leads
+25. ✅ Mantenimiento automático (NO-SHOW, limpieza, desactivación)
 
 ## 1.3 Operación
 
@@ -1750,7 +1750,7 @@ Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
 - [x] Resumen del Turno con todos los métodos de pago
 - [x] Migración de métodos de pago: OTHER → QR (Bolivia) / PIX (Brasil)
 
-## 🚧 Fase 11: Cron Jobs y Mensajería Automatizada (EN PROGRESO)
+## ✅ Fase 11: Cron Jobs y Mensajería Automatizada (COMPLETADA)
 
 Sistema de automatización de mensajes y mantenimiento del sistema.
 Ver planificación detallada en: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
@@ -2128,111 +2128,113 @@ TRADUCCIONES:
 ✅ pt-BR.json completo
 ```
 
-## Fase 11: Cron Jobs y Mensajería Automatizada 🚧 EN PROGRESO
+## Fase 11: Cron Jobs y Mensajería Automatizada ✅ COMPLETADO
 
 > Ver planificación completa: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
 
-### Módulo 11.1: Infraestructura Base
+### Módulo 11.1: Infraestructura Base ✅
 ```
-□ Modelos Prisma: MessageTemplate, PendingMessage, EmailLog
-□ Campos nuevos en Parent, Baby, Appointment, User
-□ Migración de base de datos
-□ Integración con Resend.com (email service)
-□ Services: email-service, template-service, pending-message-service
-□ Webhook endpoint para Resend (tracking de emails)
-```
-
-### Módulo 11.2: Cron Worker
-```
-□ PM2 configuration (ecosystem.config.js)
-□ Worker entry point (cron/worker.ts)
-□ Runner con schedule por país (Bolivia UTC-4, Brasil UTC-3)
-□ Jobs diarios y semanales
-□ Logging y error handling
+✅ Modelos Prisma: MessageTemplate, PendingMessage, EmailLog
+✅ Campos nuevos en Parent, Baby, Appointment, User
+✅ Migración de base de datos
+✅ Integración con Resend.com (email service)
+✅ Services: email-service, template-service, pending-message-service
+✅ Webhook endpoint para Resend (tracking de emails)
 ```
 
-### Módulo 11.3: Recordatorios de Citas
+### Módulo 11.2: Cron Worker ✅
 ```
-□ Job: Recordatorio 24h antes (Email automático)
-□ Job: Recordatorio día de cita (WhatsApp pendiente)
-□ Job: Recordatorio pago 48h antes (WhatsApp pendiente)
-□ Agrupación de múltiples citas del mismo padre
-□ Soporte para citas de PADRES (no solo bebés)
-```
-
-### Módulo 11.4: Mesversarios
-```
-□ Job: Mesversario 3 días antes (Email + WhatsApp)
-□ Job: Mesversario del día (Email + WhatsApp)
-□ Rotación de 3 versiones de mensajes
-□ Configuración de límite de edad (default 12 meses)
-□ Campo lastMesversaryNotifiedMonth para evitar duplicados
+✅ PM2 configuration (ecosystem.config.js)
+✅ Worker entry point (cron/worker.ts)
+✅ Runner con schedule por país (Bolivia UTC-4, Brasil UTC-3)
+✅ Jobs diarios y semanales
+✅ Logging y error handling
 ```
 
-### Módulo 11.5: Re-engagement y Leads
+### Módulo 11.3: Recordatorios de Citas ✅
 ```
-□ Job: Cliente inactivo 45 días (Email + WhatsApp + Alert)
-□ Control de frecuencia (máx 1 cada 60 días)
-□ Job: Lead bienvenida después de evento (Email)
-□ Job: Alerta lead que ya dio a luz (Staff notification)
-```
-
-### Módulo 11.6: Mantenimiento Automático
-```
-□ Job: Marcar NO-SHOW citas de 2+ días
-□ Job: Actualizar noShowCount y requiresPrepayment
-□ Job: Desactivar bebés >3 años
-□ Job: Limpiar notificaciones expiradas
-□ Job: Expirar mensajes WhatsApp >3 días
-□ Job semanal: Limpiar logs antiguos (>90 días)
+✅ Job: Recordatorio 24h antes (Email automático)
+✅ Job: Recordatorio día de cita (WhatsApp pendiente)
+✅ Job: Recordatorio pago 48h antes (WhatsApp pendiente)
+✅ Agrupación de múltiples citas del mismo padre
+✅ Soporte para citas de PADRES (no solo bebés)
 ```
 
-### Módulo 11.7: Panel de Templates Editables
+### Módulo 11.4: Mesversarios ✅
 ```
-□ Página /admin/settings/messages
-□ Lista de templates por categoría
-□ Modal de edición con preview
-□ Variables disponibles por template
-□ Toggle activar/desactivar
-□ Soporte múltiples versiones (mesversarios)
-```
-
-### Módulo 11.8: Panel de Mensajes WhatsApp Pendientes
-```
-□ Página /admin/messages/pending
-□ Lista agrupada por categoría
-□ Filtros por fecha y tipo
-□ Botón "Copiar mensaje" + "Abrir WhatsApp" (wa.me)
-□ Modal confirmación "Enviado" / "Omitir"
-□ Badge en sidebar con contador
+✅ Job: Mesversario 3 días antes (Email + WhatsApp)
+✅ Job: Mesversario del día (Email + WhatsApp)
+✅ Rotación de 3 versiones de mensajes
+✅ Configuración de límite de edad (default 12 meses)
+✅ Campo lastMesversaryNotifiedMonth para evitar duplicados
 ```
 
-### Módulo 11.9: Panel de Métricas de Email + Webhooks
+### Módulo 11.5: Re-engagement y Leads ✅
 ```
-□ Página /admin/settings/messages/stats
-□ Cards de resumen (enviados, entregados, abiertos, rebotados)
-□ Tabla por tipo de mensaje
-□ Gráfico de tendencia (últimos 7 días)
-□ Lista de emails con problemas
-□ Indicador en perfil de padre si email rebota 2+ veces
-□ POST /api/webhooks/resend (procesar eventos)
+✅ Job: Cliente inactivo 45 días (Email + WhatsApp + Alert)
+✅ Control de frecuencia (máx 1 cada 60 días)
+✅ Job: Lead bienvenida después de evento (Email)
+✅ Job: Alerta lead que ya dio a luz (Staff notification)
 ```
 
-### Módulo 11.10: Resumen Diario para Owners
+### Módulo 11.6: Mantenimiento Automático ✅
 ```
-□ Email a las 7:00 AM (después del cron de 6:00 AM)
-□ Citas del día, mensajes pendientes, emails enviados ayer
-□ Mesversarios de la semana
-□ Alertas de atención requerida
-□ Configuración por usuario (receiveDailySummary)
+✅ Job: Marcar NO-SHOW citas de 2+ días
+✅ Job: Actualizar noShowCount y requiresPrepayment
+✅ Job: Desactivar bebés >3 años
+✅ Job: Limpiar notificaciones expiradas
+✅ Job: Expirar mensajes WhatsApp >3 días
+✅ Job semanal: Limpiar logs antiguos (>90 días)
 ```
 
-### Módulo 11.11: Indicadores UI
+### Módulo 11.7: Panel de Templates Editables ✅
 ```
-□ Badge de mensajes pendientes en sidebar (polling 60s)
-□ Toast de nuevos mensajes después de las 6 AM
-□ Indicador de mesversarios en calendario
-□ Indicador de email problemático en perfil de padre
+✅ Página /admin/settings/messages
+✅ Lista de templates por categoría (tabs)
+✅ Modal de edición con preview en vivo
+✅ Variables disponibles por template (insertables con click)
+✅ Toggle activar/desactivar
+✅ Soporte múltiples versiones (mesversarios)
+✅ Emoji picker integrado
+```
+
+### Módulo 11.8: Panel de Mensajes WhatsApp Pendientes ✅
+```
+✅ Página /admin/messages/pending
+✅ Lista agrupada por categoría
+✅ Filtros por fecha y tipo
+✅ Botón "Copiar mensaje" + "Abrir WhatsApp" (wa.me)
+✅ Modal confirmación "Enviado" / "Omitir"
+✅ Badge en sidebar con contador + polling 60s
+```
+
+### Módulo 11.9: Panel de Métricas de Email + Webhooks ✅
+```
+✅ Página /admin/messages/stats
+✅ Cards de resumen (enviados, entregados, abiertos, rebotados)
+✅ Tabla por categoría de mensaje
+✅ Gráfico de barras por día
+✅ Lista de emails con problemas
+✅ Lista de padres con problemas de email (2+ rebotes)
+✅ POST /api/webhooks/resend (procesar eventos)
+```
+
+### Módulo 11.10: Resumen Diario para Owners ✅
+```
+✅ Email a las 9:00 AM (después del cron de 8:00 AM)
+✅ Citas del día, mensajes pendientes, emails enviados ayer
+✅ Mesversarios de la semana
+✅ Alertas de atención requerida
+✅ Configuración por usuario (receiveDailySummary)
+```
+
+### Módulo 11.11: Indicadores UI ✅
+```
+✅ Badge de mensajes pendientes en sidebar (polling 60s)
+✅ Auto-refresh de lista de mensajes cada 60s
+□ Toast de nuevos mensajes (opcional - futuro)
+□ Indicador de mesversarios en calendario (opcional - futuro)
+□ Indicador de email problemático en perfil de padre (opcional - futuro)
 ```
 
 ## Fase 12: Exportación y Extras (FUTURO)
