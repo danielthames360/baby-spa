@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION", "THERAPIST"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
 
     const { id } = await params;
     const event = await eventService.getById(id);
@@ -26,7 +26,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
     const body = await request.json();
@@ -46,7 +46,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
     await eventService.delete(id);

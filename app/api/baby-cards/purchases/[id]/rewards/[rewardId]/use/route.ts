@@ -14,7 +14,7 @@ type RouteParams = { params: Promise<{ id: string; rewardId: string }> };
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id: purchaseId, rewardId } = await params;
     const body = await request.json();

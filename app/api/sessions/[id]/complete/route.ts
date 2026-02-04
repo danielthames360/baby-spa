@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Only ADMIN and RECEPTION can complete sessions
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

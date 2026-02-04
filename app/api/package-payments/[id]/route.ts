@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
 
@@ -50,7 +50,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
 

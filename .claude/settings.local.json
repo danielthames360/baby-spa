@@ -78,7 +78,12 @@
       "WebSearch",
       "Bash(npx shadcn@latest add:*)",
       "Bash(dir:*)",
-      "mcp__prisma__migrate-dev"
+      "mcp__prisma__migrate-dev",
+      "Bash(node:*)",
+      "Bash(set \"PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=si porfavor! adelante\")",
+      "mcp__prisma__migrate-reset",
+      "Bash(pkill:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=si npx prisma migrate reset --force)"
     ]
   }
 }

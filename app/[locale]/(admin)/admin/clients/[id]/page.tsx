@@ -1515,11 +1515,18 @@ export default function BabyProfilePage() {
           onOpenChange={setShowAppointmentDialog}
           babyId={baby.id}
           babyName={baby.name}
-          activePackage={activePackage ? {
-            id: activePackage.id,
-            remainingSessions: activePackage.remainingSessions,
-            package: { name: activePackage.package.name },
-          } : null}
+          packagePurchases={baby.packagePurchases.map((p) => ({
+            id: p.id,
+            remainingSessions: p.remainingSessions,
+            totalSessions: p.totalSessions,
+            usedSessions: p.usedSessions,
+            isActive: p.isActive,
+            package: {
+              id: p.package.id,
+              name: p.package.name,
+              duration: p.package.duration,
+            },
+          }))}
           activeBabyCard={baby.babyCardPurchases && baby.babyCardPurchases.length > 0 ? {
             id: baby.babyCardPurchases[0].id,
             completedSessions: baby.babyCardPurchases[0].completedSessions,

@@ -16,7 +16,7 @@ type RouteParams = { params: Promise<{ id: string }> };
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
     const babyCard = await babyCardService.getById(id);
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
     const body = await request.json();
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
     await babyCardService.delete(id);

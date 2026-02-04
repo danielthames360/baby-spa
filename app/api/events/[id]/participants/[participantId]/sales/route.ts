@@ -19,7 +19,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id: eventId, participantId } = await params;
     const body = await request.json();

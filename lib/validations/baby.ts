@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+// Helper for optional date fields that handles empty strings
+const optionalDateSchema = z
+  .union([z.string(), z.date(), z.null(), z.undefined()])
+  .transform((val) => {
+    if (!val || val === "") return null;
+    if (val instanceof Date) return val;
+    const parsed = new Date(val);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  })
+  .nullable()
+  .optional();
+
 // Parent validation schema
 export const parentSchema = z.object({
   name: z
@@ -17,7 +29,7 @@ export const parentSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
-  birthDate: z.coerce.date().optional().nullable(),
+  birthDate: optionalDateSchema,
   relationship: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("MOTHER"),
   isPrimary: z.boolean().default(true),
 });
@@ -41,7 +53,7 @@ export const primaryParentSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
-  birthDate: z.coerce.date().optional().nullable(),
+  birthDate: optionalDateSchema,
   relationship: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("MOTHER"),
   isPrimary: z.literal(true).default(true),
 });
@@ -65,7 +77,7 @@ export const secondaryParentSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
-  birthDate: z.coerce.date().optional().nullable(),
+  birthDate: optionalDateSchema,
   relationship: z.enum(["MOTHER", "FATHER", "GUARDIAN", "OTHER"]).default("FATHER"),
   isPrimary: z.literal(false).default(false),
 });
@@ -173,13 +185,9 @@ export const parentWithLeadSchema = z.object({
     .email("EMAIL_INVALID")
     .optional()
     .or(z.literal("")),
-  birthDate: z.coerce
-    .date()
-    .optional()
-    .nullable()
-    .refine((date) => !date || date <= new Date(), {
-      message: "BIRTH_DATE_FUTURE",
-    }),
+  birthDate: optionalDateSchema.refine((date) => !date || date <= new Date(), {
+    message: "BIRTH_DATE_FUTURE",
+  }),
   // LEAD fields
   status: z.enum(["LEAD", "ACTIVE", "INACTIVE"]).optional(),
   pregnancyWeeks: z.coerce

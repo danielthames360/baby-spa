@@ -8,7 +8,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; usageId: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { usageId } = await params;
 

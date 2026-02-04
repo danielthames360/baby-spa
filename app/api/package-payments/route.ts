@@ -22,7 +22,7 @@ interface PaymentDetailInput {
 // POST /api/package-payments - Register an installment payment
 export async function POST(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const body = await request.json();
     const data = validateRequest(body, registerInstallmentPaymentSchema);

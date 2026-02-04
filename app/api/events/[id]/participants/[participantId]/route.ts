@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION", "THERAPIST"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
 
     const { participantId } = await params;
     const participant = await eventParticipantService.getById(participantId);
@@ -26,7 +26,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { participantId } = await params;
     const body = await request.json();
@@ -64,7 +64,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { participantId } = await params;
     await eventParticipantService.remove(participantId);

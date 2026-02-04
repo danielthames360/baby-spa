@@ -12,7 +12,7 @@ import { parentWithLeadSchema, parentListFiltersSchema } from "@/lib/validations
 // GET /api/parents - List parents with filters
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { searchParams } = new URL(request.url);
     const params = validateRequest(
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 // POST /api/parents - Create parent/lead
 export async function POST(request: NextRequest) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const body = await request.json();
     const validatedData = validateRequest(body, parentWithLeadSchema);

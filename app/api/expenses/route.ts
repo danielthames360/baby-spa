@@ -17,7 +17,7 @@ import { fromDateOnly } from "@/lib/utils/date-utils";
 // GET /api/expenses
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { searchParams } = new URL(request.url);
     const filters = validateRequest(
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 // POST /api/expenses
 export async function POST(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN"]);
+    const session = await withAuth(["OWNER", "ADMIN"]);
 
     const body = await request.json();
     const data = validateRequest(body, createExpenseSchema);

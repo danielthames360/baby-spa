@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only ADMIN and RECEPTION can create registration links
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

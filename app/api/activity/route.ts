@@ -16,8 +16,8 @@ import { ActivityType } from "@prisma/client";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Only ADMIN can view activity log
-    await withAuth(["ADMIN"]);
+    // Only OWNER/ADMIN can view activity log
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { searchParams } = new URL(request.url);
 

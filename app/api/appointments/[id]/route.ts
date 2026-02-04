@@ -51,7 +51,7 @@ export async function PUT(
     }
 
     // Only ADMIN and RECEPTION can update appointments
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -140,7 +140,7 @@ export async function PATCH(
     switch (action) {
       case "start":
         // Start appointment (mark as in progress)
-        if (!["ADMIN", "RECEPTION", "THERAPIST"].includes(session.user.role)) {
+        if (!["OWNER", "ADMIN", "RECEPTION", "THERAPIST"].includes(session.user.role)) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         appointment = await appointmentService.startAppointment(
@@ -152,7 +152,7 @@ export async function PATCH(
 
       case "complete":
         // Complete appointment
-        if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+        if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         appointment = await appointmentService.completeAppointment(
@@ -164,7 +164,7 @@ export async function PATCH(
 
       case "cancel":
         // Cancel appointment
-        if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+        if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         if (!reason) {
@@ -183,7 +183,7 @@ export async function PATCH(
 
       case "no-show":
         // Mark as no-show
-        if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+        if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         appointment = await appointmentService.markNoShow(

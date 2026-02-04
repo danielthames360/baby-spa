@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { parseDateToUTCNoon, getStartOfDayUTC, fromDateOnly } from "@/lib/utils/date-utils";
 import { notificationService } from "@/lib/services/notification-service";
 import { activityService } from "@/lib/services/activity-service";
+import { emailService } from "@/lib/services/email-service";
 
 export async function GET() {
   try {
@@ -267,6 +268,12 @@ export async function POST(request: Request) {
     // Check if parent requires prepayment
     const parent = await prisma.parent.findUnique({
       where: { id: parentId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        requiresPrepayment: true,
+      },
     });
 
     if (parent?.requiresPrepayment) {
@@ -546,6 +553,39 @@ export async function POST(request: Request) {
     } catch (notificationError) {
       // Log but don't fail the request if notification creation fails
       console.error("Failed to create notification:", notificationError);
+    }
+
+    // Send confirmation email (non-blocking)
+    if (parent?.email) {
+      // Get service name for the email
+      let serviceName = "Sesión";
+      if (validSelectedPackageId) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: validSelectedPackageId },
+          select: { name: true },
+        });
+        serviceName = pkg?.name || "Sesión";
+      } else if (validPackagePurchaseId) {
+        const pkgPurchase = await prisma.packagePurchase.findUnique({
+          where: { id: validPackagePurchaseId },
+          include: { package: { select: { name: true } } },
+        });
+        serviceName = pkgPurchase?.package.name || "Sesión";
+      }
+
+      // Fire and forget - don't wait for email
+      emailService.sendAppointmentConfirmation({
+        parentId: parent.id,
+        parentName: parent.name,
+        parentEmail: parent.email,
+        babyName: isParentAppointment ? undefined : babyName,
+        serviceName,
+        date: appointmentDate,
+        time: startTime,
+        duration: sessionDuration,
+      }).catch((emailError) => {
+        console.error("Failed to send confirmation email:", emailError);
+      });
     }
 
     return NextResponse.json({

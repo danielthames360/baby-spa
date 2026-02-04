@@ -16,6 +16,7 @@ import {
   fromDateOnly,
 } from "@/lib/utils/date-utils";
 import { activityService } from "./activity-service";
+import { emailService } from "./email-service";
 
 // Re-export for backwards compatibility
 export { BUSINESS_HOURS, MAX_APPOINTMENTS_PER_SLOT, SLOT_DURATION_MINUTES, generateTimeSlots, isWithinBusinessHours };
@@ -810,7 +811,80 @@ export const appointmentService = {
       console.error("Error logging appointment creation activity:", error);
     }
 
+    // Send confirmation email (non-blocking)
+    this.sendConfirmationEmailAsync(appointment, appointmentDate, startTime, sessionDuration, selectedPackageId);
+
     return appointment as AppointmentWithRelations;
+  },
+
+  /**
+   * Send appointment confirmation email asynchronously (fire and forget)
+   */
+  async sendConfirmationEmailAsync(
+    appointment: {
+      baby?: { name: string; parents?: Array<{ parent: { id: string; name: string } }> } | null;
+      parent?: { id: string; name: string; email: string | null } | null;
+    },
+    appointmentDate: Date,
+    startTime: string,
+    sessionDuration: number,
+    selectedPackageId?: string
+  ): Promise<void> {
+    try {
+      // Get parent email
+      let parentId: string | undefined;
+      let parentName: string | undefined;
+      let parentEmail: string | undefined;
+
+      if (appointment.parent) {
+        // Direct parent appointment (parent service)
+        parentId = appointment.parent.id;
+        parentName = appointment.parent.name;
+        parentEmail = appointment.parent.email || undefined;
+      } else if (appointment.baby?.parents?.[0]) {
+        // Baby appointment - get primary parent's email
+        const primaryParent = appointment.baby.parents[0].parent;
+        parentId = primaryParent.id;
+        parentName = primaryParent.name;
+        // Need to fetch email since it's not included in the relation
+        const parentWithEmail = await prisma.parent.findUnique({
+          where: { id: parentId },
+          select: { email: true },
+        });
+        parentEmail = parentWithEmail?.email || undefined;
+      }
+
+      // Skip if no email
+      if (!parentEmail || !parentId || !parentName) {
+        return;
+      }
+
+      // Get service name from package
+      let serviceName = "Sesión";
+      if (selectedPackageId) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: selectedPackageId },
+          select: { name: true },
+        });
+        if (pkg) {
+          serviceName = pkg.name;
+        }
+      }
+
+      // Send email
+      await emailService.sendAppointmentConfirmation({
+        parentId,
+        parentName,
+        parentEmail,
+        babyName: appointment.baby?.name,
+        serviceName,
+        date: appointmentDate,
+        time: startTime,
+        duration: sessionDuration,
+      });
+    } catch (error) {
+      console.error("Error sending appointment confirmation email:", error);
+    }
   },
 
   // Update appointment
@@ -1076,12 +1150,104 @@ export const appointmentService = {
           newDate: dateStr,
           newTime: timeStr,
         }, userId);
+
+        // Send rescheduled email (non-blocking)
+        this.sendRescheduledEmailAsync(
+          appointment.updated,
+          existing, // old appointment data
+          oldValue.date as string,
+          oldValue.startTime as string
+        );
       }
     } catch (error) {
       console.error("Error logging appointment activity:", error);
     }
 
     return appointment.updated as AppointmentWithRelations;
+  },
+
+  /**
+   * Send appointment rescheduled email asynchronously (fire and forget)
+   */
+  async sendRescheduledEmailAsync(
+    newAppointment: {
+      date: Date;
+      startTime: string;
+      selectedPackageId: string | null;
+      packagePurchase?: { package: { name: string } } | null;
+      baby?: { name: string; parents?: Array<{ parent: { id: string; name: string } }> } | null;
+      parent?: { id: string; name: string; email: string | null } | null;
+    },
+    _oldAppointment: unknown, // We use oldDateStr and oldTimeStr instead
+    oldDateStr: string,
+    oldTimeStr: string
+  ): Promise<void> {
+    try {
+      // Get parent email
+      let parentId: string | undefined;
+      let parentName: string | undefined;
+      let parentEmail: string | undefined;
+
+      if (newAppointment.parent) {
+        parentId = newAppointment.parent.id;
+        parentName = newAppointment.parent.name;
+        parentEmail = newAppointment.parent.email || undefined;
+      } else if (newAppointment.baby?.parents?.[0]) {
+        const primaryParent = newAppointment.baby.parents[0].parent;
+        parentId = primaryParent.id;
+        parentName = primaryParent.name;
+        const parentWithEmail = await prisma.parent.findUnique({
+          where: { id: parentId },
+          select: { email: true },
+        });
+        parentEmail = parentWithEmail?.email || undefined;
+      }
+
+      if (!parentEmail || !parentId || !parentName) {
+        return;
+      }
+
+      // Get service name
+      let serviceName = "Sesión";
+      if (newAppointment.selectedPackageId) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: newAppointment.selectedPackageId },
+          select: { name: true },
+        });
+        if (pkg) serviceName = pkg.name;
+      } else if (newAppointment.packagePurchase?.package?.name) {
+        serviceName = newAppointment.packagePurchase.package.name;
+      }
+
+      // Get session duration from package
+      let sessionDuration = DEFAULT_SESSION_DURATION_MINUTES;
+      if (newAppointment.selectedPackageId) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: newAppointment.selectedPackageId },
+          select: { duration: true },
+        });
+        if (pkg) sessionDuration = pkg.duration;
+      }
+
+      // Parse old date string to Date
+      const [year, month, day] = oldDateStr.split("-").map(Number);
+      const oldDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
+      await emailService.sendAppointmentRescheduled({
+        parentId,
+        parentName,
+        parentEmail,
+        babyName: newAppointment.baby?.name,
+        serviceName,
+        date: newAppointment.date,
+        time: newAppointment.startTime,
+        duration: sessionDuration,
+        oldDate,
+        oldTime: oldTimeStr,
+      });
+    } catch (error) {
+      console.error("Error sending appointment rescheduled email:", error);
+    }
   },
 
   // Cancel appointment

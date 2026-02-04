@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -22,9 +23,24 @@ import {
   ChevronRight,
   Package,
   CreditCard,
+  AlertTriangle,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatLocalDateString } from "@/lib/utils/date-utils";
+import {
+  PackageSelector,
+  type PackageData,
+  type PackagePurchaseData,
+  type SpecialPriceInfo,
+} from "@/components/packages/package-selector";
+
+// bundle-dynamic-imports: Lazy load payment dialog to reduce initial bundle
+const RegisterPaymentDialog = dynamic(
+  () => import("@/components/appointments/register-payment-dialog").then((m) => m.RegisterPaymentDialog),
+  { ssr: false }
+);
 
 // Constants moved outside component to prevent re-creation on each render
 const WEEK_DAYS: Record<string, string[]> = {
@@ -45,11 +61,17 @@ interface DayAvailability {
   slots: TimeSlot[];
 }
 
-interface ActivePackage {
+interface BabyPackagePurchase {
   id: string;
   remainingSessions: number;
+  totalSessions: number;
+  usedSessions: number;
+  isActive: boolean;
   package: {
+    id: string;
     name: string;
+    categoryId?: string | null;
+    duration: number;
   };
 }
 
@@ -62,12 +84,44 @@ interface ActiveBabyCard {
   };
 }
 
+// Baby Card checkout info interface
+interface BabyCardCheckoutInfo {
+  hasActiveCard: boolean;
+  purchase: {
+    id: string;
+    babyCardName: string;
+    completedSessions: number;
+    totalSessions: number;
+    progressPercent: number;
+    status: string;
+  } | null;
+  firstSessionDiscount: {
+    amount: number;
+    used: boolean;
+  } | null;
+  availableRewards: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    rewardType: string;
+    sessionNumber: number;
+  }[];
+  nextReward: {
+    id: string;
+    displayName: string;
+    displayIcon: string | null;
+    sessionNumber: number;
+    sessionsUntilUnlock: number;
+  } | null;
+  specialPrices: SpecialPriceInfo[];
+}
+
 interface ScheduleAppointmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   babyId: string;
   babyName: string;
-  activePackage: ActivePackage | null;
+  packagePurchases?: BabyPackagePurchase[];
   activeBabyCard?: ActiveBabyCard | null;
   onSuccess?: () => void;
 }
@@ -77,7 +131,7 @@ export function ScheduleAppointmentDialog({
   onOpenChange,
   babyId,
   babyName,
-  activePackage,
+  packagePurchases = [],
   activeBabyCard,
   onSuccess,
 }: ScheduleAppointmentDialogProps) {
@@ -94,6 +148,100 @@ export function ScheduleAppointmentDialog({
   const [error, setError] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // Package selection states
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  // Baby Card info state
+  const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
+  const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+
+  // Advance payment flow states
+  const [showAdvancePaymentConfirm, setShowAdvancePaymentConfirm] = useState(false);
+  const [createdAppointment, setCreatedAppointment] = useState<{
+    id: string;
+    date: Date;
+    startTime: string;
+    baby: { id: string; name: string };
+    selectedPackage?: { id: string; name: string; basePrice?: number | string | null; advancePaymentAmount?: number | string | null } | null;
+  } | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+
+  // Track if initial auto-selection has been done
+  const hasAutoSelected = useRef(false);
+
+  // Get active packages with remaining sessions (memoized to prevent unnecessary recalculations)
+  const activePackages = useMemo(
+    () => packagePurchases.filter((p) => p.isActive && p.remainingSessions > 0),
+    [packagePurchases]
+  );
+
+  // Transform baby's package purchases to PackageSelector format
+  const babyPackagesForSelector: PackagePurchaseData[] = activePackages.map((pkg) => ({
+    id: pkg.id,
+    remainingSessions: pkg.remainingSessions,
+    totalSessions: pkg.totalSessions,
+    usedSessions: pkg.usedSessions,
+    package: {
+      id: pkg.package.id,
+      name: pkg.package.name,
+      categoryId: pkg.package.categoryId ?? null,
+      duration: pkg.package.duration,
+    },
+  }));
+
+  // Fetch Baby Card info
+  const fetchBabyCardInfo = useCallback(async () => {
+    setLoadingBabyCardInfo(true);
+    try {
+      const response = await fetch(`/api/checkout/baby-card-info/${babyId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setBabyCardInfo(data);
+      }
+    } catch (error) {
+      console.error("Error fetching baby card info:", error);
+    } finally {
+      setLoadingBabyCardInfo(false);
+    }
+  }, [babyId]);
+
+  // Fetch package catalog
+  const fetchCatalog = useCallback(async () => {
+    setLoadingCatalog(true);
+    try {
+      const params = new URLSearchParams({ active: "true", serviceType: "BABY" });
+      const response = await fetch(`/api/packages?${params.toString()}`);
+      const data = await response.json();
+      if (response.ok) {
+        setCatalogPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error("Error fetching package catalog:", error);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  }, []);
+
+  // Fetch catalog and baby card info when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchCatalog();
+      fetchBabyCardInfo();
+    }
+  }, [open, fetchCatalog, fetchBabyCardInfo]);
+
+  // Auto-select package if baby has exactly one active package (only on initial open)
+  useEffect(() => {
+    if (open && !hasAutoSelected.current && activePackages.length === 1) {
+      setSelectedPurchaseId(activePackages[0].id);
+      setSelectedPackageId(activePackages[0].package.id);
+      hasAutoSelected.current = true;
+    }
+  }, [open, activePackages]);
+
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (!open) {
@@ -103,8 +251,24 @@ export function ScheduleAppointmentDialog({
       setNotes("");
       setError(null);
       setCurrentMonth(new Date());
+      setSelectedPackageId(null);
+      setSelectedPurchaseId(null);
+      setShowAdvancePaymentConfirm(false);
+      setCreatedAppointment(null);
+      setShowPaymentDialog(false);
+      setBabyCardInfo(null);
+      // Reset auto-selection flag so it works again next time dialog opens
+      hasAutoSelected.current = false;
     }
   }, [open]);
+
+  // Handle package selection
+  const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
+    setSelectedPackageId(packageId);
+    setSelectedPurchaseId(purchaseId);
+    // Reset advance payment confirm when package changes
+    setShowAdvancePaymentConfirm(false);
+  };
 
   // Fetch availability when date is selected
   const fetchAvailability = useCallback(async (date: Date) => {
@@ -136,8 +300,47 @@ export function ScheduleAppointmentDialog({
     fetchAvailability(date);
   };
 
+  // Get selected package data for advance payment check
+  const getSelectedPackageData = (): PackageData | null => {
+    if (!selectedPackageId || selectedPurchaseId) return null;
+    return catalogPackages.find((pkg) => pkg.id === selectedPackageId) || null;
+  };
+
+  // Check if selected package requires advance payment
+  const selectedPackageRequiresAdvance = (): boolean => {
+    const pkg = getSelectedPackageData();
+    return pkg?.requiresAdvancePayment === true;
+  };
+
+  // Get advance payment amount for selected package
+  const getAdvancePaymentAmount = (): number => {
+    const pkg = getSelectedPackageData();
+    if (!pkg?.advancePaymentAmount) return 0;
+    return typeof pkg.advancePaymentAmount === "string"
+      ? parseFloat(pkg.advancePaymentAmount)
+      : pkg.advancePaymentAmount;
+  };
+
   // Handle form submission
   const handleSubmit = async () => {
+    if (!selectedDate || !selectedTime) return;
+    if (!selectedPackageId && !selectedPurchaseId) return;
+
+    // Check if package requires advance payment and show confirmation
+    if (selectedPackageRequiresAdvance() && !showAdvancePaymentConfirm) {
+      setShowAdvancePaymentConfirm(true);
+      return;
+    }
+
+    // If showing confirmation, this means user clicked one of the action buttons
+    // which should call createAppointment directly
+    if (showAdvancePaymentConfirm) return;
+
+    await createAppointment(false);
+  };
+
+  // Create appointment with optional pending status
+  const createAppointment = async (createAsPending: boolean, showPaymentAfter: boolean = false) => {
     if (!selectedDate || !selectedTime) return;
 
     setIsSubmitting(true);
@@ -154,6 +357,9 @@ export function ScheduleAppointmentDialog({
           date: dateStr,
           startTime: selectedTime,
           notes: notes || undefined,
+          packageId: selectedPackageId || undefined,
+          packagePurchaseId: selectedPurchaseId || undefined,
+          createAsPending,
         }),
       });
 
@@ -165,6 +371,27 @@ export function ScheduleAppointmentDialog({
         return;
       }
 
+      // If user chose to pay now, show payment dialog
+      if (showPaymentAfter) {
+        const pkg = getSelectedPackageData();
+        setCreatedAppointment({
+          id: data.appointment.id,
+          date: new Date(data.appointment.date),
+          startTime: data.appointment.startTime,
+          baby: { id: babyId, name: babyName },
+          selectedPackage: pkg ? {
+            id: pkg.id,
+            name: pkg.name,
+            basePrice: pkg.basePrice,
+            advancePaymentAmount: pkg.advancePaymentAmount,
+          } : null,
+        });
+        setShowAdvancePaymentConfirm(false);
+        setShowPaymentDialog(true);
+        return;
+      }
+
+      // Otherwise just close and refresh
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {
@@ -173,6 +400,24 @@ export function ScheduleAppointmentDialog({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Handle payment registered
+  const handlePaymentRegistered = () => {
+    setShowPaymentDialog(false);
+    setCreatedAppointment(null);
+    onOpenChange(false);
+    onSuccess?.();
+  };
+
+  // Handle skip payment (schedule without payment)
+  const handleScheduleWithoutPayment = async () => {
+    await createAppointment(true);
+  };
+
+  // Handle register payment now
+  const handleRegisterPaymentNow = async () => {
+    await createAppointment(true, true);
   };
 
   // Generate calendar days
@@ -231,10 +476,13 @@ export function ScheduleAppointmentDialog({
             </div>
             <div>
               <p className="font-semibold text-gray-800">{babyName}</p>
-              {activePackage ? (
+              {activePackages.length > 0 ? (
                 <p className="flex items-center gap-1 text-sm text-emerald-600">
                   <Package className="h-3 w-3" />
-                  {activePackage.remainingSessions} {t("calendar.sessionsAvailable")}
+                  {activePackages.length === 1
+                    ? `${activePackages[0].remainingSessions} ${t("calendar.sessionsAvailable")}`
+                    : `${activePackages.length} ${t("packages.title").toLowerCase()}`
+                  }
                 </p>
               ) : activeBabyCard ? (
                 <p className="flex items-center gap-1 text-sm text-violet-600">
@@ -249,20 +497,97 @@ export function ScheduleAppointmentDialog({
             </div>
           </div>
 
-          {/* Info when no package - uses default package */}
-          {!activePackage && (
-            <div className="flex items-center gap-3 rounded-xl bg-blue-50 p-4">
-              <AlertCircle className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-blue-800">
-                  {t("calendar.defaultPackage")}
-                </p>
-                <p className="text-sm text-blue-600">
-                  {t("calendar.defaultPackageDesc")}
-                </p>
+          {/* Baby Card info - shown when baby has active Baby Card */}
+          {babyCardInfo && babyCardInfo.hasActiveCard && babyCardInfo.purchase && (
+            <div className="rounded-xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+                  <CreditCard className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800">{babyCardInfo.purchase.babyCardName}</p>
+                  <p className="text-sm text-violet-600">
+                    {t("babyCard.checkout.sessionNumber", {
+                      number: babyCardInfo.purchase.completedSessions + 1,
+                      total: babyCardInfo.purchase.totalSessions,
+                    })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1">
+                    <Sparkles className="h-4 w-4 text-violet-600 mr-1.5" />
+                    <span className="text-sm font-bold text-violet-700">
+                      {Math.round(babyCardInfo.purchase.progressPercent)}%
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              {/* Progress bar */}
+              <div className="mt-3">
+                <div className="h-2 w-full rounded-full bg-violet-200/50">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
+                    style={{ width: `${babyCardInfo.purchase.progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* First Session Discount Available */}
+              {babyCardInfo.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                  <Star className="h-4 w-4 text-amber-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800">
+                      {t("babyCard.checkout.firstSessionDiscount")}
+                    </p>
+                    <p className="text-xs text-amber-600">
+                      {t("babyCard.checkout.firstSessionDiscountValue", {
+                        amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Special prices badge */}
+              {babyCardInfo.specialPrices.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-violet-700">
+                  <Sparkles className="h-4 w-4" />
+                  <span>{t("babyCard.checkout.hasSpecialPrices")}</span>
+                </div>
+              )}
             </div>
           )}
+
+          {/* Package selection */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <Package className="h-4 w-4" />
+              {t("packages.selectPackage")}
+            </Label>
+            {loadingCatalog || loadingBabyCardInfo ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
+              </div>
+            ) : (
+              <PackageSelector
+                babyId={babyId}
+                packages={catalogPackages}
+                babyPackages={babyPackagesForSelector}
+                specialPrices={babyCardInfo?.specialPrices}
+                selectedPackageId={selectedPackageId}
+                selectedPurchaseId={selectedPurchaseId}
+                onSelectPackage={handlePackageSelect}
+                showCategories={true}
+                showPrices={true}
+                showExistingFirst={true}
+                allowNewPackage={true}
+                compact={true}
+                showProvisionalMessage={true}
+              />
+            )}
+          </div>
 
           {/* Step 1: Date selection */}
           <div className="space-y-3">
@@ -381,7 +706,7 @@ export function ScheduleAppointmentDialog({
           )}
 
           {/* Step 3: Notes */}
-          {selectedTime && (
+          {selectedTime && !showAdvancePaymentConfirm && (
             <div className="space-y-3">
               <Label className="text-gray-700">{t("calendar.notes")}</Label>
               <Textarea
@@ -394,7 +719,7 @@ export function ScheduleAppointmentDialog({
           )}
 
           {/* Summary */}
-          {selectedDate && selectedTime && (
+          {selectedDate && selectedTime && !showAdvancePaymentConfirm && (
             <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-4">
               <CheckCircle className="h-5 w-5 text-emerald-600" />
               <div className="text-sm">
@@ -412,6 +737,56 @@ export function ScheduleAppointmentDialog({
             </div>
           )}
 
+          {/* Advance payment confirmation step */}
+          {showAdvancePaymentConfirm && (
+            <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 space-y-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-medium text-amber-800">
+                    {t("calendar.advancePaymentRequired")}
+                  </p>
+                  <p className="text-sm text-amber-700">
+                    {t("calendar.advancePaymentAmount", { amount: getAdvancePaymentAmount() })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleRegisterPaymentNow}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-300/50"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="mr-2 h-4 w-4" />
+                  )}
+                  {t("calendar.registerPaymentNow")}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleScheduleWithoutPayment}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl border-2 border-amber-300 text-amber-700 hover:bg-amber-100"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  {t("calendar.scheduleWithoutPayment")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAdvancePaymentConfirm(false)}
+                  disabled={isSubmitting}
+                  className="w-full text-gray-500"
+                >
+                  {t("common.back")}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Error message */}
           {error && (
             <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
@@ -421,34 +796,54 @@ export function ScheduleAppointmentDialog({
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="rounded-xl border-2 border-gray-200"
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!selectedDate || !selectedTime || isSubmitting}
-              className={cn(
-                "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
-                (!selectedDate || !selectedTime) && "opacity-50"
-              )}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("common.saving")}
-                </>
-              ) : (
-                t("calendar.schedule")
-              )}
-            </Button>
-          </div>
+          {!showAdvancePaymentConfirm && (
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="rounded-xl border-2 border-gray-200"
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!selectedDate || !selectedTime || isSubmitting || (!selectedPackageId && !selectedPurchaseId)}
+                className={cn(
+                  "rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 text-white shadow-lg shadow-teal-300/50 transition-all hover:from-teal-600 hover:to-cyan-600",
+                  (!selectedDate || !selectedTime || (!selectedPackageId && !selectedPurchaseId)) && "opacity-50"
+                )}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("common.saving")}
+                  </>
+                ) : (
+                  t("calendar.schedule")
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
+
+      {/* Payment registration dialog */}
+      {createdAppointment && (
+        <RegisterPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              // If closed without payment, the appointment remains as PENDING_PAYMENT
+              setShowPaymentDialog(false);
+              setCreatedAppointment(null);
+              onOpenChange(false);
+              onSuccess?.();
+            }
+          }}
+          appointment={createdAppointment}
+          onPaymentRegistered={handlePaymentRegistered}
+        />
+      )}
     </Dialog>
   );
 }

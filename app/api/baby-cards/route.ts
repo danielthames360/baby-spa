@@ -15,7 +15,7 @@ import { createBabyCardSchema } from "@/lib/validations/baby-card";
  */
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get("isActive");
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const body = await request.json();
     const data = validateRequest(body, createBabyCardSchema);

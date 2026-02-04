@@ -14,7 +14,7 @@ type RouteParams = { params: Promise<{ id: string }> };
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
     const purchase = await babyCardService.getPurchaseById(id);

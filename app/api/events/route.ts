@@ -6,7 +6,7 @@ import { createEventSchema, eventFiltersSchema } from "@/lib/validations/event";
 // GET /api/events - Get all events with filters
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN", "RECEPTION", "THERAPIST"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
 
     const { searchParams } = new URL(request.url);
     const filters = {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 // POST /api/events - Create new event
 export async function POST(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const body = await request.json();
     const data = validateRequest(body, createEventSchema);

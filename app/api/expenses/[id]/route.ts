@@ -18,7 +18,7 @@ interface RouteParams {
 // GET /api/expenses/:id
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
     const expense = await expenseService.getById(id);
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PATCH /api/expenses/:id
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
     const body = await request.json();
@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/expenses/:id
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await withAuth(["ADMIN"]);
+    const session = await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
     const result = await expenseService.delete(id, session.user.id);

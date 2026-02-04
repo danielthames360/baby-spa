@@ -15,7 +15,7 @@ import { purchaseBabyCardSchema } from "@/lib/validations/baby-card";
  */
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") as "ACTIVE" | "COMPLETED" | "REPLACED" | "CANCELLED" | null;
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const body = await request.json();
     const data = validateRequest(body, purchaseBabyCardSchema);

@@ -15,7 +15,7 @@ interface RouteParams {
 // GET /api/parents/[id] - Get parent with details
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
     const parent = await parentService.getWithDetails(id);
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT /api/parents/[id] - Update parent
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN", "RECEPTION"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
     const body = await request.json();
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/parents/[id] - Delete parent
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { id } = await params;
 

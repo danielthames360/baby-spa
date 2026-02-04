@@ -10,8 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+// Category type for emoji picker
+export interface EmojiCategory {
+  name: string;
+  emojis: readonly string[] | string[];
+}
+
 // Curated emoji categories for Baby Spa
-const EMOJI_CATEGORIES = [
+const DEFAULT_EMOJI_CATEGORIES: EmojiCategory[] = [
   {
     name: "Servicios",
     emojis: ["🛁", "🏊", "📸", "💆", "🤱", "👶", "🩺", "👩‍⚕️", "💉"],
@@ -36,14 +42,41 @@ const EMOJI_CATEGORIES = [
     name: "Productos",
     emojis: ["🧴", "✨", "🧼", "🛍️", "📦", "🎒"],
   },
-] as const;
+];
+
+// Email template specific categories
+export const EMAIL_TEMPLATE_CATEGORIES: EmojiCategory[] = [
+  {
+    name: "Info",
+    emojis: ["👶", "📅", "🕐", "💆", "📍", "🎂", "🎉", "💙", "💕"],
+  },
+  {
+    name: "Estado",
+    emojis: ["✅", "❌", "⚠️", "📋", "ℹ️", "🔔", "⏰", "📌"],
+  },
+  {
+    name: "Acciones",
+    emojis: ["📞", "📧", "🌐", "📲", "💬", "📝", "🔗"],
+  },
+  {
+    name: "Celebración",
+    emojis: ["🎈", "🎊", "🥳", "🎀", "⭐", "🌟", "💫", "✨"],
+  },
+];
 
 interface EmojiPickerProps {
   onSelect: (emoji: string) => void;
   className?: string;
+  categories?: EmojiCategory[];
+  showHint?: boolean;
 }
 
-export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
+export function EmojiPicker({
+  onSelect,
+  className,
+  categories = DEFAULT_EMOJI_CATEGORIES,
+  showHint = true
+}: EmojiPickerProps) {
   const [open, setOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(0);
 
@@ -74,7 +107,7 @@ export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
       >
         {/* Category tabs */}
         <div className="flex flex-wrap gap-1 border-b border-gray-100 pb-2 mb-2">
-          {EMOJI_CATEGORIES.map((category, idx) => (
+          {categories.map((category, idx) => (
             <button
               key={category.name}
               type="button"
@@ -93,7 +126,7 @@ export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
 
         {/* Emoji grid */}
         <div className="grid grid-cols-6 gap-1">
-          {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => (
+          {categories[activeCategory]?.emojis.map((emoji) => (
             <button
               key={emoji}
               type="button"
@@ -106,9 +139,11 @@ export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
         </div>
 
         {/* Hint */}
-        <p className="mt-2 border-t border-gray-100 pt-2 text-[10px] text-gray-400 text-center">
-          Tip: Win + . para más emojis
-        </p>
+        {showHint && (
+          <p className="mt-2 border-t border-gray-100 pt-2 text-[10px] text-gray-400 text-center">
+            Tip: Win + . para más emojis
+          </p>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

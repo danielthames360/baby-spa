@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Only ADMIN and RECEPTION can add products
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -91,7 +91,7 @@ export async function DELETE(request: NextRequest, _routeParams: RouteParams) {
     }
 
     // Only ADMIN and RECEPTION can remove products
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

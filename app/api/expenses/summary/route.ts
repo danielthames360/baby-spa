@@ -11,7 +11,7 @@ import { expenseSummarySchema } from "@/lib/validations/expense";
 // GET /api/expenses/summary?year=2026&month=1
 export async function GET(request: NextRequest) {
   try {
-    await withAuth(["ADMIN"]);
+    await withAuth(["OWNER", "ADMIN"]);
 
     const { searchParams } = new URL(request.url);
     const { year, month } = validateRequest(

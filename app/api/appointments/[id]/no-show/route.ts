@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Only ADMIN and RECEPTION can mark no-shows
-    if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -76,7 +76,9 @@ export type Permission =
   | "reports:view"
   | "reports:view-financial"
   | "reports:view-operational"
-  | "reports:export";
+  | "reports:export"
+  // Mensajería
+  | "messages:view";
 
 // Permisos por rol
 const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
@@ -136,6 +138,7 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     "reports:view-financial",
     "reports:view-operational",
     "reports:export",
+    "messages:view",
   ],
 
   ADMIN: [
@@ -188,6 +191,7 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     "reports:view-financial",
     "reports:view-operational",
     "reports:export",
+    "messages:view",
   ],
 
   RECEPTION: [
@@ -333,6 +337,12 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/events",
     icon: "PartyPopper",
     requiredPermissions: ["events:view"],
+  },
+  {
+    key: "messages",
+    href: "/admin/messages/pending",
+    icon: "MessageSquare",
+    requiredPermissions: ["messages:view"],
   },
   {
     key: "babyCards",

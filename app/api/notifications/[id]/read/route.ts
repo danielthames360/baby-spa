@@ -12,7 +12,7 @@ interface RouteParams {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
     const { id } = await params;
 
     // Verify notification exists

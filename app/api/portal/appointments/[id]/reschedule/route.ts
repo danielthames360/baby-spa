@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notificationService } from "@/lib/services/notification-service";
 import { activityService } from "@/lib/services/activity-service";
+import { emailService } from "@/lib/services/email-service";
 import { differenceInHours } from "date-fns";
 import { fromDateOnly, toDateOnly } from "@/lib/utils/date-utils";
 
@@ -176,6 +177,33 @@ export async function PATCH(
       oldDate: fromDateOnly(oldDate),
       oldTime: oldStartTime,
     });
+
+    // Send reschedule email (non-blocking)
+    // Get parent email
+    const parentForEmail = await prisma.parent.findUnique({
+      where: { id: parentId },
+      select: { id: true, name: true, email: true },
+    });
+
+    if (parentForEmail?.email) {
+      const serviceName = appointment.selectedPackage?.name || "Sesión";
+      const sessionDuration = appointment.selectedPackage?.duration || 60;
+
+      emailService.sendAppointmentRescheduled({
+        parentId: parentForEmail.id,
+        parentName: parentForEmail.name,
+        parentEmail: parentForEmail.email,
+        babyName: appointment.baby?.name || undefined,
+        serviceName,
+        date: newDateParsed,
+        time: newStartTime,
+        duration: sessionDuration,
+        oldDate,
+        oldTime: oldStartTime,
+      }).catch((emailError) => {
+        console.error("Failed to send reschedule email:", emailError);
+      });
+    }
 
     return NextResponse.json({
       success: true,

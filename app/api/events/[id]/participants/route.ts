@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await withAuth(["ADMIN", "RECEPTION", "THERAPIST"]);
+    await withAuth(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
 
     const { id } = await params;
     const participants = await eventParticipantService.getByEventId(id);
@@ -27,7 +27,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { id } = await params;
     const body = await request.json();

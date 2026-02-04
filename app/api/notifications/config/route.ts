@@ -9,8 +9,8 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    // Only allow staff members (ADMIN, RECEPTION, THERAPIST)
-    if (!session || !["ADMIN", "RECEPTION", "THERAPIST"].includes(session.user.role)) {
+    // Only allow staff members (OWNER, ADMIN, RECEPTION, THERAPIST)
+    if (!session || !["OWNER", "ADMIN", "RECEPTION", "THERAPIST"].includes(session.user.role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

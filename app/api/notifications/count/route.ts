@@ -10,10 +10,10 @@ import { UserRole } from "@prisma/client";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
-    // ADMIN sees all notifications, RECEPTION only sees their own
-    const forRole = session.user.role === "ADMIN"
+    // OWNER/ADMIN sees all notifications, RECEPTION only sees their own
+    const forRole = ["OWNER", "ADMIN"].includes(session.user.role)
       ? undefined
       : (session.user.role as UserRole);
 

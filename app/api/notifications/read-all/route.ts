@@ -9,10 +9,10 @@ import { UserRole } from "@prisma/client";
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await withAuth(["ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
-    // ADMIN marks all notifications as read, RECEPTION only their own
-    const forRole = session.user.role === "ADMIN"
+    // OWNER/ADMIN marks all notifications as read, RECEPTION only their own
+    const forRole = ["OWNER", "ADMIN"].includes(session.user.role)
       ? undefined
       : (session.user.role as UserRole);
 
