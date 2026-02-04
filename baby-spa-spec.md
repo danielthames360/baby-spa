@@ -1,8 +1,8 @@
 # 🏊 BABY SPA - ESPECIFICACIÓN TÉCNICA COMPLETA
 ## Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
 
-**Última actualización:** Enero 2026  
-**Versión:** 5.0
+**Última actualización:** Febrero 2026
+**Versión:** 6.0
 
 ---
 
@@ -66,6 +66,11 @@
 18. ✅ Pagos a staff con control de adelantos
 19. ✅ Actividad reciente (registro de operaciones)
 20. ✅ Portal de padres mejorado (cancelar/reagendar, saldo, perfil, mesversarios)
+21. 🚧 Recordatorios automáticos de citas (email + WhatsApp manual)
+22. 🚧 Mensajes de mesversarios automatizados
+23. 🚧 Re-engagement de clientes inactivos
+24. 🚧 Gestión automatizada de leads
+25. 🚧 Mantenimiento automático (NO-SHOW, limpieza, desactivación)
 
 ## 1.3 Operación
 
@@ -412,6 +417,46 @@ enum ActivityType {
   BABY_CREATED
   PACKAGE_ASSIGNED
   CLIENT_UPDATED
+}
+
+// ==========================================
+// ENUMS NUEVOS (Fase 11 - Cron Jobs)
+// ==========================================
+
+enum TemplateCategory {
+  APPOINTMENT     // Recordatorios de citas
+  MESVERSARY      // Mesversarios
+  REENGAGEMENT    // Re-engagement de clientes inactivos
+  LEAD            // Mensajes para leads
+  ADMIN           // Resumen diario, alertas admin
+}
+
+enum PendingMessageCategory {
+  APPOINTMENT_REMINDER  // Recordatorio de cita
+  PAYMENT_REMINDER      // Recordatorio de pago
+  MESVERSARY            // Mesversario
+  REENGAGEMENT          // Re-engagement
+}
+
+enum RecipientType {
+  PARENT    // Padre/Madre
+  BABY      // Referencia a bebé (mensaje va al padre)
+  LEAD      // Lead sin bebé
+}
+
+enum PendingMessageStatus {
+  PENDING   // Pendiente de enviar
+  SENT      // Enviado por staff
+  SKIPPED   // Omitido con razón
+  EXPIRED   // Expirado (>3 días)
+}
+
+enum EmailStatus {
+  SENT        // Enviado
+  DELIVERED   // Entregado
+  OPENED      // Abierto
+  BOUNCED     // Rebotado
+  COMPLAINED  // Marcado como spam
 }
 ```
 
@@ -1124,25 +1169,159 @@ model Expense {
 ```prisma
 model Activity {
   id            String         @id @default(cuid())
-  
+
   type          ActivityType
   title         String
   description   String?
-  
+
   entityType    String?
   entityId      String?
-  
+
   metadata      Json?
-  
+
   performedById String?
   performedBy   User?          @relation(fields: [performedById], references: [id])
-  
+
   createdAt     DateTime       @default(now())
-  
+
   @@index([createdAt])
   @@index([type, createdAt])
   @@index([performedById, createdAt])
 }
+```
+
+## 4.6 Modelos Nuevos (Fase 11 - Cron Jobs)
+
+### MessageTemplate (Templates Editables)
+
+```prisma
+model MessageTemplate {
+  id              String            @id @default(cuid())
+
+  key             String            @unique   // "APPOINTMENT_REMINDER_24H"
+  name            String                      // "Recordatorio de cita 24h"
+  description     String?
+  category        TemplateCategory
+
+  emailEnabled    Boolean           @default(false)
+  whatsappEnabled Boolean           @default(false)
+
+  subject         String?                     // Asunto email
+  body            String            @db.Text  // Cuerpo del mensaje
+
+  // Para mesversarios: múltiples versiones que rotan
+  bodyVersion2    String?           @db.Text
+  bodyVersion3    String?           @db.Text
+
+  variables       String[]          @default([])  // ["parentName", "babyName", "date"]
+  config          Json?             // Configuración adicional
+  isActive        Boolean           @default(true)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("message_templates")
+}
+```
+
+### PendingMessage (Cola de WhatsApp)
+
+```prisma
+model PendingMessage {
+  id              String                @id @default(cuid())
+
+  category        PendingMessageCategory
+  templateKey     String
+
+  recipientType   RecipientType
+  recipientId     String                // parentId, babyId, o leadId
+  recipientName   String
+  recipientPhone  String
+
+  message         String                @db.Text  // Mensaje ya procesado con variables
+
+  entityType      String?               // "Appointment", "Baby", etc.
+  entityId        String?
+  metadata        Json?
+
+  status          PendingMessageStatus  @default(PENDING)
+  sentAt          DateTime?
+  sentById        String?
+  skipReason      String?
+
+  scheduledFor    DateTime              // Cuándo debe mostrarse
+  expiresAt       DateTime              // Cuándo expira (3 días después)
+
+  createdAt       DateTime              @default(now())
+
+  sentBy          User?                 @relation(fields: [sentById], references: [id])
+
+  @@index([status, scheduledFor])
+  @@map("pending_messages")
+}
+```
+
+### EmailLog (Tracking de Emails)
+
+```prisma
+model EmailLog {
+  id              String        @id @default(cuid())
+
+  resendId        String        @unique   // ID de Resend para webhooks
+  toEmail         String
+  parentId        String?
+
+  templateKey     String
+  category        TemplateCategory
+
+  status          EmailStatus   @default(SENT)
+
+  sentAt          DateTime      @default(now())
+  deliveredAt     DateTime?
+  openedAt        DateTime?
+  bouncedAt       DateTime?
+  complainedAt    DateTime?
+
+  bounceType      String?       // "hard", "soft"
+  bounceReason    String?
+  subject         String?
+
+  // Para retry de emails fallidos
+  retryCount      Int           @default(0)
+  lastRetryAt     DateTime?
+
+  createdAt       DateTime      @default(now())
+
+  parent          Parent?       @relation(fields: [parentId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([templateKey, createdAt])
+  @@index([parentId])
+  @@map("email_logs")
+}
+```
+
+### Campos Nuevos en Modelos Existentes (Fase 11)
+
+```prisma
+// En Parent - agregar:
+emailBounceCount       Int       @default(0)    // +1 cada vez que rebota email
+lastSessionAt          DateTime?               // Última sesión completada
+lastReengagementAt     DateTime?               // Último mensaje de re-engagement
+lastMessageSentAt      DateTime?               // Control de frecuencia de mensajes
+marketingOptIn         Boolean   @default(true) // Opt-out desde portal
+
+// En Baby - agregar:
+lastMesversaryNotifiedMonth  Int?              // Mes del último mesversario enviado
+
+// En Appointment - agregar:
+reminder24hSent         Boolean   @default(false)
+reminderDaySent         Boolean   @default(false)
+paymentReminderSent     Boolean   @default(false)
+
+// En User - agregar:
+receiveDailySummary     Boolean   @default(false)
+dailySummaryEmail       String?   // Email donde recibir resumen (puede ser diferente)
 ```
 
 ---
@@ -1428,6 +1607,55 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 | BIWEEKLY | 1-15 o 16-fin de mes | 1 ene → 15 ene |
 | MONTHLY | Mes completo | 1 ene → 31 ene |
 
+## 6.9 Mensajería Automatizada (Fase 11)
+
+### Conceptos Clave
+- **Email**: Automático via Resend.com (3,000/mes gratis)
+- **WhatsApp**: Siempre MANUAL - Staff copia mensaje y envía
+- **Templates**: Editables desde panel admin (solo OWNER)
+- **Variables**: Se reemplazan automáticamente ({parentName}, {babyName}, etc.)
+
+### Reglas de Recordatorios de Citas
+- **24h antes**: Email automático
+- **Día de cita**: WhatsApp pendiente para staff
+- **Pago pendiente 48h**: WhatsApp si cita tiene saldo pendiente
+- **Agrupación**: Múltiples citas del mismo padre → UN mensaje
+- **Citas de padre**: Template sin mención de bebé
+
+### Reglas de Mesversarios
+- **Límite de edad**: 12 meses por default (configurable hasta 36)
+- **Bebé sin sesiones**: NO enviar (evitar spam a nuevos)
+- **3 versiones rotativas**: Mes 1→V1, Mes 2→V2, Mes 3→V3, Mes 4→V1...
+- **Múltiples padres**: Enviar a TODOS los padres del bebé
+- **Mesversario + cita mismo día**: Mensaje combinado
+
+### Reglas de Re-engagement
+- **Días de inactividad**: 45 días sin visita
+- **Frecuencia máxima**: 1 vez cada 60 días
+- **Excluir si**: Tiene cita en próximos 30 días
+- **Múltiples bebés inactivos**: UN mensaje con bebé más reciente
+
+### Reglas de Leads
+- **Bienvenida**: Email automático después de evento
+- **Alerta parto**: Notificación a staff cuando fecha esperada llegue
+- **NO dar acceso al portal** hasta que registren bebé
+
+### Reglas de NO-SHOW Automático
+- **Cuándo marcar**: Citas SCHEDULED o PENDING_PAYMENT de 2+ días atrás
+- **Eventos**: NO incrementar noShowCount
+- **3+ no-shows**: Activar requiresPrepayment automáticamente
+- **Reseteo**: noShowCount = 0 cuando padre asiste a cita
+
+### Reglas de Email
+- **Rebote 2+ veces**: Marcar emailBounceCount >= 2, indicador en perfil
+- **Staff corrige email**: Resetear emailBounceCount = 0
+- **Retry automático**: Hasta 3 intentos para emails fallidos
+
+### Reglas de WhatsApp Pendientes
+- **Expiración**: 3 días después de scheduledFor
+- **Cita cancelada después de generar**: Verificar estado, marcar EXPIRED
+- **Cita reagendada**: Eliminar mensajes anteriores, regenerar
+
 ---
 
 # 7. MÓDULOS IMPLEMENTADOS
@@ -1522,12 +1750,75 @@ Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
 - [x] Resumen del Turno con todos los métodos de pago
 - [x] Migración de métodos de pago: OTHER → QR (Bolivia) / PIX (Brasil)
 
-## 🔮 Fase 11: Exportación y Extras (FUTURO)
+## 🚧 Fase 11: Cron Jobs y Mensajería Automatizada (EN PROGRESO)
+
+Sistema de automatización de mensajes y mantenimiento del sistema.
+Ver planificación detallada en: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
+
+### Arquitectura
+- **PM2** como process manager (Next.js + Cron Worker)
+- **Resend.com** para emails (3,000/mes gratis + webhooks)
+- **WhatsApp manual** - Panel centralizado para staff
+- **Multi-DB**: Bolivia y Brasil ejecutan en paralelo (2 crons separados)
+- **Horario**: 8:00 AM hora local de cada país
+
+### Módulos de Cron Jobs
+| # | Funcionalidad | Email | WhatsApp | Staff Alert |
+|---|---------------|-------|----------|-------------|
+| 1 | Recordatorio 24h antes de cita | ✅ | ❌ | ❌ |
+| 2 | Recordatorio día de cita | ❌ | ✅ Manual | ❌ |
+| 3 | Recordatorio pago pendiente 48h | ❌ | ✅ Manual | ❌ |
+| 4 | Mesversario 3 días antes | ✅ | ✅ Manual | ❌ |
+| 5 | Mesversario día | ✅ | ✅ Manual | ❌ |
+| 6 | Cliente inactivo 45 días | ✅ | ✅ Manual | ✅ |
+| 7 | Lead - Bienvenida evento | ✅ | ❌ | ❌ |
+| 8 | Lead - Ya dio a luz | ❌ | ❌ | ✅ |
+| 9 | Resumen diario owners | ✅ | ❌ | ❌ |
+
+### Mantenimiento Automático
+- Marcar NO-SHOW en citas de 2+ días sin completar
+- Actualizar noShowCount y requiresPrepayment de padres
+- Desactivar bebés >3 años
+- Limpiar notificaciones expiradas
+- Expirar mensajes WhatsApp pendientes >3 días
+- Limpieza semanal de logs antiguos
+
+### Paneles de Administración
+| Panel | Acceso | Descripción |
+|-------|--------|-------------|
+| Templates Editables | OWNER | Editar textos de mensajes con variables |
+| Mensajes WhatsApp Pendientes | OWNER, ADMIN, RECEPTION | Ver, copiar y marcar como enviados |
+| Métricas de Email | OWNER | Estadísticas de envío (via webhooks Resend) |
+
+### Modelos de Base de Datos (Nuevos)
+- `MessageTemplate` - Templates editables con variables
+- `PendingMessage` - Cola de mensajes WhatsApp pendientes
+- `EmailLog` - Tracking de emails (enviados, abiertos, rebotados)
+
+### Campos Nuevos en Modelos Existentes
+- `Parent`: emailBounceCount, lastSessionAt, lastReengagementAt, lastMessageSentAt, marketingOptIn
+- `Baby`: lastMesversaryNotifiedMonth
+- `Appointment`: reminder24hSent, reminderDaySent, paymentReminderSent
+- `User`: receiveDailySummary, dailySummaryEmail
+
+### Indicadores UI
+- Badge de mensajes pendientes en sidebar
+- Toast de nuevos mensajes
+- Indicador de mesversarios en calendario
+- Indicador de email problemático en perfil de padre
+
+### Decisiones de Diseño
+- **NO opt-out en registro** - Configuración en portal del padre si lo desea
+- **Retry automático** para emails fallidos
+- **Mesversarios hasta 12 meses** por default (configurable hasta 36)
+- **3 versiones rotativas** de mensajes de mesversario
+- **Templates para citas de PADRES** (no solo bebés)
+
+## 🔮 Fase 12: Exportación y Extras (FUTURO)
 - [ ] Exportación PDF/Excel de Reportes
-- [ ] Cron Jobs (limpieza, recordatorios)
-- [ ] Notificaciones Push
-- [ ] Configuración del Sistema
-- [ ] QR de Pago
+- [ ] Notificaciones Push (mobile)
+- [ ] QR de Pago configurable
+- [ ] Configuración avanzada del Sistema
 - Ver planificación de exportación en: `PlanificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
 
 ---
@@ -1837,17 +2128,120 @@ TRADUCCIONES:
 ✅ pt-BR.json completo
 ```
 
-## Fase 11: Exportación y Automatización (FUTURO)
+## Fase 11: Cron Jobs y Mensajería Automatizada 🚧 EN PROGRESO
 
-> Ver planificación: `PlanificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
+> Ver planificación completa: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
 
+### Módulo 11.1: Infraestructura Base
 ```
-□ Módulo 11.1: Exportación PDF de Reportes
-□ Módulo 11.2: Exportación Excel de Reportes
-□ Módulo 11.3: Cron Jobs (limpieza, recordatorios)
-□ Módulo 11.4: Notificaciones Push
-□ Módulo 11.5: Configuración del Sistema
-□ Módulo 11.6: QR de Pago
+□ Modelos Prisma: MessageTemplate, PendingMessage, EmailLog
+□ Campos nuevos en Parent, Baby, Appointment, User
+□ Migración de base de datos
+□ Integración con Resend.com (email service)
+□ Services: email-service, template-service, pending-message-service
+□ Webhook endpoint para Resend (tracking de emails)
+```
+
+### Módulo 11.2: Cron Worker
+```
+□ PM2 configuration (ecosystem.config.js)
+□ Worker entry point (cron/worker.ts)
+□ Runner con schedule por país (Bolivia UTC-4, Brasil UTC-3)
+□ Jobs diarios y semanales
+□ Logging y error handling
+```
+
+### Módulo 11.3: Recordatorios de Citas
+```
+□ Job: Recordatorio 24h antes (Email automático)
+□ Job: Recordatorio día de cita (WhatsApp pendiente)
+□ Job: Recordatorio pago 48h antes (WhatsApp pendiente)
+□ Agrupación de múltiples citas del mismo padre
+□ Soporte para citas de PADRES (no solo bebés)
+```
+
+### Módulo 11.4: Mesversarios
+```
+□ Job: Mesversario 3 días antes (Email + WhatsApp)
+□ Job: Mesversario del día (Email + WhatsApp)
+□ Rotación de 3 versiones de mensajes
+□ Configuración de límite de edad (default 12 meses)
+□ Campo lastMesversaryNotifiedMonth para evitar duplicados
+```
+
+### Módulo 11.5: Re-engagement y Leads
+```
+□ Job: Cliente inactivo 45 días (Email + WhatsApp + Alert)
+□ Control de frecuencia (máx 1 cada 60 días)
+□ Job: Lead bienvenida después de evento (Email)
+□ Job: Alerta lead que ya dio a luz (Staff notification)
+```
+
+### Módulo 11.6: Mantenimiento Automático
+```
+□ Job: Marcar NO-SHOW citas de 2+ días
+□ Job: Actualizar noShowCount y requiresPrepayment
+□ Job: Desactivar bebés >3 años
+□ Job: Limpiar notificaciones expiradas
+□ Job: Expirar mensajes WhatsApp >3 días
+□ Job semanal: Limpiar logs antiguos (>90 días)
+```
+
+### Módulo 11.7: Panel de Templates Editables
+```
+□ Página /admin/settings/messages
+□ Lista de templates por categoría
+□ Modal de edición con preview
+□ Variables disponibles por template
+□ Toggle activar/desactivar
+□ Soporte múltiples versiones (mesversarios)
+```
+
+### Módulo 11.8: Panel de Mensajes WhatsApp Pendientes
+```
+□ Página /admin/messages/pending
+□ Lista agrupada por categoría
+□ Filtros por fecha y tipo
+□ Botón "Copiar mensaje" + "Abrir WhatsApp" (wa.me)
+□ Modal confirmación "Enviado" / "Omitir"
+□ Badge en sidebar con contador
+```
+
+### Módulo 11.9: Panel de Métricas de Email + Webhooks
+```
+□ Página /admin/settings/messages/stats
+□ Cards de resumen (enviados, entregados, abiertos, rebotados)
+□ Tabla por tipo de mensaje
+□ Gráfico de tendencia (últimos 7 días)
+□ Lista de emails con problemas
+□ Indicador en perfil de padre si email rebota 2+ veces
+□ POST /api/webhooks/resend (procesar eventos)
+```
+
+### Módulo 11.10: Resumen Diario para Owners
+```
+□ Email a las 7:00 AM (después del cron de 6:00 AM)
+□ Citas del día, mensajes pendientes, emails enviados ayer
+□ Mesversarios de la semana
+□ Alertas de atención requerida
+□ Configuración por usuario (receiveDailySummary)
+```
+
+### Módulo 11.11: Indicadores UI
+```
+□ Badge de mensajes pendientes en sidebar (polling 60s)
+□ Toast de nuevos mensajes después de las 6 AM
+□ Indicador de mesversarios en calendario
+□ Indicador de email problemático en perfil de padre
+```
+
+## Fase 12: Exportación y Extras (FUTURO)
+```
+□ Módulo 12.1: Exportación PDF de Reportes
+□ Módulo 12.2: Exportación Excel de Reportes
+□ Módulo 12.3: Notificaciones Push (mobile)
+□ Módulo 12.4: QR de Pago configurable
+□ Módulo 12.5: Configuración avanzada del Sistema
 ```
 
 ---
@@ -1926,6 +2320,18 @@ Al iniciar cada sesión, Claude Code debe entender:
    - Al eliminar SALARY → movimientos vuelven a PENDING
    - Empleado tiene payFrequency (DAILY/WEEKLY/BIWEEKLY/MONTHLY)
    - Puede ver saldo financiero pero no pagar online
+
+10. MENSAJERÍA AUTOMATIZADA (Fase 11):
+   - WhatsApp SIEMPRE es manual (staff copia y envía)
+   - Email vía Resend.com (3,000/mes gratis con webhooks)
+   - Templates editables solo por OWNER
+   - Variables se reemplazan: {parentName}, {babyName}, {date}, etc.
+   - Mesversarios: 3 versiones rotativas, máx 12 meses default
+   - Re-engagement: máx 1 mensaje cada 60 días
+   - NO-SHOW automático: citas de 2+ días sin completar
+   - Email bounce 2+: indicador visual en perfil padre
+   - Cron diario: 6:00 AM hora local de cada país
+   - Multi-DB: Bolivia y Brasil ejecutan en paralelo
 ```
 
 ## 10.3 Convenciones de Código

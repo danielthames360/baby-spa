@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -22,6 +23,7 @@ import {
   History,
   BarChart3,
   CircleDollarSign,
+  MessageSquare,
   LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   History,
   BarChart3,
   CircleDollarSign,
+  MessageSquare,
 };
 
 interface AdminSidebarProps {
@@ -66,6 +69,27 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
+  const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
+
+  // Fetch pending messages count
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const response = await fetch("/api/pending-messages/count");
+        if (response.ok) {
+          const data = await response.json();
+          setPendingMessagesCount(data.count || 0);
+        }
+      } catch {
+        // Silently fail
+      }
+    };
+
+    fetchCount();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isActive = (href: string) => {
     // Remove locale prefix for comparison
@@ -133,13 +157,14 @@ export function AdminSidebar({
         {filteredMainNav.map((item) => {
           const Icon = ICON_MAP[item.icon] || LayoutDashboard;
           const active = isActive(item.href);
+          const showBadge = item.key === "messages" && pendingMessagesCount > 0;
 
           return (
             <Link
               key={item.key}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 active
                   ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-200"
                   : "text-gray-600 hover:bg-teal-50 hover:text-teal-700",
@@ -147,8 +172,29 @@ export function AdminSidebar({
               )}
               title={collapsed ? t(item.key) : undefined}
             >
-              <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{t(item.key)}</span>}
+              <div className="relative">
+                <Icon className="h-5 w-5 shrink-0" />
+                {showBadge && collapsed && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
+                    {pendingMessagesCount > 9 ? "9+" : pendingMessagesCount}
+                  </span>
+                )}
+              </div>
+              {!collapsed && (
+                <>
+                  <span className="flex-1">{t(item.key)}</span>
+                  {showBadge && (
+                    <span className={cn(
+                      "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold",
+                      active
+                        ? "bg-white/30 text-white"
+                        : "bg-green-500 text-white"
+                    )}>
+                      {pendingMessagesCount > 99 ? "99+" : pendingMessagesCount}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}

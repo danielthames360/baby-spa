@@ -157,6 +157,7 @@
     "expenses": "Despesas",
     "waitlist": "Lista de Espera",
     "events": "Eventos",
+    "messages": "Mensagens",
     "babyCards": "Baby Cards",
     "babyCard": "Meu Baby Card",
     "profile": "Meu Perfil",
@@ -780,6 +781,88 @@
 
   "settings": {
     "title": "Configurações",
+    "subtitle": "Gerencie as configurações do sistema",
+    "tabs": {
+      "general": "Pagamentos e Geral",
+      "generalDescription": "QR, WhatsApp, notificações",
+      "templates": "Templates",
+      "templatesDescription": "Mensagens automatizadas"
+    },
+    "messages": {
+      "title": "Templates de Mensagens",
+      "configured": "templates configurados",
+      "createTemplates": "Criar Templates",
+      "regenerateTemplates": "Regenerar Templates",
+      "createDefault": "Criar Templates Padrão",
+      "noTemplates": "Não há templates",
+      "noTemplatesDescription": "Clique em \"Criar Templates\" para gerar os templates padrão",
+      "loadError": "Erro ao carregar templates",
+      "createError": "Erro ao criar templates",
+      "regenerateError": "Erro ao regenerar templates",
+      "saveError": "Erro ao salvar template",
+      "created": "criados",
+      "updated": "atualizados",
+      "templateUpdated": "Template atualizado",
+      "categories": {
+        "APPOINTMENT": "Consultas",
+        "MESVERSARY": "Mêsversários",
+        "REENGAGEMENT": "Re-engajamento",
+        "LEAD": "Leads",
+        "ADMIN": "Admin"
+      },
+      "channels": {
+        "email": "Email",
+        "whatsapp": "WhatsApp"
+      },
+      "status": {
+        "inactive": "Inativo",
+        "active": "Ativo"
+      },
+      "actions": {
+        "view": "Ver",
+        "edit": "Editar",
+        "save": "Salvar",
+        "cancel": "Cancelar"
+      },
+      "editor": {
+        "editTitle": "Editar",
+        "subject": "Assunto do email",
+        "subjectPlaceholder": "Assunto do email",
+        "insertVariable": "Inserir variável",
+        "insertEmoji": "Inserir emoji:",
+        "mainMessage": "Mensagem principal",
+        "messagePlaceholder": "Conteúdo da mensagem",
+        "version2": "Versão 2 (Mês 2, 5, 8, 11)",
+        "version2Placeholder": "Versão alternativa 2",
+        "version3": "Versão 3 (Mês 3, 6, 9, 12)",
+        "version3Placeholder": "Versão alternativa 3"
+      },
+      "preview": {
+        "title": "Pré-visualização",
+        "emailView": "Visualização Email",
+        "textView": "Texto Original",
+        "livePreview": "Pré-visualização do email",
+        "typeToPreview": "Digite no editor para ver a pré-visualização"
+      },
+      "formatting": {
+        "title": "Guia de formatação:",
+        "infoCard": "Card info (teal)",
+        "confirmed": "Confirmado (verde)",
+        "cancelled": "Cancelado (vermelho)",
+        "recommendations": "Recomendações (amarelo)",
+        "bulletList": "Lista com marcadores",
+        "autoLink": "Link auto",
+        "linkWithTitle": "Link com título",
+        "newParagraph": "Linha vazia = novo parágrafo"
+      },
+      "confirmRegenerate": {
+        "title": "Regenerar todos os templates?",
+        "description": "Esta ação substituirá o conteúdo de todos os templates pelos valores padrão. As alterações que você fez nas mensagens serão sobrescritas.",
+        "note": "Nota: As configurações de canais (Email/WhatsApp) e status ativo/inativo serão preservadas.",
+        "confirm": "Sim, regenerar",
+        "cancel": "Cancelar"
+      }
+    },
     "payment": {
       "title": "Configurações de Pagamento",
       "qrImage": "QR de Pagamento",
@@ -805,6 +888,22 @@
       "days": "dias",
       "invalidPollingInterval": "O intervalo deve estar entre 1 e 30 minutos",
       "invalidExpirationDays": "Os dias de expiração devem estar entre 1 e 30"
+    },
+    "contact": {
+      "instagram": "Instagram",
+      "instagramPlaceholder": "babyspabrasil",
+      "instagramHelp": "Será exibido nos emails de confirmação de consultas",
+      "address": "Endereço do negócio",
+      "addressPlaceholder": "Rua Principal, 123 - Centro",
+      "addressHelp": "Será exibido nos emails e permite adicionar a consulta ao calendário"
+    },
+    "actions": {
+      "saveNow": "Salvar agora",
+      "saveChanges": "Salvar alterações",
+      "noChanges": "Sem alterações",
+      "loadError": "Erro ao carregar configurações",
+      "saveError": "Erro ao salvar configurações",
+      "saved": "Configurações salvas"
     }
   },
 
@@ -930,6 +1029,7 @@
       "NO_ACTIVE_PACKAGE": "O bebê não tem um pacote ativo",
       "NO_SESSIONS_REMAINING": "Não há sessões restantes no pacote",
       "APPOINTMENT_NOT_FOUND": "Agendamento não encontrado",
+      "Forbidden": "Você não tem permissão para realizar esta ação",
       "UNKNOWN_ERROR": "Erro desconhecido"
     },
     "advancePaymentRequired": "Este pacote requer pagamento antecipado",

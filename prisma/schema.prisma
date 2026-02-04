@@ -201,6 +201,8 @@ enum StaffNotificationType {
   CANCELLED_APPOINTMENT     // Cita cancelada desde portal
   RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
   CASH_REGISTER_DIFFERENCE  // Arqueo cerrado con diferencia
+  REENGAGEMENT_ALERT        // Cliente inactivo requiere seguimiento
+  LEAD_DUE_DATE             // Lead que puede haber dado a luz
 }
 
 // Para Arqueo de Caja
@@ -217,6 +219,46 @@ enum CashExpenseCategory {
   TRANSPORT     // Transporte (taxi, delivery)
   BANK_DEPOSIT  // Depósito a banco / Entrega a dueño
   OTHER         // Otro (descripción obligatoria)
+}
+
+// ============================================================
+// ENUMS PARA FASE 11 - CRON JOBS Y MENSAJERÍA
+// ============================================================
+
+enum TemplateCategory {
+  APPOINTMENT     // Recordatorios de citas
+  MESVERSARY      // Mesversarios
+  REENGAGEMENT    // Re-engagement de clientes inactivos
+  LEAD            // Mensajes para leads
+  ADMIN           // Resumen diario, alertas admin
+}
+
+enum PendingMessageCategory {
+  APPOINTMENT_REMINDER  // Recordatorio de cita
+  PAYMENT_REMINDER      // Recordatorio de pago
+  MESVERSARY            // Mesversario
+  REENGAGEMENT          // Re-engagement
+}
+
+enum RecipientType {
+  PARENT    // Padre/Madre
+  BABY      // Referencia a bebé (mensaje va al padre)
+  LEAD      // Lead sin bebé
+}
+
+enum PendingMessageStatus {
+  PENDING   // Pendiente de enviar
+  SENT      // Enviado por staff
+  SKIPPED   // Omitido con razón
+  EXPIRED   // Expirado (>3 días)
+}
+
+enum EmailStatus {
+  SENT        // Enviado
+  DELIVERED   // Entregado
+  OPENED      // Abierto
+  BOUNCED     // Rebotado
+  COMPLAINED  // Marcado como spam
 }
 
 // Para Activity (registro de actividad/auditoría)
@@ -282,11 +324,16 @@ model User {
   baseSalary   Decimal?      @db.Decimal(10, 2)
   payFrequency PayFrequency  @default(MONTHLY)
 
+  // Campos para resumen diario (Fase 11)
+  receiveDailySummary   Boolean  @default(false)   // ¿Recibe resumen diario?
+  dailySummaryEmail     String?                    // Email para resumen (puede ser diferente)
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
   sessionsAsTherapist        Session[]
+  pendingMessagesSent        PendingMessage[]      @relation("PendingMessageSentBy")
   appointmentsAssigned       Appointment[]
   registrationLinks          RegistrationLink[]
   babyNotes                  BabyNote[]
@@ -344,10 +391,18 @@ model Parent {
   leadNotes           String?       // Notas sobre el lead
   convertedAt         DateTime?     // Fecha en que pasó de LEAD a ACTIVE
 
+  // Campos para mensajería automatizada (Fase 11)
+  emailBounceCount      Int         @default(0)    // Contador de rebotes de email
+  lastSessionAt         DateTime?                  // Última sesión completada
+  lastReengagementAt    DateTime?                  // Último mensaje de re-engagement
+  lastMessageSentAt     DateTime?                  // Control de frecuencia de mensajes
+  marketingOptIn        Boolean     @default(true) // Opt-out desde portal
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   babies                BabyParent[]
+  emailLogs             EmailLog[]
   waitlistItems         Waitlist[]
   eventParticipations   EventParticipant[]
 
@@ -355,6 +410,10 @@ model Parent {
   appointments          Appointment[]
   packagePurchases      PackagePurchase[]
 
+  // Cron job indexes (Fase 11)
+  @@index([lastSessionAt])                    // Reengagement of inactive clients
+  @@index([noShowCount, requiresPrepayment])  // Auto-activate prepayment
+  @@index([status])                           // Filter by LEAD/ACTIVE/INACTIVE
   @@map("parents")
 }
 
@@ -397,6 +456,9 @@ model Baby {
   // Marketing
   referralSource String?
 
+  // Campos para mensajería automatizada (Fase 11)
+  lastMesversaryNotifiedMonth  Int?    // Mes del último mesversario notificado
+
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -411,6 +473,9 @@ model Baby {
   eventParticipations   EventParticipant[]
   babyCardPurchases     BabyCardPurchase[]
 
+  // Cron job indexes (Fase 11)
+  @@index([birthDate, isActive])              // Mesversaries and deactivation of old babies
+  @@index([lastMesversaryNotifiedMonth])      // Mesversary tracking
   @@map("babies")
 }
 
@@ -650,8 +715,11 @@ model Appointment {
   // Indica si el terapeuta registró la evaluación (independiente del status)
   isEvaluated Boolean @default(false)
 
-  reminder24hSent   Boolean   @default(false)
-  reminder24hSentAt DateTime?
+  // Campos para recordatorios automatizados (Fase 11)
+  reminder24hSent       Boolean   @default(false)
+  reminder24hSentAt     DateTime?
+  reminderDaySent       Boolean   @default(false)    // Recordatorio del día (WhatsApp)
+  paymentReminderSent   Boolean   @default(false)    // Recordatorio de pago 48h
 
   notes        String?
   cancelReason String?
@@ -677,6 +745,10 @@ model Appointment {
   @@index([parentId, date, status])
   @@index([status])
   @@index([isPendingPayment])
+  // Cron job indexes (Fase 11)
+  @@index([date, status, reminder24hSent])      // 24h email reminders
+  @@index([date, status, reminderDaySent])      // Same-day WhatsApp reminders
+  @@index([date, status, paymentReminderSent])  // Payment reminders
   @@map("appointments")
 }
 
@@ -1179,6 +1251,10 @@ model SystemSettings {
   whatsappCountryCode   String?  @default("+591")  // Country code for WhatsApp
   whatsappMessage       String?  @default("Hola, adjunto mi comprobante de pago para la cita del {fecha} a las {hora}. Bebé: {bebe}")
 
+  // Redes sociales y contacto
+  instagramHandle       String?  // Handle de Instagram (sin @)
+  businessAddress       String?  // Dirección física del negocio
+
   // Configuración de notificaciones
   notificationPollingInterval  Int @default(5)   // Intervalo de polling en minutos (1-30)
   notificationExpirationDays   Int @default(7)   // Días hasta que expira una notificación (1-30)
@@ -1269,6 +1345,13 @@ model EventParticipant {
   // Notas
   notes           String?
 
+  // Lead data (for PARENTS events - pregnant attendees without Parent record)
+  name            String?         // Name if not linked to Parent
+  phone           String?         // Phone if not linked to Parent
+  email           String?         // Email if not linked to Parent
+  expectedDueDate DateTime?       // Expected due date for pregnant leads
+  followUpAt      DateTime?       // Last follow-up date for lead tracking
+
   // Auditoría
   registeredById  String
   registeredBy    User            @relation(fields: [registeredById], references: [id])
@@ -1282,6 +1365,7 @@ model EventParticipant {
   @@index([eventId, status])
   @@index([babyId, status])
   @@index([parentId, status])
+  @@index([expectedDueDate])  // For lead alerts cron job
   @@map("event_participants")
 }
 
@@ -1590,4 +1674,128 @@ model CashRegisterExpense {
   @@index([cashRegisterId])
   @@index([createdAt])
   @@map("cash_register_expenses")
+}
+
+// ============================================================
+// FASE 11 - CRON JOBS Y MENSAJERÍA AUTOMATIZADA
+// ============================================================
+
+// Templates de mensajes editables
+model MessageTemplate {
+  id              String            @id @default(cuid())
+
+  key             String            @unique   // "APPOINTMENT_REMINDER_24H"
+  name            String                      // "Recordatorio de cita 24h"
+  description     String?
+  category        TemplateCategory
+
+  // Canales habilitados
+  emailEnabled    Boolean           @default(false)
+  whatsappEnabled Boolean           @default(false)
+
+  // Contenido
+  subject         String?                     // Asunto del email
+  body            String            @db.Text  // Cuerpo del mensaje
+
+  // Para mesversarios: múltiples versiones que rotan
+  bodyVersion2    String?           @db.Text
+  bodyVersion3    String?           @db.Text
+
+  // Variables disponibles para este template
+  variables       String[]          @default([])  // ["parentName", "babyName", "date"]
+
+  // Configuración adicional (JSON)
+  config          Json?             // { maxAgeMonths: 12, daysBefore: 3 }
+
+  isActive        Boolean           @default(true)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("message_templates")
+}
+
+// Cola de mensajes WhatsApp pendientes
+model PendingMessage {
+  id              String                @id @default(cuid())
+
+  // Categoría y template
+  category        PendingMessageCategory
+  templateKey     String
+
+  // Destinatario
+  recipientType   RecipientType
+  recipientId     String                // parentId, babyId, o leadId
+  recipientName   String
+  recipientPhone  String
+
+  // Mensaje ya procesado con variables
+  message         String                @db.Text
+
+  // Entidad relacionada (para navegación)
+  entityType      String?               // "Appointment", "Baby", etc.
+  entityId        String?
+  metadata        Json?                 // Datos adicionales
+
+  // Estado
+  status          PendingMessageStatus  @default(PENDING)
+  sentAt          DateTime?
+  sentById        String?
+  sentBy          User?                 @relation("PendingMessageSentBy", fields: [sentById], references: [id])
+  skipReason      String?
+
+  // Programación
+  scheduledFor    DateTime              // Cuándo debe mostrarse
+  expiresAt       DateTime              // Cuándo expira (3 días después)
+
+  createdAt       DateTime              @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([category, status])
+  @@map("pending_messages")
+}
+
+// Log de emails enviados (para tracking con webhooks Resend)
+model EmailLog {
+  id              String            @id @default(cuid())
+
+  // ID de Resend para webhooks
+  resendId        String            @unique
+
+  // Destinatario
+  toEmail         String
+  parentId        String?
+  parent          Parent?           @relation(fields: [parentId], references: [id])
+
+  // Template usado
+  templateKey     String
+  category        TemplateCategory
+
+  // Estado (actualizado por webhooks)
+  status          EmailStatus       @default(SENT)
+
+  // Timestamps de eventos
+  sentAt          DateTime          @default(now())
+  deliveredAt     DateTime?
+  openedAt        DateTime?
+  bouncedAt       DateTime?
+  complainedAt    DateTime?
+
+  // Información de rebote
+  bounceType      String?           // "hard", "soft"
+  bounceReason    String?
+
+  // Contenido (para referencia)
+  subject         String?
+
+  // Retry para emails fallidos
+  retryCount      Int               @default(0)
+  lastRetryAt     DateTime?
+
+  createdAt       DateTime          @default(now())
+
+  @@index([status, createdAt])
+  @@index([templateKey, createdAt])
+  @@index([parentId])
+  @@map("email_logs")
 }

@@ -157,6 +157,7 @@
     "expenses": "Gastos",
     "waitlist": "Lista de Espera",
     "events": "Eventos",
+    "messages": "Mensajes",
     "babyCards": "Baby Cards",
     "babyCard": "Mi Baby Card",
     "profile": "Mi Perfil",
@@ -780,6 +781,88 @@
 
   "settings": {
     "title": "Configuración",
+    "subtitle": "Administra la configuración del sistema",
+    "tabs": {
+      "general": "Pagos y General",
+      "generalDescription": "QR, WhatsApp, notificaciones",
+      "templates": "Templates",
+      "templatesDescription": "Mensajes automatizados"
+    },
+    "messages": {
+      "title": "Templates de Mensajes",
+      "configured": "templates configurados",
+      "createTemplates": "Crear Templates",
+      "regenerateTemplates": "Regenerar Templates",
+      "createDefault": "Crear Templates Predeterminados",
+      "noTemplates": "No hay templates",
+      "noTemplatesDescription": "Haz clic en \"Crear Templates\" para generar los templates predeterminados",
+      "loadError": "Error al cargar templates",
+      "createError": "Error al crear templates",
+      "regenerateError": "Error al regenerar templates",
+      "saveError": "Error al guardar template",
+      "created": "creados",
+      "updated": "actualizados",
+      "templateUpdated": "Template actualizado",
+      "categories": {
+        "APPOINTMENT": "Citas",
+        "MESVERSARY": "Mesversarios",
+        "REENGAGEMENT": "Re-engagement",
+        "LEAD": "Leads",
+        "ADMIN": "Admin"
+      },
+      "channels": {
+        "email": "Email",
+        "whatsapp": "WhatsApp"
+      },
+      "status": {
+        "inactive": "Inactivo",
+        "active": "Activo"
+      },
+      "actions": {
+        "view": "Ver",
+        "edit": "Editar",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "editor": {
+        "editTitle": "Editar",
+        "subject": "Asunto del email",
+        "subjectPlaceholder": "Asunto del email",
+        "insertVariable": "Insertar variable",
+        "insertEmoji": "Insertar emoji:",
+        "mainMessage": "Mensaje principal",
+        "messagePlaceholder": "Contenido del mensaje",
+        "version2": "Versión 2 (Mes 2, 5, 8, 11)",
+        "version2Placeholder": "Versión alternativa 2",
+        "version3": "Versión 3 (Mes 3, 6, 9, 12)",
+        "version3Placeholder": "Versión alternativa 3"
+      },
+      "preview": {
+        "title": "Vista previa",
+        "emailView": "Vista Email",
+        "textView": "Texto Original",
+        "livePreview": "Vista previa del email",
+        "typeToPreview": "Escribe en el editor para ver la vista previa"
+      },
+      "formatting": {
+        "title": "Guía de formato:",
+        "infoCard": "Tarjeta info (teal)",
+        "confirmed": "Confirmado (verde)",
+        "cancelled": "Cancelado (rojo)",
+        "recommendations": "Recomendaciones (amarillo)",
+        "bulletList": "Lista con viñetas",
+        "autoLink": "Link auto",
+        "linkWithTitle": "Link con título",
+        "newParagraph": "Línea vacía = nuevo párrafo"
+      },
+      "confirmRegenerate": {
+        "title": "¿Regenerar todos los templates?",
+        "description": "Esta acción reemplazará el contenido de todos los templates con los valores predeterminados. Los cambios que hayas realizado en los mensajes serán sobrescritos.",
+        "note": "Nota: Las configuraciones de canales (Email/WhatsApp) y estado activo/inactivo se conservarán.",
+        "confirm": "Sí, regenerar",
+        "cancel": "Cancelar"
+      }
+    },
     "payment": {
       "title": "Configuración de Pagos",
       "qrImage": "QR de Pago",
@@ -805,6 +888,22 @@
       "days": "días",
       "invalidPollingInterval": "El intervalo debe estar entre 1 y 30 minutos",
       "invalidExpirationDays": "Los días de expiración deben estar entre 1 y 30"
+    },
+    "contact": {
+      "instagram": "Instagram",
+      "instagramPlaceholder": "babyspabolivia",
+      "instagramHelp": "Se mostrará en los emails de confirmación de citas",
+      "address": "Dirección del negocio",
+      "addressPlaceholder": "Calle Principal #123, Zona Norte",
+      "addressHelp": "Se mostrará en los emails y permite agregar la cita al calendario"
+    },
+    "actions": {
+      "saveNow": "Guardar ahora",
+      "saveChanges": "Guardar cambios",
+      "noChanges": "Sin cambios",
+      "loadError": "Error al cargar configuración",
+      "saveError": "Error al guardar configuración",
+      "saved": "Configuración guardada"
     }
   },
 
@@ -930,6 +1029,7 @@
       "NO_ACTIVE_PACKAGE": "El bebé no tiene un paquete activo",
       "NO_SESSIONS_REMAINING": "No quedan sesiones en el paquete",
       "APPOINTMENT_NOT_FOUND": "Cita no encontrada",
+      "Forbidden": "No tienes permiso para realizar esta acción",
       "UNKNOWN_ERROR": "Error desconocido"
     },
     "advancePaymentRequired": "Este paquete requiere pago anticipado",
