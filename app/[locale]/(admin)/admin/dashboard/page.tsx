@@ -69,39 +69,30 @@ async function getDashboardStats(userRole: UserRole) {
 
   // Solo calcular finanzas si el rol tiene permiso
   if (hasPermission(userRole, "dashboard:view-finance")) {
-    // Income sources (all parentTypes that represent income, not expenses)
-    const INCOME_SOURCES = [
-      "SESSION",
-      "BABY_CARD",
-      "EVENT_PARTICIPANT",
-      "APPOINTMENT",
-      "PACKAGE_INSTALLMENT",
-    ] as const;
-
     const [todayPayments, monthPayments, pendingPackages] = await Promise.all([
-      // Ingresos de hoy (de PaymentDetail con TODAS las fuentes de ingreso)
-      prisma.paymentDetail.aggregate({
+      // Ingresos de hoy (de Transaction con type INCOME)
+      prisma.transaction.aggregate({
         where: {
-          parentType: { in: [...INCOME_SOURCES] },
+          type: "INCOME",
           createdAt: {
             gte: today,
             lt: tomorrow,
           },
         },
         _sum: {
-          amount: true,
+          total: true,
         },
       }),
-      // Ingresos del mes (de PaymentDetail con TODAS las fuentes de ingreso)
-      prisma.paymentDetail.aggregate({
+      // Ingresos del mes (de Transaction con type INCOME)
+      prisma.transaction.aggregate({
         where: {
-          parentType: { in: [...INCOME_SOURCES] },
+          type: "INCOME",
           createdAt: {
             gte: startOfMonth,
           },
         },
         _sum: {
-          amount: true,
+          total: true,
         },
       }),
       // Pagos pendientes de paquetes
@@ -116,8 +107,8 @@ async function getDashboardStats(userRole: UserRole) {
       }),
     ]);
 
-    stats.todayIncome = Number(todayPayments._sum?.amount ?? 0);
-    stats.monthIncome = Number(monthPayments._sum?.amount ?? 0);
+    stats.todayIncome = Number(todayPayments._sum?.total ?? 0);
+    stats.monthIncome = Number(monthPayments._sum?.total ?? 0);
 
     const totalOwed = Number(pendingPackages._sum.totalPrice ?? 0);
     const totalPaid = Number(pendingPackages._sum.paidAmount ?? 0);

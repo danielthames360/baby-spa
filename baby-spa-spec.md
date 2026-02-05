@@ -1,8 +1,8 @@
 # 🏊 BABY SPA - ESPECIFICACIÓN TÉCNICA COMPLETA
 ## Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
 
-**Última actualización:** Febrero 2026
-**Versión:** 6.0
+**Última actualización:** 5 de Febrero 2026
+**Versión:** 7.0 - Sistema de Pagos Unificado (Transaction)
 
 ---
 
@@ -228,8 +228,13 @@ DOMINGO: Cerrado
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
         ┌──────────┐   ┌────────────┐   ┌─────────────┐
-        │Evaluation│   │SessionProd.│   │PaymentDetail│
-        └──────────┘   └────────────┘   └─────────────┘  
+        │Evaluation│   │SessionProd.│   │ Transaction │
+        └──────────┘   └────────────┘   └──────┬──────┘
+                                               │
+                                               ▼
+                                      ┌─────────────────┐
+                                      │TransactionItem  │
+                                      └─────────────────┘  
 
 
 ┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
@@ -329,14 +334,36 @@ enum PaymentStatus {
 // ENUMS NUEVOS (Fase 5-8)
 // ==========================================
 
-enum PaymentParentType {
-  SESSION              // Pago de sesión (checkout)
+// Sistema de Transacciones Unificado (reemplaza PaymentDetail)
+enum TransactionType {
+  INCOME    // Ingresos
+  EXPENSE   // Egresos
+}
+
+enum TransactionCategory {
+  // INGRESOS
+  SESSION              // Checkout de sesión (paquete + productos)
+  PACKAGE_SALE         // Primera venta de paquete (contado o primera cuota)
+  PACKAGE_INSTALLMENT  // Cuotas subsiguientes de paquete
+  SESSION_PRODUCTS     // Productos vendidos en sesión
+  EVENT_PRODUCTS       // Productos vendidos en evento
   BABY_CARD            // Venta de Baby Card
-  EVENT_PARTICIPANT    // Pago de evento
-  APPOINTMENT          // Anticipo de cita
-  PACKAGE_INSTALLMENT  // Cuota de paquete
+  EVENT_REGISTRATION   // Inscripción a evento
+  APPOINTMENT_ADVANCE  // Anticipo de cita
+  // EGRESOS
   STAFF_PAYMENT        // Pago a empleado
-  EXPENSE              // Gasto administrativo
+  ADMIN_EXPENSE        // Gasto administrativo
+}
+
+enum ItemType {
+  PACKAGE      // Paquete/servicio
+  PRODUCT      // Producto físico
+  EVENT_TICKET // Entrada a evento
+  BABY_CARD    // Tarjeta Baby Card
+  INSTALLMENT  // Cuota de paquete
+  ADVANCE      // Anticipo
+  DISCOUNT     // Descuento (monto negativo)
+  OTHER        // Otros
 }
 
 enum NotificationType {
@@ -943,30 +970,82 @@ model BabyCardRewardUsage {
 
 ## 4.5 Modelos Nuevos (Fase 5-8)
 
-### PaymentDetail (Sistema Central de Pagos)
+### Transaction (Sistema Central de Pagos Unificado)
 
-> **NOTA**: Este modelo es el **único sistema de pagos** del proyecto. El modelo `Payment` legacy fue eliminado en la auditoría pre-producción. Todos los pagos (sesiones, paquetes, eventos, baby cards, etc.) se registran aquí usando el patrón polimórfico con `parentType` como discriminador.
+> **NOTA**: Este modelo unifica TODOS los pagos del proyecto. Reemplaza el antiguo `PaymentDetail` y consolida `AppointmentPayment` y `PackagePayment`. Cada transacción puede tener múltiples items (desglose) y múltiples métodos de pago (split payments en JSON).
 
 ```prisma
-model PaymentDetail {
-  id              String            @id @default(cuid())
-  
-  parentType      PaymentParentType
-  parentId        String
-  
-  amount          Decimal           @db.Decimal(10, 2)
-  paymentMethod   PaymentMethod
-  reference       String?
-  
-  createdById     String
-  createdBy       User              @relation(fields: [createdById], references: [id])
-  createdAt       DateTime          @default(now())
-  
-  @@index([parentType, parentId])
+model Transaction {
+  id              String              @id @default(cuid())
+
+  type            TransactionType     // INCOME | EXPENSE
+  category        TransactionCategory // SESSION, PACKAGE_SALE, BABY_CARD, etc.
+
+  referenceType   String              // "Session", "PackagePurchase", "Event", etc.
+  referenceId     String
+
+  subtotal        Decimal             @db.Decimal(10, 2)
+  discountTotal   Decimal             @default(0) @db.Decimal(10, 2)
+  total           Decimal             @db.Decimal(10, 2)
+
+  // Split payments en JSON atómico
+  paymentMethods  Json                // [{ method: "CASH", amount: 200 }, { method: "QR", amount: 150 }]
+
+  notes           String?
+
+  createdById     String?
+  createdBy       User?               @relation(fields: [createdById], references: [id])
+  createdAt       DateTime            @default(now())
+
+  items           TransactionItem[]
+
+  @@index([type])
+  @@index([category])
+  @@index([referenceType, referenceId])
   @@index([createdAt])
-  @@index([paymentMethod, createdAt])
+}
+
+model TransactionItem {
+  id              String      @id @default(cuid())
+  transactionId   String
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  itemType        ItemType    // PACKAGE, PRODUCT, INSTALLMENT, etc.
+  referenceId     String?     // ID del paquete, producto, etc.
+  description     String
+
+  quantity        Int         @default(1)
+  unitPrice       Decimal     @db.Decimal(10, 2)
+  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
+  discountReason  String?
+  finalPrice      Decimal     @db.Decimal(10, 2)
+
+  createdAt       DateTime    @default(now())
+
+  @@index([transactionId])
+  @@index([itemType])
 }
 ```
+
+**Categorías de Transacción:**
+
+| Categoría | Tipo | Cuándo se usa |
+|-----------|------|---------------|
+| `SESSION` | INCOME | Checkout de sesión (paquete + productos) |
+| `PACKAGE_SALE` | INCOME | Primera venta de paquete (contado o primera cuota) |
+| `PACKAGE_INSTALLMENT` | INCOME | Cuotas subsiguientes de paquetes en cuotas |
+| `SESSION_PRODUCTS` | INCOME | Productos vendidos en sesión (separado) |
+| `EVENT_PRODUCTS` | INCOME | Productos vendidos en eventos |
+| `BABY_CARD` | INCOME | Venta de Baby Card |
+| `EVENT_REGISTRATION` | INCOME | Inscripción a evento |
+| `APPOINTMENT_ADVANCE` | INCOME | Anticipo de cita |
+| `STAFF_PAYMENT` | EXPENSE | Pagos a empleados (salarios, adelantos) |
+| `ADMIN_EXPENSE` | EXPENSE | Gastos administrativos |
+
+**Regla PACKAGE_SALE vs PACKAGE_INSTALLMENT:**
+- `PACKAGE_SALE`: Se usa para el **primer pago** al vender un paquete (ya sea pago completo o primera cuota)
+- `PACKAGE_INSTALLMENT`: Se usa para **cuotas subsiguientes** (2da, 3ra, etc.)
+- Esto permite distinguir en reportes: "ingresos por ventas nuevas" vs "cobro de cuotas pendientes"
 
 ### Notification (Notificaciones en Tiempo Real)
 
@@ -1713,7 +1792,12 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 ## ✅ Fase 9: Reportes (COMPLETADA)
 
 Dashboard centralizado con KPIs y 16 módulos de reportes organizados en 3 tiers.
-Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
+Ver documentación completa en: `planificacionesBabySpa/REPORTES-CONSOLIDADOS.md`
+
+**Mejoras recientes (Feb 2026):**
+- ✅ **Ingresos**: Muestra descuentos aplicados dentro de cada categoría
+- ✅ **Ingresos**: Distingue PACKAGE_SALE (ventas nuevas) vs PACKAGE_INSTALLMENT (cobro de cuotas)
+- ✅ **Ocupación**: Horarios y días más populares (encima del heatmap)
 
 ### TIER 1 - Críticos (6 módulos) ✅ COMPLETADO
 | Módulo | Ruta | Permiso |
@@ -1745,6 +1829,17 @@ Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
 
 **Pendiente:** Exportación PDF/Excel (Fase futura)
 
+## ✅ Reestructuración Sistema de Pagos (Feb 2026)
+
+Se unificó todo el sistema de pagos en un modelo centralizado:
+- ✅ `Transaction` + `TransactionItem` reemplaza `PaymentDetail`, `AppointmentPayment`, `PackagePayment`
+- ✅ Split payments en JSON atómico (un registro por operación)
+- ✅ Desglose de items con descuentos por línea
+- ✅ Categorías claras: PACKAGE_SALE vs PACKAGE_INSTALLMENT
+- ✅ Trazabilidad completa para reportes
+
+Ver documentación técnica en: `docs/FLUJOS-DINERO-NUEVA-ARQUITECTURA.md`
+
 ## ✅ Fase 10: Arqueo de Caja (COMPLETADA)
 - [x] Módulo 10.1: Arqueo de Caja Ciego para RECEPTION
 - [x] Módulo 10.2: Revisión de Arqueos para ADMIN
@@ -1754,7 +1849,7 @@ Ver documentación completa en: `REPORTES-CONSOLIDADOS.md`
 ## ✅ Fase 11: Cron Jobs y Mensajería Automatizada (COMPLETADA)
 
 Sistema de automatización de mensajes y mantenimiento del sistema.
-Ver planificación detallada en: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
+Ver planificación detallada en: `planificacionesBabySpa/archive/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
 
 ### Arquitectura
 - **PM2** como process manager (Next.js + Cron Worker)
@@ -1820,7 +1915,7 @@ Ver planificación detallada en: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS
 - [ ] Notificaciones Push (mobile)
 - [ ] QR de Pago configurable
 - [ ] Configuración avanzada del Sistema
-- Ver planificación de exportación en: `PlanificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
+- Ver planificación de exportación en: `planificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
 - [ ] Recordar preguntar acerca de implementar SWR en el proyecto! 
 
 ---
@@ -2132,7 +2227,7 @@ TRADUCCIONES:
 
 ## Fase 11: Cron Jobs y Mensajería Automatizada ✅ COMPLETADO
 
-> Ver planificación completa: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
+> Ver planificación completa: `planificacionesBabySpa/archive/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
 
 ### Módulo 11.1: Infraestructura Base ✅
 ```

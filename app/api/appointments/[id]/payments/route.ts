@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { transactionService } from "@/lib/services/transaction-service";
 
 // GET - List payments for an appointment
 export async function GET(
@@ -17,22 +17,27 @@ export async function GET(
 
     const { id } = await params;
 
-    const payments = await prisma.appointmentPayment.findMany({
-      where: { appointmentId: id },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // Get all transactions for this appointment
+    const transactions = await transactionService.getByReference(
+      "Appointment",
+      id
+    );
+
+    // Map transactions to the expected payment format
+    const payments = transactions.map((t) => ({
+      id: t.id,
+      appointmentId: id,
+      amount: Number(t.total),
+      paymentType: t.category === "APPOINTMENT_ADVANCE" ? "ADVANCE" : "OTHER",
+      paymentMethods: t.paymentMethods,
+      notes: t.notes,
+      createdAt: t.createdAt,
+      createdById: t.createdById,
+    }));
 
     // Calculate totals
     const totalPaid = payments.reduce(
-      (sum, p) => sum + parseFloat(p.amount.toString()),
+      (sum, p) => sum + p.amount,
       0
     );
 

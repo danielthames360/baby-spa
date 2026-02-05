@@ -37,9 +37,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           ? Number(payment.staff.baseSalary)
           : null,
       },
-      paymentDetails: payment.paymentDetails.map((d) => ({
-        ...d,
-        amount: Number(d.amount),
+      transactions: payment.transactions.map((t) => ({
+        ...t,
+        subtotal: Number(t.subtotal),
+        discountTotal: Number(t.discountTotal),
+        total: Number(t.total),
+        items: t.items.map((item) => ({
+          ...item,
+          unitPrice: Number(item.unitPrice),
+          discountAmount: Number(item.discountAmount),
+          finalPrice: Number(item.finalPrice),
+        })),
       })),
     };
 

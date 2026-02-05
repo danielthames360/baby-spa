@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   ShoppingCart,
   Search,
@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { SplitPaymentForm, PaymentDetailInput } from "@/components/payments/split-payment-form";
+import { getCurrencySymbol, formatCurrency } from "@/lib/utils/currency-utils";
 
 interface Product {
   id: string;
@@ -72,13 +74,15 @@ export function ProductSaleDialog({
   const t = useTranslations("events");
   const tCommon = useTranslations("common");
   const tInventory = useTranslations("inventory");
+  const locale = useLocale();
+  const currency = getCurrencySymbol(locale);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -116,9 +120,14 @@ export function ProductSaleDialog({
       setSelectedProducts([]);
       setSearchTerm("");
       setSelectedCategory("all");
-      setPaymentMethod("CASH");
+      setPaymentDetails([]);
     }
   }, [open]);
+
+  // Memoized callback for payment details change
+  const handlePaymentDetailsChange = useCallback((details: PaymentDetailInput[]) => {
+    setPaymentDetails(details);
+  }, []);
 
   // Filter products
   const filteredProducts = useMemo(() => {
@@ -174,7 +183,7 @@ export function ProductSaleDialog({
   );
 
   const handleSubmit = async () => {
-    if (selectedProducts.length === 0) return;
+    if (selectedProducts.length === 0 || paymentDetails.length === 0) return;
 
     setIsSubmitting(true);
     try {
@@ -187,7 +196,11 @@ export function ProductSaleDialog({
             quantity: p.quantity,
             unitPrice: Number(p.product.salePrice),
           })),
-          paymentMethod,
+          paymentMethods: paymentDetails.map((pd) => ({
+            method: pd.paymentMethod,
+            amount: pd.amount,
+            reference: pd.reference,
+          })),
           babyId,
         }),
       });
@@ -280,7 +293,7 @@ export function ProductSaleDialog({
                         <span>{product.currentStock} stock</span>
                         <span>•</span>
                         <span className="font-medium text-purple-600">
-                          Bs. {Number(product.salePrice).toFixed(0)}
+                          {formatCurrency(Number(product.salePrice), locale)}
                         </span>
                       </div>
                     </div>
@@ -316,7 +329,7 @@ export function ProductSaleDialog({
                         {item.product.name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Bs. {Number(item.product.salePrice).toFixed(0)} c/u
+                        {formatCurrency(Number(item.product.salePrice), locale)} c/u
                       </p>
                     </div>
 
@@ -344,8 +357,8 @@ export function ProductSaleDialog({
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
-                      <span className="ml-2 w-16 text-right text-sm font-semibold text-purple-600">
-                        Bs. {(Number(item.product.salePrice) * item.quantity).toFixed(0)}
+                      <span className="ml-2 w-20 text-right text-sm font-semibold text-purple-600">
+                        {formatCurrency(Number(item.product.salePrice) * item.quantity, locale)}
                       </span>
                       <Button
                         type="button"
@@ -363,53 +376,30 @@ export function ProductSaleDialog({
             </div>
           )}
 
-          {/* Payment Method */}
+          {/* Payment Method with Split Payment Support */}
           {selectedProducts.length > 0 && (
-            <div className="space-y-2">
-              <Label>{t("payment.method")}</Label>
-              <div className="flex gap-2">
-                {["CASH", "TRANSFER", "CARD"].map((method) => (
-                  <Button
-                    key={method}
-                    type="button"
-                    variant={paymentMethod === method ? "default" : "outline"}
-                    onClick={() => setPaymentMethod(method)}
-                    className={`flex-1 rounded-xl ${
-                      paymentMethod === method
-                        ? "bg-purple-500 hover:bg-purple-600"
-                        : ""
-                    }`}
-                  >
-                    {t(`payment.methods.${method.toLowerCase()}`)}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <SplitPaymentForm
+              totalAmount={total}
+              onPaymentDetailsChange={handlePaymentDetailsChange}
+              showReference={false}
+              currency={currency}
+            />
           )}
 
-          {/* Total and Submit */}
+          {/* Submit */}
           {selectedProducts.length > 0 && (
-            <>
-              <div className="flex items-center justify-between rounded-xl bg-purple-50 p-4">
-                <span className="text-lg font-medium text-gray-700">Total</span>
-                <span className="text-2xl font-bold text-purple-600">
-                  Bs. {total.toFixed(0)}
-                </span>
-              </div>
-
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting || selectedProducts.length === 0}
-                className="h-12 w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-white shadow-lg shadow-purple-300/50"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                )}
-                {t("sales.completeSale")}
-              </Button>
-            </>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || selectedProducts.length === 0 || paymentDetails.length === 0}
+              className="h-12 w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 font-semibold text-white shadow-lg shadow-purple-300/50"
+            >
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="mr-2 h-4 w-4" />
+              )}
+              {t("sales.completeSale")}
+            </Button>
           )}
         </div>
       </DialogContent>

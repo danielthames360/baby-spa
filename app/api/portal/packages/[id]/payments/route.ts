@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { transactionService, TransactionWithItems } from "@/lib/services/transaction-service";
 
 export async function GET(
   request: Request,
@@ -66,20 +67,6 @@ export async function GET(
             name: true,
           },
         },
-        installmentPayments: {
-          select: {
-            id: true,
-            installmentNumber: true,
-            amount: true,
-            paymentMethod: true,
-            reference: true,
-            notes: true,
-            paidAt: true,
-          },
-          orderBy: {
-            paidAt: "desc",
-          },
-        },
       },
     });
 
@@ -95,6 +82,12 @@ export async function GET(
     if (!isOwner) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    // Get payments using the new Transaction system
+    const transactions: TransactionWithItems[] = await transactionService.getByReference(
+      "PackagePurchase",
+      packagePurchaseId
+    );
 
     const pendingAmount = packagePurchase.finalPrice.minus(packagePurchase.paidAmount);
     const percentagePaid = packagePurchase.finalPrice.greaterThan(0)
@@ -119,14 +112,12 @@ export async function GET(
           ? Number(packagePurchase.installmentAmount)
           : null,
       },
-      payments: packagePurchase.installmentPayments.map((payment) => ({
-        id: payment.id,
-        installmentNumber: payment.installmentNumber,
-        amount: Number(payment.amount),
-        paymentMethod: payment.paymentMethod,
-        reference: payment.reference,
-        notes: payment.notes,
-        paidAt: payment.paidAt,
+      payments: transactions.map((transaction) => ({
+        id: transaction.id,
+        amount: Number(transaction.total),
+        paymentMethods: transaction.paymentMethods,
+        notes: transaction.notes,
+        paidAt: transaction.createdAt,
       })),
     });
   } catch (error) {

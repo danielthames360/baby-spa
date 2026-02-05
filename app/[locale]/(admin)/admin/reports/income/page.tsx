@@ -85,6 +85,9 @@ export default async function IncomeReportPage({
       {/* Summary Cards */}
       <IncomeSummary
         total={report.total}
+        grossTotal={report.grossTotal}
+        totalDiscounts={report.totalDiscounts}
+        discountsByCategory={report.discountsByCategory}
         byMethod={report.byMethod}
         bySource={report.bySource}
         locale={locale}

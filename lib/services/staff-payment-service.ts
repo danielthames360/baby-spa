@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { StaffPaymentType, PaymentMethod, PaymentStatus, PayFrequency, Prisma } from "@prisma/client";
-import { paymentDetailService } from "./payment-detail-service";
+import { transactionService, PaymentMethodEntry } from "./transaction-service";
 import { activityService } from "./activity-service";
 
 // ============================================================
@@ -375,17 +375,29 @@ export const staffPaymentService = {
         include: staffPaymentInclude,
       });
 
-      // Create payment details
+      // Create transaction for tracking payment methods
       if (paymentDetails && paymentDetails.length > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "STAFF_PAYMENT",
-            parentId: payment.id,
-            details: paymentDetails,
-            createdById,
-          },
-          tx
-        );
+        const paymentMethods: PaymentMethodEntry[] = paymentDetails.map((d) => ({
+          method: d.paymentMethod,
+          amount: d.amount,
+          reference: d.reference ?? undefined,
+        }));
+
+        await transactionService.create({
+          type: "EXPENSE",
+          category: "STAFF_PAYMENT",
+          referenceType: "StaffPayment",
+          referenceId: payment.id,
+          items: [
+            {
+              itemType: "OTHER",
+              description: description,
+              unitPrice: amount,
+            },
+          ],
+          paymentMethods,
+          createdById,
+        });
       }
 
       // Update advance balance (increase debt)
@@ -583,17 +595,29 @@ export const staffPaymentService = {
         include: staffPaymentInclude,
       });
 
-      // Create payment details
+      // Create transaction for tracking payment methods
       if (paymentDetails && paymentDetails.length > 0 && netAmount > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "STAFF_PAYMENT",
-            parentId: payment.id,
-            details: paymentDetails,
-            createdById,
-          },
-          tx
-        );
+        const paymentMethodEntries: PaymentMethodEntry[] = paymentDetails.map((d) => ({
+          method: d.paymentMethod,
+          amount: d.amount,
+          reference: d.reference ?? undefined,
+        }));
+
+        await transactionService.create({
+          type: "EXPENSE",
+          category: "STAFF_PAYMENT",
+          referenceType: "StaffPayment",
+          referenceId: payment.id,
+          items: [
+            {
+              itemType: "OTHER",
+              description,
+              unitPrice: netAmount,
+            },
+          ],
+          paymentMethods: paymentMethodEntries,
+          createdById,
+        });
       }
 
       // Mark pending movements as included in this salary
@@ -876,14 +900,15 @@ export const staffPaymentService = {
 
     if (!payment) return null;
 
-    const paymentDetails = await paymentDetailService.getByParent(
-      "STAFF_PAYMENT",
+    // Get transactions for payment method details
+    const transactions = await transactionService.getByReference(
+      "StaffPayment",
       id
     );
 
     return {
       ...payment,
-      paymentDetails,
+      transactions,
     };
   },
 

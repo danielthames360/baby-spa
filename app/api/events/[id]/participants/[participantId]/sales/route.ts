@@ -2,6 +2,13 @@ import { NextRequest } from "next/server";
 import { withAuth, validateRequest, handleApiError, createdResponse, ApiError } from "@/lib/api-utils";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { transactionService, PaymentMethodEntry } from "@/lib/services/transaction-service";
+
+const paymentMethodSchema = z.object({
+  method: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
+  amount: z.number().positive(),
+  reference: z.string().optional(),
+});
 
 const saleSchema = z.object({
   products: z.array(z.object({
@@ -9,7 +16,9 @@ const saleSchema = z.object({
     quantity: z.number().int().positive(),
     unitPrice: z.number().positive(),
   })).min(1),
-  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
+  // Support both legacy single method and new split payments
+  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]).optional(),
+  paymentMethods: z.array(paymentMethodSchema).optional(),
   babyId: z.string().optional(),
 });
 
@@ -55,6 +64,28 @@ export async function POST(
 
     // Get participant name (baby or parent)
     const participantName = participant.baby?.name || participant.parent?.name || "Participante";
+
+    // Calculate total for validation
+    const totalSale = data.products.reduce(
+      (sum, p) => sum + p.quantity * p.unitPrice,
+      0
+    );
+
+    // Normalize payment methods (support both legacy and new format)
+    let paymentMethods: PaymentMethodEntry[];
+    if (data.paymentMethods && data.paymentMethods.length > 0) {
+      paymentMethods = data.paymentMethods;
+    } else if (data.paymentMethod) {
+      paymentMethods = [{ method: data.paymentMethod, amount: totalSale }];
+    } else {
+      throw new ApiError(400, "PAYMENT_METHOD_REQUIRED");
+    }
+
+    // Validate payment sum
+    const paymentSum = paymentMethods.reduce((sum, pm) => sum + pm.amount, 0);
+    if (Math.abs(paymentSum - totalSale) > 0.01) {
+      throw new ApiError(400, "PAYMENT_SUM_MISMATCH");
+    }
 
     // Process each product sale in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -110,12 +141,28 @@ export async function POST(
       return sales;
     });
 
-    const totalSale = result.reduce((sum, s) => sum + s.total, 0);
+    // Create transaction record for the sale
+    const transaction = await transactionService.create({
+      type: "INCOME",
+      category: "EVENT_PRODUCTS",
+      referenceType: "event_participant",
+      referenceId: participantId,
+      items: result.map((sale) => ({
+        itemType: "PRODUCT",
+        referenceId: sale.productId,
+        description: sale.productName,
+        quantity: sale.quantity,
+        unitPrice: sale.unitPrice,
+      })),
+      paymentMethods,
+      notes: `Venta en evento: ${event.name} - ${participantName}`,
+    });
 
     return createdResponse({
       sales: result,
       total: totalSale,
-      paymentMethod: data.paymentMethod,
+      transactionId: transaction.id,
+      paymentMethods,
     });
   } catch (error) {
     return handleApiError(error, "processing product sale");

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Prisma, PaymentMethod } from "@prisma/client";
-import { paymentDetailService } from "./payment-detail-service";
+import { transactionService, TransactionWithItems } from "./transaction-service";
 
 // Types
 export interface PackageWithPurchases {
@@ -80,13 +80,6 @@ export interface PackagePurchaseWithDetails {
       color: string | null;
     } | null;
   };
-  installmentPayments?: Array<{
-    id: string;
-    installmentNumber: number;
-    amount: Prisma.Decimal;
-    paymentMethod: string;
-    paidAt: Date;
-  }>;
 }
 
 export interface SellPackageInput {
@@ -335,49 +328,40 @@ export const packageService = {
         },
       });
 
-      // Record the first payment via PackagePayment + PaymentDetail
-      if (installments > 1 && data.createdById) {
-        // For INSTALLMENTS: create PackagePayment + PaymentDetail
-        const packagePayment = await tx.packagePayment.create({
-          data: {
-            packagePurchaseId: newPurchase.id,
-            installmentNumber: 1,
-            amount: installmentAmount,
-            paymentMethod: data.paymentMethod,
-            notes: data.paymentNotes,
-            createdById: data.createdById,
-          },
-        });
-
-        // Create PaymentDetail linked to the PackagePayment
-        await paymentDetailService.create(
-          "PACKAGE_INSTALLMENT",
-          packagePayment.id,
-          {
-            amount: installmentAmount,
-            paymentMethod: data.paymentMethod,
-            reference: null,
-          },
-          data.createdById,
-          tx
-        );
-      } else if (data.createdById) {
-        // For SINGLE payment: create PaymentDetail linked to the purchase
-        await paymentDetailService.create(
-          "PACKAGE_INSTALLMENT",
-          newPurchase.id,
-          {
-            amount: installmentAmount,
-            paymentMethod: data.paymentMethod,
-            reference: null,
-          },
-          data.createdById,
-          tx
-        );
-      }
-
       return newPurchase;
     });
+
+    // Record the first payment via Transaction (outside of transaction to use transactionService)
+    if (data.createdById) {
+      const installmentDescription = installments > 1
+        ? `Cuota 1 de ${installments}`
+        : "Pago único";
+
+      // PACKAGE_SALE = first payment at time of sale (whether full or first installment)
+      // PACKAGE_INSTALLMENT = subsequent payments for installment plans
+      await transactionService.create({
+        type: "INCOME",
+        category: "PACKAGE_SALE",
+        referenceType: "PackagePurchase",
+        referenceId: purchase.id,
+        items: [
+          {
+            itemType: installments > 1 ? "INSTALLMENT" : "PACKAGE",
+            description: installmentDescription,
+            unitPrice: installmentAmount,
+            quantity: 1,
+          },
+        ],
+        paymentMethods: [
+          {
+            method: data.paymentMethod,
+            amount: installmentAmount,
+          },
+        ],
+        notes: data.paymentNotes,
+        createdById: data.createdById,
+      });
+    }
 
     return purchase as PackagePurchaseWithDetails;
   },
@@ -510,9 +494,6 @@ export const packageService = {
   async cancelPurchase(purchaseId: string): Promise<void> {
     const purchase = await prisma.packagePurchase.findUnique({
       where: { id: purchaseId },
-      include: {
-        installmentPayments: true,
-      },
     });
 
     if (!purchase) {
@@ -523,20 +504,11 @@ export const packageService = {
       throw new Error("SESSIONS_ALREADY_USED");
     }
 
-    // Delete purchase and associated payment details in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Delete PaymentDetails for each PackagePayment (INSTALLMENTS)
-      for (const payment of purchase.installmentPayments) {
-        await paymentDetailService.deleteByParent("PACKAGE_INSTALLMENT", payment.id, tx);
-      }
-
-      // Delete PaymentDetails linked directly to purchase (SINGLE payments)
-      await paymentDetailService.deleteByParent("PACKAGE_INSTALLMENT", purchaseId, tx);
-
-      // Delete the purchase (PackagePayments are deleted by cascade)
-      await tx.packagePurchase.delete({
-        where: { id: purchaseId },
-      });
+    // Note: Transactions are NOT deleted - they remain as audit trail
+    // The purchase is soft-deleted or marked inactive depending on business rules
+    // For now, we just delete the purchase record
+    await prisma.packagePurchase.delete({
+      where: { id: purchaseId },
     });
   },
 
@@ -629,5 +601,102 @@ export const packageService = {
     });
 
     return result._sum.remainingSessions || 0;
+  },
+
+  // Get purchase with all payment transactions
+  async getPurchaseWithPayments(
+    purchaseId: string
+  ): Promise<{ purchase: PackagePurchaseWithDetails; transactions: TransactionWithItems[] } | null> {
+    const purchase = await prisma.packagePurchase.findUnique({
+      where: { id: purchaseId },
+      include: {
+        package: {
+          select: {
+            id: true,
+            name: true,
+            categoryId: true,
+            categoryRef: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!purchase) {
+      return null;
+    }
+
+    // Get all transactions for this purchase
+    const transactions = await transactionService.getByReference(
+      "PackagePurchase",
+      purchaseId
+    );
+
+    return {
+      purchase: purchase as PackagePurchaseWithDetails,
+      transactions,
+    };
+  },
+
+  // Record an installment payment for an existing purchase
+  async recordInstallmentPayment(
+    purchaseId: string,
+    data: {
+      installmentNumber: number;
+      totalInstallments: number;
+      amount: number;
+      paymentMethod: PaymentMethod;
+      notes?: string;
+      createdById: string;
+    }
+  ): Promise<TransactionWithItems> {
+    const purchase = await prisma.packagePurchase.findUnique({
+      where: { id: purchaseId },
+    });
+
+    if (!purchase) {
+      throw new Error("PURCHASE_NOT_FOUND");
+    }
+
+    // Create transaction for the installment payment
+    const transaction = await transactionService.create({
+      type: "INCOME",
+      category: "PACKAGE_INSTALLMENT",
+      referenceType: "PackagePurchase",
+      referenceId: purchaseId,
+      items: [
+        {
+          itemType: "INSTALLMENT",
+          description: `Cuota ${data.installmentNumber} de ${data.totalInstallments}`,
+          unitPrice: data.amount,
+          quantity: 1,
+        },
+      ],
+      paymentMethods: [
+        {
+          method: data.paymentMethod,
+          amount: data.amount,
+        },
+      ],
+      notes: data.notes,
+      createdById: data.createdById,
+    });
+
+    // Update paidAmount on purchase
+    await prisma.packagePurchase.update({
+      where: { id: purchaseId },
+      data: {
+        paidAmount: {
+          increment: data.amount,
+        },
+      },
+    });
+
+    return transaction;
   },
 };

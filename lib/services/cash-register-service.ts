@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import {
   CashRegisterStatus,
   CashExpenseCategory,
-  PaymentMethod,
+  TransactionType,
   UserRole,
   Prisma,
 } from "@prisma/client";
@@ -190,22 +190,32 @@ export const cashRegisterService = {
       throw new Error("Cash register not found");
     }
 
-    // Sum all CASH payments made during this register's session
-    const cashPayments = await prisma.paymentDetail.aggregate({
+    // Get all INCOME transactions made during this register's session
+    const transactions = await prisma.transaction.findMany({
       where: {
-        paymentMethod: PaymentMethod.CASH,
+        type: TransactionType.INCOME,
         createdAt: {
           gte: openedAt,
           lte: closedAt,
         },
       },
-      _sum: {
-        amount: true,
+      select: {
+        paymentMethods: true,
       },
     });
 
+    // Sum only CASH portions from paymentMethods JSON array
+    let cashIncomeTotal = 0;
+    for (const tx of transactions) {
+      const methods = tx.paymentMethods as Array<{ method: string; amount: number }>;
+      for (const pm of methods) {
+        if (pm.method === "CASH") {
+          cashIncomeTotal += pm.amount;
+        }
+      }
+    }
+
     const initialFund = Number(cashRegister.initialFund);
-    const cashIncomeTotal = Number(cashPayments._sum.amount || 0);
     const expensesTotal = cashRegister.expenses.reduce(
       (sum: number, expense: { amount: Prisma.Decimal }) => sum + Number(expense.amount),
       0
@@ -535,20 +545,21 @@ export const cashRegisterService = {
       return null;
     }
 
-    // If closed, get ALL payment details during the shift
+    // If closed, get ALL transactions during the shift
     let allPayments: Array<{
       id: string;
       amount: number;
       paymentMethod: string;
-      parentType: string;
-      parentId: string;
+      category: string;
+      referenceId: string;
       createdAt: string;
     }> = [];
     let cashIncome = 0;
 
     if (cashRegister.closedAt) {
-      const payments = await prisma.paymentDetail.findMany({
+      const transactions = await prisma.transaction.findMany({
         where: {
+          type: TransactionType.INCOME,
           createdAt: {
             gte: cashRegister.openedAt,
             lte: cashRegister.closedAt,
@@ -557,19 +568,25 @@ export const cashRegisterService = {
         orderBy: { createdAt: "asc" },
       });
 
-      allPayments = payments.map((p) => ({
-        id: p.id,
-        amount: Number(p.amount),
-        paymentMethod: p.paymentMethod,
-        parentType: p.parentType,
-        parentId: p.parentId,
-        createdAt: p.createdAt.toISOString(),
-      }));
+      // Flatten transactions into individual payment method entries
+      for (const tx of transactions) {
+        const methods = tx.paymentMethods as Array<{ method: string; amount: number; reference?: string }>;
+        for (const pm of methods) {
+          allPayments.push({
+            id: tx.id,
+            amount: pm.amount,
+            paymentMethod: pm.method,
+            category: tx.category,
+            referenceId: tx.referenceId,
+            createdAt: tx.createdAt.toISOString(),
+          });
 
-      // Calculate cash-only income for arqueo
-      cashIncome = payments
-        .filter((p) => p.paymentMethod === PaymentMethod.CASH)
-        .reduce((sum: number, p) => sum + Number(p.amount), 0);
+          // Calculate cash-only income for arqueo
+          if (pm.method === "CASH") {
+            cashIncome += pm.amount;
+          }
+        }
+      }
     }
 
     // Calculate totals by payment method

@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/db";
 import { Prisma, BabyCardStatus, RewardType, PaymentMethod } from "@prisma/client";
-import { paymentDetailService } from "./payment-detail-service";
+import { transactionService, PaymentMethodEntry } from "./transaction-service";
 import { activityService } from "./activity-service";
 
-// Payment detail input type for split payments
+// Payment detail input type for split payments (legacy, maps to PaymentMethodEntry)
 interface PaymentDetailInput {
   amount: number;
   paymentMethod: PaymentMethod;
@@ -419,20 +419,29 @@ export const babyCardService = {
         });
       }
 
-      // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
-      const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
-        paymentMethod: input.paymentMethod,
-        paymentReference: input.paymentReference,
-        paymentDetails: input.paymentDetails,
-        totalAmount: input.pricePaid,
-      });
+      // Normalize payment methods for transaction
+      const paymentMethods: PaymentMethodEntry[] = input.paymentDetails?.length
+        ? input.paymentDetails.map((pd) => ({
+            method: pd.paymentMethod,
+            amount: pd.amount,
+            reference: pd.reference ?? undefined,
+          }))
+        : input.paymentMethod
+        ? [
+            {
+              method: input.paymentMethod,
+              amount: input.pricePaid,
+              reference: input.paymentReference ?? undefined,
+            },
+          ]
+        : [];
 
       // Use the first payment method as the "primary" method for backwards compatibility
-      const primaryMethod = normalizedPaymentDetails.length > 0
-        ? normalizedPaymentDetails[0].paymentMethod
+      const primaryMethod = paymentMethods.length > 0
+        ? paymentMethods[0].method
         : input.paymentMethod;
-      const primaryReference = normalizedPaymentDetails.length > 0
-        ? normalizedPaymentDetails[0].reference
+      const primaryReference = paymentMethods.length > 0
+        ? paymentMethods[0].reference
         : input.paymentReference;
 
       // Create new purchase
@@ -449,19 +458,6 @@ export const babyCardService = {
         include: purchaseInclude,
       });
 
-      // Create payment details for split payment tracking
-      if (normalizedPaymentDetails.length > 0 && input.pricePaid > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "BABY_CARD",
-            parentId: purchase.id,
-            details: normalizedPaymentDetails,
-            createdById: input.createdById,
-          },
-          tx
-        );
-      }
-
       // Update the replaced card to reference the new one
       if (existingPurchase) {
         await tx.babyCardPurchase.update({
@@ -470,8 +466,31 @@ export const babyCardService = {
         });
       }
 
-      return { purchase, babyName: baby.name, cardName: babyCard.name };
+      return { purchase, babyName: baby.name, cardName: babyCard.name, paymentMethods };
     });
+
+    // Create transaction record for split payment tracking (outside of prisma transaction)
+    if (result.paymentMethods.length > 0 && input.pricePaid > 0) {
+      try {
+        await transactionService.create({
+          type: "INCOME",
+          category: "BABY_CARD",
+          referenceType: "BabyCardPurchase",
+          referenceId: result.purchase.id,
+          items: [
+            {
+              itemType: "BABY_CARD",
+              description: result.cardName,
+              unitPrice: input.pricePaid,
+            },
+          ],
+          paymentMethods: result.paymentMethods,
+          createdById: input.createdById,
+        });
+      } catch (error) {
+        console.error("Error creating transaction for baby card purchase:", error);
+      }
+    }
 
     // Log activity for sold baby card
     try {

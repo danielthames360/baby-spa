@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { formatCurrency, formatPercent } from "@/lib/utils/currency-utils";
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, TransactionCategory } from "@prisma/client";
 import {
   Banknote,
   CreditCard,
@@ -14,15 +14,31 @@ import {
   CalendarCheck,
   Calendar,
   Receipt,
+  Package,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type IncomeSource = "SESSION" | "BABY_CARD" | "EVENT_PARTICIPANT" | "APPOINTMENT" | "PACKAGE_INSTALLMENT";
+// Categories that represent income sources
+type IncomeCategory = Extract<
+  TransactionCategory,
+  | "SESSION"
+  | "PACKAGE_SALE"
+  | "PACKAGE_INSTALLMENT"
+  | "SESSION_PRODUCTS"
+  | "EVENT_PRODUCTS"
+  | "BABY_CARD"
+  | "EVENT_REGISTRATION"
+  | "APPOINTMENT_ADVANCE"
+>;
 
 interface IncomeSummaryProps {
   total: number;
+  grossTotal?: number;
+  totalDiscounts?: number;
+  discountsByCategory?: { category: string; amount: number; count: number }[];
   byMethod: { method: PaymentMethod; amount: number; count: number }[];
-  bySource?: { source: IncomeSource; amount: number; count: number }[];
+  bySource?: { source: TransactionCategory; amount: number; count: number }[];
   locale: string;
 }
 
@@ -40,48 +56,85 @@ const METHOD_COLORS = {
   TRANSFER: "bg-amber-100 text-amber-700",
 };
 
-const SOURCE_ICONS: Record<IncomeSource, typeof Stethoscope> = {
+const SOURCE_ICONS: Partial<Record<TransactionCategory, typeof Stethoscope>> = {
   SESSION: Stethoscope,
-  BABY_CARD: CardIcon,
-  EVENT_PARTICIPANT: CalendarCheck,
-  APPOINTMENT: Calendar,
+  PACKAGE_SALE: Package,
   PACKAGE_INSTALLMENT: Receipt,
+  SESSION_PRODUCTS: ShoppingBag,
+  EVENT_PRODUCTS: ShoppingBag,
+  BABY_CARD: CardIcon,
+  EVENT_REGISTRATION: CalendarCheck,
+  APPOINTMENT_ADVANCE: Calendar,
 };
 
-const SOURCE_COLORS: Record<IncomeSource, string> = {
+const SOURCE_COLORS: Partial<Record<TransactionCategory, string>> = {
   SESSION: "bg-teal-100 text-teal-700",
-  BABY_CARD: "bg-pink-100 text-pink-700",
-  EVENT_PARTICIPANT: "bg-indigo-100 text-indigo-700",
-  APPOINTMENT: "bg-orange-100 text-orange-700",
+  PACKAGE_SALE: "bg-emerald-100 text-emerald-700",
   PACKAGE_INSTALLMENT: "bg-cyan-100 text-cyan-700",
+  SESSION_PRODUCTS: "bg-amber-100 text-amber-700",
+  EVENT_PRODUCTS: "bg-yellow-100 text-yellow-700",
+  BABY_CARD: "bg-pink-100 text-pink-700",
+  EVENT_REGISTRATION: "bg-indigo-100 text-indigo-700",
+  APPOINTMENT_ADVANCE: "bg-orange-100 text-orange-700",
 };
 
-const SOURCE_ORDER: IncomeSource[] = [
+// Order for display - income categories only
+const SOURCE_ORDER: IncomeCategory[] = [
   "SESSION",
-  "BABY_CARD",
-  "EVENT_PARTICIPANT",
+  "PACKAGE_SALE",
   "PACKAGE_INSTALLMENT",
-  "APPOINTMENT",
+  "SESSION_PRODUCTS",
+  "EVENT_PRODUCTS",
+  "BABY_CARD",
+  "EVENT_REGISTRATION",
+  "APPOINTMENT_ADVANCE",
 ];
 
-export function IncomeSummary({ total, byMethod, bySource, locale }: IncomeSummaryProps) {
+export function IncomeSummary({ total, grossTotal, totalDiscounts, discountsByCategory, byMethod, bySource, locale }: IncomeSummaryProps) {
   const t = useTranslations("reports.income");
   const tPayment = useTranslations("payment");
 
+  const hasDiscounts = totalDiscounts && totalDiscounts > 0;
+
+  // Create a map of discounts by category for easy lookup
+  const discountsMap = new Map<string, number>();
+  if (discountsByCategory) {
+    for (const d of discountsByCategory) {
+      discountsMap.set(d.category, d.amount);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Total */}
+      {/* Total with Discounts Breakdown */}
       <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50 p-3">
-            <DollarSign className="h-6 w-6 text-teal-600" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Net Total */}
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50 p-3">
+              <DollarSign className="h-6 w-6 text-teal-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">{t("totalIncome")}</p>
+              <p className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-3xl font-bold text-transparent">
+                {formatCurrency(total, locale)}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">{t("totalIncome")}</p>
-            <p className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-3xl font-bold text-transparent">
-              {formatCurrency(total, locale)}
-            </p>
-          </div>
+
+          {/* Gross and Discounts */}
+          {hasDiscounts && grossTotal && (
+            <div className="flex flex-col items-end gap-1 text-right">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{t("grossIncome")}:</span>
+                <span className="font-medium text-gray-700">{formatCurrency(grossTotal, locale)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-rose-500">
+                <span>(-) {t("discounts")}:</span>
+                <span className="font-medium">{formatCurrency(totalDiscounts, locale)}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -95,8 +148,10 @@ export function IncomeSummary({ total, byMethod, bySource, locale }: IncomeSumma
                 amount: 0,
                 count: 0,
               };
-              const Icon = SOURCE_ICONS[source];
+              const Icon = SOURCE_ICONS[source] || Receipt;
+              const colorClass = SOURCE_COLORS[source] || "bg-gray-100 text-gray-700";
               const percentage = total > 0 ? (data.amount / total) * 100 : 0;
+              const discount = discountsMap.get(source) || 0;
 
               return (
                 <div
@@ -104,7 +159,7 @@ export function IncomeSummary({ total, byMethod, bySource, locale }: IncomeSumma
                   className="rounded-xl border border-white/50 bg-white/70 p-4 shadow-sm backdrop-blur-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn("rounded-lg p-2", SOURCE_COLORS[source])}>
+                    <div className={cn("rounded-lg p-2", colorClass)}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -112,6 +167,11 @@ export function IncomeSummary({ total, byMethod, bySource, locale }: IncomeSumma
                       <p className="text-base font-semibold text-gray-900">
                         {formatCurrency(data.amount, locale)}
                       </p>
+                      {discount > 0 && (
+                        <p className="text-xs text-rose-500">
+                          -{formatCurrency(discount, locale)} {t("discounts").toLowerCase()}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="mt-2">

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ExpenseCategory, PaymentMethod, Prisma } from "@prisma/client";
-import { paymentDetailService } from "./payment-detail-service";
+import { transactionService, PaymentMethodEntry } from "./transaction-service";
 import { activityService } from "./activity-service";
 import { toDateOnly } from "@/lib/utils/date-utils";
 
@@ -94,44 +94,58 @@ export const expenseService = {
       createdById,
     } = input;
 
-    // Normalize payment details
-    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
-      paymentMethod,
-      paymentReference,
-      paymentDetails,
-      totalAmount: amount,
-    });
-
-    // Create expense in transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the expense
-      const expense = await tx.expense.create({
-        data: {
-          category,
-          description,
-          amount: new Prisma.Decimal(amount),
-          reference: reference || null,
-          expenseDate: toDateOnly(expenseDate),
-          createdById,
+    // Normalize payment methods for transaction service
+    let normalizedPaymentMethods: PaymentMethodEntry[] = [];
+    if (paymentDetails && paymentDetails.length > 0) {
+      normalizedPaymentMethods = paymentDetails.map((pd) => ({
+        method: pd.paymentMethod,
+        amount: pd.amount,
+        reference: pd.reference || undefined,
+      }));
+    } else if (paymentMethod) {
+      normalizedPaymentMethods = [
+        {
+          method: paymentMethod,
+          amount,
+          reference: paymentReference || undefined,
         },
-        include: expenseInclude,
-      });
+      ];
+    } else {
+      // Default to CASH if no payment method specified
+      normalizedPaymentMethods = [{ method: "CASH", amount }];
+    }
 
-      // 2. Create payment details (split payments)
-      if (normalizedPaymentDetails.length > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "EXPENSE",
-            parentId: expense.id,
-            details: normalizedPaymentDetails,
-            createdById,
-          },
-          tx
-        );
-      }
-
-      return expense;
+    // Create expense first
+    const result = await prisma.expense.create({
+      data: {
+        category,
+        description,
+        amount: new Prisma.Decimal(amount),
+        reference: reference || null,
+        expenseDate: toDateOnly(expenseDate),
+        createdById,
+      },
+      include: expenseInclude,
     });
+
+    // Create transaction record for payment tracking
+    if (normalizedPaymentMethods.length > 0) {
+      await transactionService.create({
+        type: "EXPENSE",
+        category: "ADMIN_EXPENSE",
+        referenceType: "Expense",
+        referenceId: result.id,
+        items: [
+          {
+            itemType: "OTHER",
+            description,
+            unitPrice: amount,
+          },
+        ],
+        paymentMethods: normalizedPaymentMethods,
+        createdById,
+      });
+    }
 
     // Log activity (outside transaction)
     try {
@@ -225,15 +239,19 @@ export const expenseService = {
 
     if (!expense) return null;
 
-    // Get payment details
-    const paymentDetails = await paymentDetailService.getByParent(
-      "EXPENSE",
+    // Get transaction for payment methods
+    const transactions = await transactionService.getByReference(
+      "Expense",
       id
     );
 
+    // Extract payment methods from transaction (if exists)
+    const paymentMethods =
+      transactions.length > 0 ? transactions[0].paymentMethods : [];
+
     return {
       ...expense,
-      paymentDetails,
+      paymentMethods,
     };
   },
 

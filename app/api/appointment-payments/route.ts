@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@prisma/client";
-import { paymentDetailService } from "@/lib/services/payment-detail-service";
+import {
+  transactionService,
+  PaymentMethodEntry,
+} from "@/lib/services/transaction-service";
 
 // Payment detail input type for split payments
 interface PaymentDetailInput {
@@ -117,47 +120,26 @@ export async function POST(request: Request) {
     }
 
     // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
-    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
-      paymentMethod: paymentMethod as PaymentMethod | undefined,
-      paymentReference: reference,
-      paymentDetails: paymentDetails as PaymentDetailInput[] | undefined,
-      totalAmount: amountNum,
-    });
-
-    // Use the first payment method as the "primary" method for backwards compatibility
-    const primaryMethod = normalizedPaymentDetails.length > 0
-      ? normalizedPaymentDetails[0].paymentMethod
-      : (paymentMethod as PaymentMethod);
-
-    // Create payment and update appointment in a transaction
-    // Return both payment and updated appointment from transaction to avoid redundant fetch
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the payment record
-      const payment = await tx.appointmentPayment.create({
-        data: {
-          appointmentId,
+    let paymentMethods: PaymentMethodEntry[] = [];
+    if (paymentDetails && paymentDetails.length > 0) {
+      paymentMethods = (paymentDetails as PaymentDetailInput[]).map((pd) => ({
+        method: pd.paymentMethod,
+        amount: pd.amount,
+        reference: pd.reference || undefined,
+      }));
+    } else if (paymentMethod) {
+      paymentMethods = [
+        {
+          method: paymentMethod as PaymentMethod,
           amount: amountNum,
-          paymentMethod: primaryMethod,
-          paymentType,
-          reference,
-          notes,
-          createdById: session.user.id,
+          reference: reference || undefined,
         },
-      });
+      ];
+    }
 
-      // Create payment details for split payment tracking
-      if (normalizedPaymentDetails.length > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "APPOINTMENT",
-            parentId: payment.id,
-            details: normalizedPaymentDetails,
-            createdById: session.user.id,
-          },
-          tx
-        );
-      }
-
+    // Create transaction and update appointment in a transaction
+    // Return both transaction and updated appointment from transaction to avoid redundant fetch
+    const result = await prisma.$transaction(async (tx) => {
       // If this is an advance payment and appointment was pending, confirm it
       if (
         paymentType === "ADVANCE" &&
@@ -205,18 +187,57 @@ export async function POST(request: Request) {
               package: { select: { name: true } },
             },
           },
-          payments: {
-            orderBy: { createdAt: "desc" },
-          },
         },
       });
 
-      return { payment, updatedAppointment };
+      return { updatedAppointment };
     });
 
+    // Create transaction record for the payment (outside prisma transaction)
+    const transaction = await transactionService.create({
+      type: "INCOME",
+      category: "APPOINTMENT_ADVANCE",
+      referenceType: "Appointment",
+      referenceId: appointmentId,
+      items: [
+        {
+          itemType: "ADVANCE",
+          referenceId: appointmentId,
+          description: `Anticipo cita - ${pkg?.name || "Servicio"}`,
+          unitPrice: amountNum,
+        },
+      ],
+      paymentMethods,
+      notes: notes || undefined,
+      createdById: session.user.id,
+    });
+
+    // Get all transactions for this appointment to return the payments list
+    const allTransactions = await transactionService.getByReference(
+      "Appointment",
+      appointmentId
+    );
+
     return NextResponse.json({
-      payment: result.payment,
+      payment: {
+        id: transaction.id,
+        appointmentId,
+        amount: amountNum,
+        paymentType,
+        paymentMethods: transaction.paymentMethods,
+        notes,
+        createdAt: transaction.createdAt,
+      },
       appointment: result.updatedAppointment,
+      payments: allTransactions.map((t) => ({
+        id: t.id,
+        appointmentId,
+        amount: Number(t.total),
+        paymentType: t.category === "APPOINTMENT_ADVANCE" ? "ADVANCE" : "OTHER",
+        paymentMethods: t.paymentMethods,
+        notes: t.notes,
+        createdAt: t.createdAt,
+      })),
     });
   } catch (error) {
     console.error("Register payment error:", error);

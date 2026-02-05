@@ -19,6 +19,8 @@ interface OccupancyHeatmapProps {
       totalSlots: number;
       occupancyRate: number;
     };
+    popularTimes?: { time: string; count: number }[];
+    popularDays?: { dayOfWeek: number; count: number }[];
   };
 }
 
@@ -63,6 +65,91 @@ export function OccupancyHeatmap({ data }: OccupancyHeatmapProps) {
           variant={data.overall.occupancyRate >= 70 ? "success" : data.overall.occupancyRate >= 50 ? "warning" : "danger"}
         />
       </div>
+
+      {/* Popular Times and Days - ABOVE Heatmap */}
+      {(data.popularTimes?.length || data.popularDays?.length) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Popular Times */}
+          {data.popularTimes && data.popularTimes.length > 0 && (
+            <div className="rounded-2xl border border-white/50 bg-white/70 p-5 shadow-lg backdrop-blur-md">
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                <Clock className="h-5 w-5 text-teal-600" />
+                {t("occupancy.popularTimes")}
+              </h3>
+              <div className="space-y-3">
+                {data.popularTimes.slice(0, 5).map((item, index) => {
+                  const maxCount = data.popularTimes![0].count;
+                  const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={item.time} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={cn(
+                          "font-medium",
+                          index === 0 ? "text-teal-700" : "text-gray-700"
+                        )}>
+                          {item.time}
+                        </span>
+                        <span className="text-gray-500">{item.count} {t("occupancy.appointments")}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-gray-100">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            index === 0
+                              ? "bg-gradient-to-r from-teal-400 to-cyan-400"
+                              : "bg-gradient-to-r from-gray-300 to-gray-400"
+                          )}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Popular Days */}
+          {data.popularDays && data.popularDays.length > 0 && (
+            <div className="rounded-2xl border border-white/50 bg-white/70 p-5 shadow-lg backdrop-blur-md">
+              <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                <Calendar className="h-5 w-5 text-violet-600" />
+                {t("occupancy.popularDays")}
+              </h3>
+              <div className="space-y-3">
+                {data.popularDays.slice(0, 5).map((item, index) => {
+                  const maxCount = data.popularDays![0].count;
+                  const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={item.dayOfWeek} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={cn(
+                          "font-medium",
+                          index === 0 ? "text-violet-700" : "text-gray-700"
+                        )}>
+                          {DAY_NAMES[item.dayOfWeek]}
+                        </span>
+                        <span className="text-gray-500">{item.count} {t("occupancy.appointments")}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-gray-100">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            index === 0
+                              ? "bg-gradient-to-r from-violet-400 to-purple-400"
+                              : "bg-gradient-to-r from-gray-300 to-gray-400"
+                          )}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Heatmap */}
       <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">

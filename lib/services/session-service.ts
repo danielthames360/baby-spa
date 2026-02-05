@@ -3,7 +3,7 @@ import { Prisma, PaymentMethod } from "@prisma/client";
 import { inventoryService } from "./inventory-service";
 import { packageService } from "./package-service";
 import { babyCardService } from "./baby-card-service";
-import { paymentDetailService } from "./payment-detail-service";
+import { transactionService, PaymentMethodEntry, TransactionItemInput } from "./transaction-service";
 import { activityService } from "./activity-service";
 import { normalizeToUTCNoon, getStartOfDayUTC, getEndOfDayUTC, fromDateOnly } from "@/lib/utils/date-utils";
 
@@ -478,29 +478,6 @@ export const sessionService = {
       // Use session's pre-selected package, or fall back to any active package
       let packagePurchaseToDeduct = sessionPackage || activePackage;
 
-      // Create payment first if there's a total amount (needed for package purchase link)
-      // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
-      const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
-        paymentMethod: paymentMethod as PaymentMethod | undefined,
-        paymentReference: null,
-        paymentDetails,
-        totalAmount: Number(totalAmount),
-      });
-      const hasPaymentInfo = normalizedPaymentDetails.length > 0;
-
-      // Create payment details directly linked to session (no intermediate Payment model)
-      if (totalAmount.greaterThan(0) && hasPaymentInfo) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "SESSION",
-            parentId: sessionId, // Link directly to session
-            details: normalizedPaymentDetails,
-            createdById: userId,
-          },
-          tx
-        );
-      }
-
       // If selling a new package
       if (packageToSell && packageId) {
         // Deactivate any existing active packages for this baby
@@ -640,6 +617,102 @@ export const sessionService = {
         totalAmount,
       };
     });
+
+    // Create Transaction for session checkout (outside Prisma transaction since transactionService has its own logic)
+    if (totalAmount.greaterThan(0)) {
+      // Build transaction items
+      const transactionItems: TransactionItemInput[] = [];
+
+      // Add package item if selling a new package
+      if (packageToSell && !packagePurchaseId) {
+        const subtotalNum = Number(subtotalAmount);
+        // Calculate package discount (proportional if there are products)
+        const packageDiscount = subtotalNum > 0 && productsAmount.greaterThan(0)
+          ? discountAmount * (Number(packageAmount) / subtotalNum)
+          : discountAmount;
+        // Add Baby Card first session discount to package discount if applicable
+        const packageFirstSessionDiscount = firstSessionDiscountAmount.greaterThan(0) && subtotalNum > 0
+          ? (productsAmount.greaterThan(0)
+              ? Number(firstSessionDiscountAmount) * (Number(packageAmount) / subtotalNum)
+              : Number(firstSessionDiscountAmount))
+          : 0;
+
+        transactionItems.push({
+          itemType: "PACKAGE",
+          referenceId: result.newPackagePurchase?.id || packageId,
+          description: packageToSell.name,
+          quantity: 1,
+          unitPrice: Number(packageAmount),
+          discountAmount: packageDiscount + packageFirstSessionDiscount,
+          discountReason: [discountReason, packageFirstSessionDiscount > 0 ? "Baby Card first session" : null]
+            .filter(Boolean)
+            .join(", ") || undefined,
+        });
+      }
+
+      // Add product items
+      for (const sp of session.products) {
+        if (sp.isChargeable) {
+          // Calculate proportional discount for this product
+          const productSubtotal = Number(sp.unitPrice) * sp.quantity;
+          const subtotalNum = Number(subtotalAmount);
+          let productDiscountProportion = 0;
+          let productFirstSessionDiscount = 0;
+
+          if (subtotalNum > 0) {
+            // Proportional discount based on product's share of subtotal
+            productDiscountProportion = discountAmount * (productSubtotal / subtotalNum);
+            if (firstSessionDiscountAmount.greaterThan(0)) {
+              productFirstSessionDiscount = Number(firstSessionDiscountAmount) * (productSubtotal / subtotalNum);
+            }
+          }
+
+          transactionItems.push({
+            itemType: "PRODUCT",
+            referenceId: sp.productId,
+            description: sp.product.name,
+            quantity: sp.quantity,
+            unitPrice: Number(sp.unitPrice),
+            discountAmount: productDiscountProportion + productFirstSessionDiscount,
+            discountReason: productDiscountProportion > 0 || productFirstSessionDiscount > 0
+              ? [discountReason, productFirstSessionDiscount > 0 ? "Baby Card first session" : null]
+                  .filter(Boolean)
+                  .join(", ")
+              : undefined,
+          });
+        }
+      }
+
+      // Normalize payment methods - convert from legacy format if needed
+      const paymentMethodsArray: PaymentMethodEntry[] = paymentDetails
+        ? paymentDetails.map((d) => ({
+            method: d.paymentMethod,
+            amount: d.amount,
+            reference: d.reference || undefined,
+          }))
+        : paymentMethod
+          ? [{ method: paymentMethod, amount: Number(totalAmount) }]
+          : [];
+
+      // Create transaction if we have items and payment methods
+      if (transactionItems.length > 0 && paymentMethodsArray.length > 0) {
+        try {
+          await transactionService.create({
+            type: "INCOME",
+            category: "SESSION",
+            referenceType: "Session",
+            referenceId: sessionId,
+            items: transactionItems,
+            paymentMethods: paymentMethodsArray,
+            notes: paymentNotes,
+            createdById: userId,
+          });
+        } catch (error) {
+          // Log error but don't fail session completion
+          console.error("Error creating transaction for session:", error);
+        }
+      }
+    }
 
     // Apply Baby Card first session discount if used
     let firstSessionDiscountApplied = null;

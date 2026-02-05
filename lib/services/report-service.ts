@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
-import { AppointmentStatus, PaymentMethod, Prisma } from "@prisma/client";
+import { AppointmentStatus, PaymentMethod, Prisma, TransactionCategory } from "@prisma/client";
 import { getPaymentStatus, type PackagePurchaseForPayment } from "@/lib/utils/installments";
+import { type PaymentMethodEntry } from "@/lib/services/transaction-service";
 
 // ============================================================
 // TYPES
@@ -34,19 +35,25 @@ interface IncomeByDay {
   byMethod: { method: PaymentMethod; amount: number }[];
 }
 
-// Income sources (all parentTypes that represent income, not expenses)
-const INCOME_SOURCES = [
+// Income categories (TransactionCategory values that represent income)
+const INCOME_CATEGORIES: TransactionCategory[] = [
   "SESSION",
   "BABY_CARD",
-  "EVENT_PARTICIPANT",
-  "APPOINTMENT",
+  "EVENT_REGISTRATION",
+  "APPOINTMENT_ADVANCE",
   "PACKAGE_INSTALLMENT",
-] as const;
+  "PACKAGE_SALE",
+  "SESSION_PRODUCTS",
+  "EVENT_PRODUCTS",
+];
 
-type IncomeSource = (typeof INCOME_SOURCES)[number];
+type IncomeSource = TransactionCategory;
 
 interface IncomeReport {
   total: number;
+  grossTotal: number;
+  totalDiscounts: number;
+  discountsByCategory: { category: string; amount: number; count: number }[];
   byMethod: { method: PaymentMethod; amount: number; count: number }[];
   bySource: { source: IncomeSource; amount: number; count: number }[];
   byDay: IncomeByDay[];
@@ -120,7 +127,7 @@ export const reportService = {
 
   async getDashboardKPIs(from: Date, to: Date): Promise<DashboardKPIs> {
     const [
-      paymentDetails,
+      transactions,
       appointmentStats,
       activeBabies,
       newBabies,
@@ -128,15 +135,14 @@ export const reportService = {
       pendingEvaluations,
       receivablesData,
     ] = await Promise.all([
-      // Ingresos del período (de PaymentDetail con TODAS las fuentes de ingreso)
-      prisma.paymentDetail.groupBy({
-        by: ["paymentMethod"],
+      // Ingresos del período (de Transaction con TODAS las categorías de ingreso)
+      prisma.transaction.findMany({
         where: {
-          parentType: { in: [...INCOME_SOURCES] },
+          type: "INCOME",
+          category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
         },
-        _sum: { amount: true },
-        _count: true,
+        select: { total: true, paymentMethods: true },
       }),
       // Estadísticas de citas
       prisma.appointment.groupBy({
@@ -167,7 +173,7 @@ export const reportService = {
       prisma.product.findMany({
         where: { isActive: true },
         select: { currentStock: true, minStock: true },
-      }).then((products) => {
+      }).then((products: { currentStock: number; minStock: number }[]) => {
         const lowStock = products.filter(
           (p) => p.currentStock > 0 && p.currentStock <= p.minStock
         ).length;
@@ -203,15 +209,23 @@ export const reportService = {
       }),
     ]);
 
-    // Procesar resultados
-    const totalIncome = paymentDetails.reduce(
-      (sum, pd) => sum + Number(pd._sum.amount || 0),
+    // Procesar resultados - aggregate income from transactions
+    const totalIncome = transactions.reduce(
+      (sum: number, t) => sum + Number(t.total || 0),
       0
     );
 
-    const incomeByMethod = paymentDetails.map((pd) => ({
-      method: pd.paymentMethod,
-      amount: Number(pd._sum.amount || 0),
+    // Aggregate by payment method from JSON paymentMethods field
+    const methodTotals = new Map<PaymentMethod, number>();
+    for (const t of transactions) {
+      const methods = t.paymentMethods as unknown as PaymentMethodEntry[];
+      for (const pm of methods) {
+        methodTotals.set(pm.method, (methodTotals.get(pm.method) || 0) + pm.amount);
+      }
+    }
+    const incomeByMethod = Array.from(methodTotals.entries()).map(([method, amount]) => ({
+      method,
+      amount,
     }));
 
     const appointmentsByStatus = Object.fromEntries(
@@ -274,57 +288,73 @@ export const reportService = {
   // ----------------------
 
   async getIncomeReport(from: Date, to: Date): Promise<IncomeReport> {
-    const [byMethod, bySource, paymentsByDay] = await Promise.all([
-      // Total por método de pago (ALL income sources)
-      prisma.paymentDetail.groupBy({
-        by: ["paymentMethod"],
+    const [byCategory, transactions, discountsByCategory] = await Promise.all([
+      // Total por categoría (source)
+      prisma.transaction.groupBy({
+        by: ["category"],
         where: {
-          parentType: { in: [...INCOME_SOURCES] },
+          type: "INCOME",
+          category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
         },
-        _sum: { amount: true },
+        _sum: { total: true },
         _count: true,
       }),
-      // Total por origen/fuente
-      prisma.paymentDetail.groupBy({
-        by: ["parentType"],
+      // All transactions for method breakdown and daily grouping
+      prisma.transaction.findMany({
         where: {
-          parentType: { in: [...INCOME_SOURCES] },
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
-        _count: true,
-      }),
-      // Pagos por día (ALL income sources)
-      prisma.paymentDetail.findMany({
-        where: {
-          parentType: { in: [...INCOME_SOURCES] },
+          type: "INCOME",
+          category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
         },
         select: {
-          amount: true,
-          paymentMethod: true,
+          total: true,
+          subtotal: true,
+          discountTotal: true,
+          paymentMethods: true,
           createdAt: true,
+          category: true,
         },
         orderBy: { createdAt: "asc" },
       }),
+      // Discounts grouped by category
+      prisma.transaction.groupBy({
+        by: ["category"],
+        where: {
+          type: "INCOME",
+          category: { in: INCOME_CATEGORIES },
+          createdAt: { gte: from, lte: to },
+          discountTotal: { gt: 0 },
+        },
+        _sum: { discountTotal: true },
+        _count: true,
+      }),
     ]);
 
-    // Agrupar por día
+    // Aggregate by payment method and count transactions per method
+    const methodTotals = new Map<PaymentMethod, { amount: number; count: number }>();
     const byDayMap = new Map<string, { total: number; byMethod: Map<PaymentMethod, number> }>();
 
-    for (const payment of paymentsByDay) {
-      const dateKey = payment.createdAt.toISOString().split("T")[0];
+    for (const t of transactions) {
+      const methods = t.paymentMethods as unknown as PaymentMethodEntry[];
+      const dateKey = t.createdAt.toISOString().split("T")[0];
+
       if (!byDayMap.has(dateKey)) {
         byDayMap.set(dateKey, { total: 0, byMethod: new Map() });
       }
       const day = byDayMap.get(dateKey)!;
-      const amount = Number(payment.amount);
-      day.total += amount;
-      day.byMethod.set(
-        payment.paymentMethod,
-        (day.byMethod.get(payment.paymentMethod) || 0) + amount
-      );
+      day.total += Number(t.total);
+
+      for (const pm of methods) {
+        // Aggregate by method
+        const current = methodTotals.get(pm.method) || { amount: 0, count: 0 };
+        current.amount += pm.amount;
+        current.count += 1;
+        methodTotals.set(pm.method, current);
+
+        // Daily breakdown
+        day.byMethod.set(pm.method, (day.byMethod.get(pm.method) || 0) + pm.amount);
+      }
     }
 
     const byDay: IncomeByDay[] = Array.from(byDayMap.entries()).map(
@@ -338,22 +368,39 @@ export const reportService = {
       })
     );
 
-    const total = byMethod.reduce(
-      (sum, m) => sum + Number(m._sum.amount || 0),
+    const total = byCategory.reduce(
+      (sum: number, c) => sum + Number(c._sum.total || 0),
+      0
+    );
+
+    // Calculate gross total and discounts
+    const grossTotal = transactions.reduce(
+      (sum: number, t) => sum + Number(t.subtotal || t.total || 0),
+      0
+    );
+    const totalDiscounts = transactions.reduce(
+      (sum: number, t) => sum + Number(t.discountTotal || 0),
       0
     );
 
     return {
       total,
-      byMethod: byMethod.map((m) => ({
-        method: m.paymentMethod,
-        amount: Number(m._sum.amount || 0),
-        count: m._count,
+      grossTotal,
+      totalDiscounts,
+      discountsByCategory: discountsByCategory.map((d) => ({
+        category: d.category,
+        amount: Number(d._sum.discountTotal || 0),
+        count: d._count,
       })),
-      bySource: bySource.map((s) => ({
-        source: s.parentType as IncomeSource,
-        amount: Number(s._sum.amount || 0),
-        count: s._count,
+      byMethod: Array.from(methodTotals.entries()).map(([method, data]) => ({
+        method,
+        amount: data.amount,
+        count: data.count,
+      })),
+      bySource: byCategory.map((c) => ({
+        source: c.category as IncomeSource,
+        amount: Number(c._sum.total || 0),
+        count: c._count,
       })),
       byDay,
     };
@@ -366,6 +413,7 @@ export const reportService = {
   async getReceivables(
     filter: "all" | "overdue" | "pending" = "all"
   ): Promise<ReceivableItem[]> {
+    // Get purchases with pending amounts
     const purchases = await prisma.packagePurchase.findMany({
       where: {
         isActive: true,
@@ -382,16 +430,33 @@ export const reportService = {
           },
         },
         package: true,
-        installmentPayments: true,
       },
       orderBy: { createdAt: "desc" },
     });
+
+    // Get installment transactions for these purchases to count paid installments
+    const purchaseIds = purchases.map((p) => p.id);
+    const installmentTransactions = await prisma.transaction.groupBy({
+      by: ["referenceId"],
+      where: {
+        category: "PACKAGE_INSTALLMENT",
+        referenceType: "PackagePurchase",
+        referenceId: { in: purchaseIds },
+      },
+      _count: true,
+    });
+
+    // Create a map of purchaseId -> paid installments count
+    const paidInstallmentsMap = new Map<string, number>();
+    for (const t of installmentTransactions) {
+      paidInstallmentsMap.set(t.referenceId, t._count);
+    }
 
     const results = purchases.map((p) => {
       const totalPrice = Number(p.totalPrice || p.finalPrice);
       const paidAmount = Number(p.paidAmount);
       const pendingAmount = totalPrice - paidAmount;
-      const paidInstallments = p.installmentPayments.length;
+      const paidInstallments = paidInstallmentsMap.get(p.id) || 0;
       const totalInstallments = p.installments;
 
       // Calculate if overdue using installments logic
@@ -598,46 +663,20 @@ export const reportService = {
 
   async getPnLReport(from: Date, to: Date): Promise<PnLReport> {
     const [
-      sessionIncome,
-      babyCardIncome,
-      eventIncome,
-      packageInstallmentIncome,
+      incomeByCategory,
       productCosts,
       eventProductCosts,
       staffPayments,
       expenses,
     ] = await Promise.all([
-      // Income from sessions
-      prisma.paymentDetail.aggregate({
+      // All income by category using Transaction
+      prisma.transaction.groupBy({
+        by: ["category"],
         where: {
-          parentType: "SESSION",
+          type: "INCOME",
           createdAt: { gte: from, lte: to },
         },
-        _sum: { amount: true },
-      }),
-      // Income from baby card purchases
-      prisma.paymentDetail.aggregate({
-        where: {
-          parentType: "BABY_CARD",
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
-      }),
-      // Income from events
-      prisma.paymentDetail.aggregate({
-        where: {
-          parentType: "EVENT_PARTICIPANT",
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
-      }),
-      // Income from package installments
-      prisma.paymentDetail.aggregate({
-        where: {
-          parentType: "PACKAGE_INSTALLMENT",
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
+        _sum: { total: true },
       }),
       // Direct costs: products used in sessions (need to multiply quantity * unitPrice)
       prisma.sessionProduct.findMany({
@@ -678,20 +717,34 @@ export const reportService = {
       }),
     ]);
 
-    // Calculate totals
-    const incomeFromSessions = Number(sessionIncome._sum.amount || 0);
-    const incomeFromBabyCards = Number(babyCardIncome._sum.amount || 0);
-    const incomeFromEvents = Number(eventIncome._sum.amount || 0);
-    const incomeFromInstallments = Number(packageInstallmentIncome._sum.amount || 0);
-    const totalIncome = incomeFromSessions + incomeFromBabyCards + incomeFromEvents + incomeFromInstallments;
+    // Create a map for easy lookup of income by category
+    const incomeByCategoryMap = new Map<TransactionCategory, number>();
+    for (const item of incomeByCategory) {
+      incomeByCategoryMap.set(item.category, Number(item._sum.total || 0));
+    }
+
+    // Calculate totals from category map
+    // SESSION includes checkout payments, SESSION_PRODUCTS for products sold separately
+    const incomeFromSessions = (incomeByCategoryMap.get("SESSION") || 0) +
+                               (incomeByCategoryMap.get("SESSION_PRODUCTS") || 0);
+    const incomeFromBabyCards = incomeByCategoryMap.get("BABY_CARD") || 0;
+    // EVENT_REGISTRATION for event tickets, EVENT_PRODUCTS for products sold at events
+    const incomeFromEvents = (incomeByCategoryMap.get("EVENT_REGISTRATION") || 0) +
+                             (incomeByCategoryMap.get("EVENT_PRODUCTS") || 0);
+    // PACKAGE_INSTALLMENT for installment payments, PACKAGE_SALE for upfront package sales
+    const incomeFromInstallments = (incomeByCategoryMap.get("PACKAGE_INSTALLMENT") || 0) +
+                                   (incomeByCategoryMap.get("PACKAGE_SALE") || 0);
+    // Include advance payments in total income
+    const incomeFromAdvances = incomeByCategoryMap.get("APPOINTMENT_ADVANCE") || 0;
+    const totalIncome = incomeFromSessions + incomeFromBabyCards + incomeFromEvents + incomeFromInstallments + incomeFromAdvances;
 
     // Calculate product costs by multiplying quantity * unitPrice
     const sessionProductCosts = productCosts.reduce(
-      (sum, p) => sum + p.quantity * Number(p.unitPrice),
+      (sum: number, p: { quantity: number; unitPrice: Prisma.Decimal }) => sum + p.quantity * Number(p.unitPrice),
       0
     );
     const eventProductsCosts = eventProductCosts.reduce(
-      (sum, p) => sum + p.quantity * Number(p.unitPrice),
+      (sum: number, p: { quantity: number; unitPrice: Prisma.Decimal }) => sum + p.quantity * Number(p.unitPrice),
       0
     );
     const totalDirectCosts = sessionProductCosts + eventProductsCosts;
@@ -1111,6 +1164,25 @@ export const reportService = {
     const totalSlots = heatmapData.reduce((sum, s) => sum + s.maxCapacity, 0);
     const overallRate = totalSlots > 0 ? (totalAppointments / totalSlots) * 100 : 0;
 
+    // Calculate popular times (aggregate by time slot)
+    const timeCountMap = new Map<string, number>();
+    for (const apt of appointments) {
+      timeCountMap.set(apt.startTime, (timeCountMap.get(apt.startTime) || 0) + 1);
+    }
+    const popularTimes = Array.from(timeCountMap.entries())
+      .map(([time, count]) => ({ time, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Calculate popular days (aggregate by day of week)
+    const dayCountMap = new Map<number, number>();
+    for (const apt of appointments) {
+      const dow = apt.date.getUTCDay();
+      dayCountMap.set(dow, (dayCountMap.get(dow) || 0) + 1);
+    }
+    const popularDays = Array.from(dayCountMap.entries())
+      .map(([dayOfWeek, count]) => ({ dayOfWeek, count }))
+      .sort((a, b) => b.count - a.count);
+
     return {
       heatmap: heatmapData,
       overall: {
@@ -1118,6 +1190,8 @@ export const reportService = {
         totalSlots,
         occupancyRate: overallRate,
       },
+      popularTimes,
+      popularDays,
     };
   },
 
@@ -1390,46 +1464,20 @@ export const reportService = {
 
   async getCashflowReport(from: Date, to: Date): Promise<CashflowReport> {
     const [
-      sessionPayments,
-      babyCardPayments,
-      eventPayments,
-      installmentPayments,
+      incomeByCategory,
       staffPayments,
       expenses,
       futureAppointments,
       pendingInstallments,
     ] = await Promise.all([
-      // Income from sessions
-      prisma.paymentDetail.aggregate({
+      // All income by category using Transaction
+      prisma.transaction.groupBy({
+        by: ["category"],
         where: {
-          parentType: "SESSION",
+          type: "INCOME",
           createdAt: { gte: from, lte: to },
         },
-        _sum: { amount: true },
-      }),
-      // Income from baby cards
-      prisma.paymentDetail.aggregate({
-        where: {
-          parentType: "BABY_CARD",
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
-      }),
-      // Income from events
-      prisma.paymentDetail.aggregate({
-        where: {
-          parentType: "EVENT_PARTICIPANT",
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
-      }),
-      // Income from installments
-      prisma.paymentDetail.aggregate({
-        where: {
-          parentType: "PACKAGE_INSTALLMENT",
-          createdAt: { gte: from, lte: to },
-        },
-        _sum: { amount: true },
+        _sum: { total: true },
       }),
       // Staff payments
       prisma.staffPayment.aggregate({
@@ -1466,11 +1514,21 @@ export const reportService = {
       }),
     ]);
 
+    // Create a map for easy lookup of income by category
+    const incomeByCategoryMap = new Map<TransactionCategory, number>();
+    for (const item of incomeByCategory) {
+      incomeByCategoryMap.set(item.category, Number(item._sum.total || 0));
+    }
+
     // Calculate totals
-    const incomeFromSessions = Number(sessionPayments._sum.amount || 0);
-    const incomeFromBabyCards = Number(babyCardPayments._sum.amount || 0);
-    const incomeFromEvents = Number(eventPayments._sum.amount || 0);
-    const incomeFromInstallments = Number(installmentPayments._sum.amount || 0);
+    const incomeFromSessions = (incomeByCategoryMap.get("SESSION") || 0) +
+                               (incomeByCategoryMap.get("SESSION_PRODUCTS") || 0);
+    const incomeFromBabyCards = incomeByCategoryMap.get("BABY_CARD") || 0;
+    const incomeFromEvents = (incomeByCategoryMap.get("EVENT_REGISTRATION") || 0) +
+                             (incomeByCategoryMap.get("EVENT_PRODUCTS") || 0);
+    const incomeFromInstallments = (incomeByCategoryMap.get("PACKAGE_INSTALLMENT") || 0) +
+                                   (incomeByCategoryMap.get("PACKAGE_SALE") || 0) +
+                                   (incomeByCategoryMap.get("APPOINTMENT_ADVANCE") || 0);
     const totalIncome = incomeFromSessions + incomeFromBabyCards + incomeFromEvents + incomeFromInstallments;
 
     const payrollExpenses = Number(staffPayments._sum.netAmount || 0);
@@ -1631,6 +1689,8 @@ interface OccupancyReport {
     totalSlots: number;
     occupancyRate: number;
   };
+  popularTimes: { time: string; count: number }[];
+  popularDays: { dayOfWeek: number; count: number }[];
 }
 
 // ============================================================

@@ -70,13 +70,6 @@ export interface BabyWithRelations {
       name: string;
       duration: number;
     };
-    installmentPayments?: {
-      id: string;
-      installmentNumber: number;
-      amount: Prisma.Decimal;
-      paymentMethod: string;
-      paidAt: Date;
-    }[];
     _count?: {
       appointments: number;
     };
@@ -345,16 +338,6 @@ export const babyService = {
                 name: true,
                 duration: true,
               },
-            },
-            installmentPayments: {
-              select: {
-                id: true,
-                installmentNumber: true,
-                amount: true,
-                paymentMethod: true,
-                paidAt: true,
-              },
-              orderBy: { installmentNumber: "asc" },
             },
             // Count scheduled appointments to calculate truly available sessions
             _count: {

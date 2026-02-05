@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { transactionService, TransactionWithItems } from "@/lib/services/transaction-service";
 
 export async function GET() {
   try {
@@ -63,18 +64,6 @@ export async function GET() {
             name: true,
           },
         },
-        installmentPayments: {
-          select: {
-            id: true,
-            installmentNumber: true,
-            amount: true,
-            paymentMethod: true,
-            paidAt: true,
-          },
-          orderBy: {
-            installmentNumber: "asc",
-          },
-        },
       },
       orderBy: {
         createdAt: "desc",
@@ -97,12 +86,25 @@ export async function GET() {
       }
     }
 
+    // Get transactions for all pending packages in parallel
+    const pendingTransactionsMap = new Map<string, TransactionWithItems[]>();
+    await Promise.all(
+      packagesWithPending.map(async (pkg) => {
+        const transactions = await transactionService.getByReference(
+          "PackagePurchase",
+          pkg.id
+        );
+        pendingTransactionsMap.set(pkg.id, transactions);
+      })
+    );
+
     // Calculate next installment info for each pending package
     const packagesWithPendingData = packagesWithPending.map((pkg) => {
       const finalPrice = Number(pkg.finalPrice);
       const paidAmount = Number(pkg.paidAmount);
       const pendingAmount = finalPrice - paidAmount;
-      const paidInstallments = pkg.installmentPayments.length;
+      const transactions = pendingTransactionsMap.get(pkg.id) || [];
+      const paidInstallments = transactions.length;
       const percentagePaid = finalPrice > 0 ? (paidAmount / finalPrice) * 100 : 100;
 
       // Parse which sessions require payment
@@ -131,12 +133,12 @@ export async function GET() {
         remainingSessions: pkg.remainingSessions,
         nextPaymentSession,
         purchaseDate: pkg.createdAt,
-        payments: pkg.installmentPayments.map((payment) => ({
-          id: payment.id,
-          installmentNumber: payment.installmentNumber,
-          amount: Number(payment.amount),
-          paymentMethod: payment.paymentMethod,
-          paidAt: payment.paidAt,
+        payments: transactions.map((tx, index) => ({
+          id: tx.id,
+          installmentNumber: index + 1,
+          amount: Number(tx.total),
+          paymentMethod: tx.paymentMethods[0]?.method || "CASH",
+          paidAt: tx.createdAt,
         })),
       };
     });

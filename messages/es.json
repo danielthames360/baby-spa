@@ -2963,7 +2963,10 @@
     "tier3Reports": "Reportes Operativos",
 
     "income": {
-      "totalIncome": "Ingresos Totales",
+      "totalIncome": "Ingresos Netos",
+      "grossIncome": "Ingresos Brutos",
+      "discounts": "Descuentos",
+      "discountsByCategory": "Descuentos por categoría",
       "transactions": "transacciones",
       "dailyIncome": "Ingresos por Día",
       "noData": "No hay ingresos registrados en este período",
@@ -2971,10 +2974,13 @@
       "byMethod": "Por Método de Pago",
       "sources": {
         "SESSION": "Sesiones",
+        "PACKAGE_SALE": "Venta de Paquetes",
+        "PACKAGE_INSTALLMENT": "Cuotas de Paquetes",
+        "SESSION_PRODUCTS": "Productos en Sesiones",
+        "EVENT_PRODUCTS": "Productos en Eventos",
         "BABY_CARD": "Baby Cards",
-        "EVENT_PARTICIPANT": "Eventos",
-        "APPOINTMENT": "Anticipos",
-        "PACKAGE_INSTALLMENT": "Cuotas"
+        "EVENT_REGISTRATION": "Inscripciones a Eventos",
+        "APPOINTMENT_ADVANCE": "Anticipos de Citas"
       }
     },
 
@@ -3174,7 +3180,10 @@
       "low": "Baja",
       "opportunity": "Oportunidad de Mejora",
       "lowOccupancySlots": "Horarios con baja ocupación",
-      "suggestion": "Considera promociones especiales para estos horarios"
+      "suggestion": "Considera promociones especiales para estos horarios",
+      "popularTimes": "Horarios Más Demandados",
+      "popularDays": "Días Más Ocupados",
+      "appointments": "citas"
     },
 
     "babyCards": {

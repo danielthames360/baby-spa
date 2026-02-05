@@ -17,10 +17,10 @@ datasource db {
 // ============================================================
 
 enum UserRole {
-  OWNER      // Socios - acceso total al sistema
-  ADMIN      // Administrador contratado - operaciones + finanzas limitadas
-  RECEPTION  // Recepcionista - operaciones diarias
-  THERAPIST  // Terapeuta - solo su agenda
+  OWNER // Socios - acceso total al sistema
+  ADMIN // Administrador contratado - operaciones + finanzas limitadas
+  RECEPTION // Recepcionista - operaciones diarias
+  THERAPIST // Terapeuta - solo su agenda
 }
 
 enum Gender {
@@ -35,7 +35,7 @@ enum BirthType {
 }
 
 enum AppointmentStatus {
-  PENDING_PAYMENT  // Waiting for advance payment
+  PENDING_PAYMENT // Waiting for advance payment
   SCHEDULED
   IN_PROGRESS
   COMPLETED
@@ -50,52 +50,52 @@ enum SessionStatus {
 }
 
 enum PaymentMethod {
-  CASH      // Efectivo / Dinheiro
-  QR        // QR Bolivia / PIX Brasil (pago instantáneo)
-  CARD      // Tarjeta POS / Cartão
-  TRANSFER  // Transferencia / TED-DOC
+  CASH // Efectivo / Dinheiro
+  QR // QR Bolivia / PIX Brasil (pago instantáneo)
+  CARD // Tarjeta POS / Cartão
+  TRANSFER // Transferencia / TED-DOC
 }
 
 // Tipos de pago a staff (más específicos)
 enum StaffPaymentType {
   // Movimientos positivos (ingresos para el empleado)
-  SALARY          // Sueldo del período
-  COMMISSION      // Comisión
-  BONUS           // Bono / Horas extra
-  BENEFIT         // Aguinaldo / Viáticos / Beneficios
-  SETTLEMENT      // Liquidación
-  ADVANCE         // Adelanto (aumenta deuda, pero es ingreso)
+  SALARY // Sueldo del período
+  COMMISSION // Comisión
+  BONUS // Bono / Horas extra
+  BENEFIT // Aguinaldo / Viáticos / Beneficios
+  SETTLEMENT // Liquidación
+  ADVANCE // Adelanto (aumenta deuda, pero es ingreso)
 
   // Movimientos negativos (descuentos para el empleado)
-  DEDUCTION       // Descuento (faltas, tardanzas, etc.)
-  ADVANCE_RETURN  // Devolución de adelanto (reduce deuda)
+  DEDUCTION // Descuento (faltas, tardanzas, etc.)
+  ADVANCE_RETURN // Devolución de adelanto (reduce deuda)
 }
 
 // Estado del movimiento/pago
 enum PaymentStatus {
-  PENDING         // Movimiento registrado, pendiente de pago
-  PAID            // Pago realizado / Movimiento incluido en pago
+  PENDING // Movimiento registrado, pendiente de pago
+  PAID // Pago realizado / Movimiento incluido en pago
 }
 
 // Frecuencia de pago del empleado
 enum PayFrequency {
-  DAILY           // Diario
-  WEEKLY          // Semanal
-  BIWEEKLY        // Quincenal
-  MONTHLY         // Mensual
+  DAILY // Diario
+  WEEKLY // Semanal
+  BIWEEKLY // Quincenal
+  MONTHLY // Mensual
 }
 
 // Categorías de gastos administrativos
 enum ExpenseCategory {
-  RENT            // Alquiler
-  UTILITIES       // Servicios (agua, luz, internet)
-  SUPPLIES        // Insumos
-  MAINTENANCE     // Mantenimiento / Reparaciones
-  MARKETING       // Marketing / Publicidad
-  TAXES           // Impuestos / Contabilidad
-  INSURANCE       // Seguros
-  EQUIPMENT       // Equipos / Mobiliario
-  OTHER           // Otros
+  RENT // Alquiler
+  UTILITIES // Servicios (agua, luz, internet)
+  SUPPLIES // Insumos
+  MAINTENANCE // Mantenimiento / Reparaciones
+  MARKETING // Marketing / Publicidad
+  TAXES // Impuestos / Contabilidad
+  INSURANCE // Seguros
+  EQUIPMENT // Equipos / Mobiliario
+  OTHER // Otros
 }
 
 enum MovementType {
@@ -107,8 +107,8 @@ enum MovementType {
 
 // Tipo de servicio (para paquetes)
 enum ServiceType {
-  BABY      // Servicio para bebés (hidroterapia, vacunas, etc.)
-  PARENT    // Servicio para padres (masaje prenatal, postparto, etc.)
+  BABY // Servicio para bebés (hidroterapia, vacunas, etc.)
+  PARENT // Servicio para padres (masaje prenatal, postparto, etc.)
 }
 
 // ============================================================
@@ -116,34 +116,34 @@ enum ServiceType {
 // ============================================================
 
 enum ParentStatus {
-  LEAD      // Padre potencial (embarazada sin bebé)
-  ACTIVE    // Cliente activo
-  INACTIVE  // Cliente inactivo
+  LEAD // Padre potencial (embarazada sin bebé)
+  ACTIVE // Cliente activo
+  INACTIVE // Cliente inactivo
 }
 
 enum EventType {
-  BABIES    // Eventos para bebés (Hora de Juego, Babython)
-  PARENTS   // Eventos para padres/leads (Talleres prenatales)
+  BABIES // Eventos para bebés (Hora de Juego, Babython)
+  PARENTS // Eventos para padres/leads (Talleres prenatales)
 }
 
 enum EventStatus {
-  DRAFT       // Borrador, no visible públicamente
-  PUBLISHED   // Publicado, abierto para inscripciones
+  DRAFT // Borrador, no visible públicamente
+  PUBLISHED // Publicado, abierto para inscripciones
   IN_PROGRESS // En curso
-  COMPLETED   // Finalizado
-  CANCELLED   // Cancelado
+  COMPLETED // Finalizado
+  CANCELLED // Cancelado
 }
 
 enum ParticipantStatus {
-  REGISTERED  // Registrado/inscrito
-  CONFIRMED   // Confirmado (pagó o cortesía)
-  CANCELLED   // Canceló participación
-  NO_SHOW     // No asistió
+  REGISTERED // Registrado/inscrito
+  CONFIRMED // Confirmado (pagó o cortesía)
+  CANCELLED // Canceló participación
+  NO_SHOW // No asistió
 }
 
 enum DiscountType {
-  COURTESY  // Gratis (100% descuento)
-  FIXED     // Descuento fijo en monto
+  COURTESY // Gratis (100% descuento)
+  FIXED // Descuento fijo en monto
 }
 
 enum MuscleTone {
@@ -157,28 +157,57 @@ enum MuscleTone {
 // ============================================================
 
 enum RewardType {
-  SERVICE   // Un paquete/servicio gratis
-  PRODUCT   // Un producto físico gratis
-  EVENT     // Acceso gratis a evento
-  CUSTOM    // Premio personalizado (solo texto/diploma/etc.)
+  SERVICE // Un paquete/servicio gratis
+  PRODUCT // Un producto físico gratis
+  EVENT // Acceso gratis a evento
+  CUSTOM // Premio personalizado (solo texto/diploma/etc.)
 }
 
 enum BabyCardStatus {
-  ACTIVE      // En progreso
-  COMPLETED   // Completó todas las sesiones
-  REPLACED    // Fue reemplazada por otra card
-  CANCELLED   // Cancelada/reembolsada
+  ACTIVE // En progreso
+  COMPLETED // Completó todas las sesiones
+  REPLACED // Fue reemplazada por otra card
+  CANCELLED // Cancelada/reembolsada
 }
 
-// Tipos de padre para PaymentDetail (referencia polimórfica)
-enum PaymentParentType {
-  SESSION               // Pago de sesión (checkout)
-  BABY_CARD             // Compra de Baby Card
-  EVENT_PARTICIPANT     // Pago de evento
-  APPOINTMENT           // Pago anticipado de cita
-  PACKAGE_INSTALLMENT   // Cuota de paquete
-  STAFF_PAYMENT         // Pago a empleado
-  EXPENSE               // Gasto administrativo
+// ============================================================
+// ENUMS PARA TRANSACCIONES (Nuevo sistema centralizado)
+// ============================================================
+
+enum TransactionType {
+  INCOME // Ingreso (ventas, pagos recibidos)
+  EXPENSE // Egreso (pagos a staff, gastos)
+}
+
+enum TransactionCategory {
+  // Ingresos de servicios
+  SESSION // Checkout de sesión completo
+  PACKAGE_SALE // Venta de paquete (contado o primera cuota)
+  PACKAGE_INSTALLMENT // Cuota de paquete
+
+  // Ingresos de productos
+  SESSION_PRODUCTS // Productos vendidos en sesión
+  EVENT_PRODUCTS // Productos vendidos en evento
+
+  // Otros ingresos
+  BABY_CARD // Venta de Baby Card
+  EVENT_REGISTRATION // Inscripción a evento
+  APPOINTMENT_ADVANCE // Anticipo de cita
+
+  // Egresos
+  STAFF_PAYMENT // Pago a empleados
+  ADMIN_EXPENSE // Gasto administrativo
+}
+
+enum ItemType {
+  PACKAGE // Paquete/servicio
+  PRODUCT // Producto de inventario
+  EVENT_TICKET // Entrada a evento
+  BABY_CARD // Baby Card
+  INSTALLMENT // Cuota de paquete
+  ADVANCE // Anticipo
+  DISCOUNT // Descuento aplicado (línea negativa)
+  OTHER // Otro concepto
 }
 
 enum Mood {
@@ -188,28 +217,28 @@ enum Mood {
 
 // Para Notification (notificaciones en tiempo real al staff)
 enum StaffNotificationType {
-  NEW_APPOINTMENT           // Cita agendada desde portal
-  CANCELLED_APPOINTMENT     // Cita cancelada desde portal
-  RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
-  CASH_REGISTER_DIFFERENCE  // Arqueo cerrado con diferencia
-  REENGAGEMENT_ALERT        // Cliente inactivo requiere seguimiento
-  LEAD_DUE_DATE             // Lead que puede haber dado a luz
+  NEW_APPOINTMENT // Cita agendada desde portal
+  CANCELLED_APPOINTMENT // Cita cancelada desde portal
+  RESCHEDULED_APPOINTMENT // Cita reagendada desde portal
+  CASH_REGISTER_DIFFERENCE // Arqueo cerrado con diferencia
+  REENGAGEMENT_ALERT // Cliente inactivo requiere seguimiento
+  LEAD_DUE_DATE // Lead que puede haber dado a luz
 }
 
 // Para Arqueo de Caja
 enum CashRegisterStatus {
-  OPEN              // Caja abierta
-  CLOSED            // Cerrada, pendiente revisión (si diferencia ≠ 0)
-  APPROVED          // Aprobada (diferencia = 0 o admin aprobó)
-  FORCE_CLOSED      // Cerrada forzadamente por admin
+  OPEN // Caja abierta
+  CLOSED // Cerrada, pendiente revisión (si diferencia ≠ 0)
+  APPROVED // Aprobada (diferencia = 0 o admin aprobó)
+  FORCE_CLOSED // Cerrada forzadamente por admin
 }
 
 enum CashExpenseCategory {
-  SUPPLIES      // Insumos
-  FOOD          // Comida/Refrigerios
-  TRANSPORT     // Transporte (taxi, delivery)
-  BANK_DEPOSIT  // Depósito a banco / Entrega a dueño
-  OTHER         // Otro (descripción obligatoria)
+  SUPPLIES // Insumos
+  FOOD // Comida/Refrigerios
+  TRANSPORT // Transporte (taxi, delivery)
+  BANK_DEPOSIT // Depósito a banco / Entrega a dueño
+  OTHER // Otro (descripción obligatoria)
 }
 
 // ============================================================
@@ -217,39 +246,39 @@ enum CashExpenseCategory {
 // ============================================================
 
 enum TemplateCategory {
-  APPOINTMENT     // Recordatorios de citas
-  MESVERSARY      // Mesversarios
-  REENGAGEMENT    // Re-engagement de clientes inactivos
-  LEAD            // Mensajes para leads
-  ADMIN           // Resumen diario, alertas admin
+  APPOINTMENT // Recordatorios de citas
+  MESVERSARY // Mesversarios
+  REENGAGEMENT // Re-engagement de clientes inactivos
+  LEAD // Mensajes para leads
+  ADMIN // Resumen diario, alertas admin
 }
 
 enum PendingMessageCategory {
-  APPOINTMENT_REMINDER  // Recordatorio de cita
-  PAYMENT_REMINDER      // Recordatorio de pago
-  MESVERSARY            // Mesversario
-  REENGAGEMENT          // Re-engagement
+  APPOINTMENT_REMINDER // Recordatorio de cita
+  PAYMENT_REMINDER // Recordatorio de pago
+  MESVERSARY // Mesversario
+  REENGAGEMENT // Re-engagement
 }
 
 enum RecipientType {
-  PARENT    // Padre/Madre
-  BABY      // Referencia a bebé (mensaje va al padre)
-  LEAD      // Lead sin bebé
+  PARENT // Padre/Madre
+  BABY // Referencia a bebé (mensaje va al padre)
+  LEAD // Lead sin bebé
 }
 
 enum PendingMessageStatus {
-  PENDING   // Pendiente de enviar
-  SENT      // Enviado por staff
-  SKIPPED   // Omitido con razón
-  EXPIRED   // Expirado (>3 días)
+  PENDING // Pendiente de enviar
+  SENT // Enviado por staff
+  SKIPPED // Omitido con razón
+  EXPIRED // Expirado (>3 días)
 }
 
 enum EmailStatus {
-  SENT        // Enviado
-  DELIVERED   // Entregado
-  OPENED      // Abierto
-  BOUNCED     // Rebotado
-  COMPLAINED  // Marcado como spam
+  SENT // Enviado
+  DELIVERED // Entregado
+  OPENED // Abierto
+  BOUNCED // Rebotado
+  COMPLAINED // Marcado como spam
 }
 
 // Para Activity (registro de actividad/auditoría)
@@ -301,54 +330,52 @@ enum ActivityType {
 // ============================================================
 
 model User {
-  id                 String    @id @default(cuid())
-  username           String    @unique
+  id                 String   @id @default(cuid())
+  username           String   @unique
   email              String?
   passwordHash       String
   name               String
   role               UserRole
   phone              String?
-  isActive           Boolean   @default(true)
-  mustChangePassword Boolean   @default(true) // Forzar cambio en primer login
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true) // Forzar cambio en primer login
 
   // Para control de sueldos
-  baseSalary   Decimal?      @db.Decimal(10, 2)
-  payFrequency PayFrequency  @default(MONTHLY)
+  baseSalary   Decimal?     @db.Decimal(10, 2)
+  payFrequency PayFrequency @default(MONTHLY)
 
   // Campos para resumen diario (Fase 11)
-  receiveDailySummary   Boolean  @default(false)   // ¿Recibe resumen diario?
-  dailySummaryEmail     String?                    // Email para resumen (puede ser diferente)
+  receiveDailySummary Boolean @default(false) // ¿Recibe resumen diario?
+  dailySummaryEmail   String? // Email para resumen (puede ser diferente)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
-  sessionsAsTherapist        Session[]
-  pendingMessagesSent        PendingMessage[]      @relation("PendingMessageSentBy")
-  appointmentsAssigned       Appointment[]
-  registrationLinks          RegistrationLink[]
-  babyNotes                  BabyNote[]
-  staffPaymentsReceived      StaffPayment[]        @relation("StaffPaymentsReceived")
-  staffPaymentsCreated       StaffPayment[]        @relation("StaffPaymentsCreated")
-  staffPaymentsDeleted       StaffPayment[]        @relation("StaffPaymentsDeleted")
-  advanceBalance             StaffAdvanceBalance?
-  appointmentPayments        AppointmentPayment[]
-  packagePayments            PackagePayment[]
-  createdEvents              Event[]
-  registeredParticipants     EventParticipant[]
-  babyCardPurchasesCreated   BabyCardPurchase[]    @relation("BabyCardPurchasesCreated")
-  babyCardRewardsApplied     BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
-  paymentDetailsCreated      PaymentDetail[]       @relation("PaymentDetailsCreated")
-  notificationsRead          Notification[]        @relation("NotificationReadBy")
-  activitiesPerformed        Activity[]            @relation("ActivitiesPerformed")
-  expensesCreated            Expense[]             @relation("ExpensesCreated")
-  expensesDeleted            Expense[]             @relation("ExpensesDeleted")
+  sessionsAsTherapist      Session[]
+  pendingMessagesSent      PendingMessage[]      @relation("PendingMessageSentBy")
+  appointmentsAssigned     Appointment[]
+  registrationLinks        RegistrationLink[]
+  babyNotes                BabyNote[]
+  staffPaymentsReceived    StaffPayment[]        @relation("StaffPaymentsReceived")
+  staffPaymentsCreated     StaffPayment[]        @relation("StaffPaymentsCreated")
+  staffPaymentsDeleted     StaffPayment[]        @relation("StaffPaymentsDeleted")
+  advanceBalance           StaffAdvanceBalance?
+  createdEvents            Event[]
+  registeredParticipants   EventParticipant[]
+  babyCardPurchasesCreated BabyCardPurchase[]    @relation("BabyCardPurchasesCreated")
+  babyCardRewardsApplied   BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
+  transactionsCreated      Transaction[]         @relation("TransactionsCreated")
+  notificationsRead        Notification[]        @relation("NotificationReadBy")
+  activitiesPerformed      Activity[]            @relation("ActivitiesPerformed")
+  expensesCreated          Expense[]             @relation("ExpensesCreated")
+  expensesDeleted          Expense[]             @relation("ExpensesDeleted")
 
   // Cash Register relations (Fase 10)
-  cashRegistersOpened        CashRegister[]        @relation("CashRegisterOpenedBy")
-  cashRegistersReviewed      CashRegister[]        @relation("CashRegisterReviewedBy")
-  cashRegistersForceClosed   CashRegister[]        @relation("CashRegisterForcedBy")
-  cashRegisterExpenses       CashRegisterExpense[] @relation("CashRegisterExpenseCreatedBy")
+  cashRegistersOpened      CashRegister[]        @relation("CashRegisterOpenedBy")
+  cashRegistersReviewed    CashRegister[]        @relation("CashRegisterReviewedBy")
+  cashRegistersForceClosed CashRegister[]        @relation("CashRegisterForcedBy")
+  cashRegisterExpenses     CashRegisterExpense[] @relation("CashRegisterExpenseCreatedBy")
 
   @@map("users")
 }
@@ -376,34 +403,34 @@ model Parent {
   lastNoShowDate     DateTime?
 
   // Status y campos LEAD (para talleres prenatales)
-  status              ParentStatus  @default(ACTIVE)
-  pregnancyWeeks      Int?          // Semanas de embarazo (para LEADs)
-  leadSource          String?       // Fuente del lead (Instagram, Referido, etc.)
-  leadNotes           String?       // Notas sobre el lead
-  convertedAt         DateTime?     // Fecha en que pasó de LEAD a ACTIVE
+  status         ParentStatus @default(ACTIVE)
+  pregnancyWeeks Int? // Semanas de embarazo (para LEADs)
+  leadSource     String? // Fuente del lead (Instagram, Referido, etc.)
+  leadNotes      String? // Notas sobre el lead
+  convertedAt    DateTime? // Fecha en que pasó de LEAD a ACTIVE
 
   // Campos para mensajería automatizada (Fase 11)
-  emailBounceCount      Int         @default(0)    // Contador de rebotes de email
-  lastSessionAt         DateTime?                  // Última sesión completada
-  lastReengagementAt    DateTime?                  // Último mensaje de re-engagement
-  lastMessageSentAt     DateTime?                  // Control de frecuencia de mensajes
-  marketingOptIn        Boolean     @default(true) // Opt-out desde portal
+  emailBounceCount   Int       @default(0) // Contador de rebotes de email
+  lastSessionAt      DateTime? // Última sesión completada
+  lastReengagementAt DateTime? // Último mensaje de re-engagement
+  lastMessageSentAt  DateTime? // Control de frecuencia de mensajes
+  marketingOptIn     Boolean   @default(true) // Opt-out desde portal
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  babies                BabyParent[]
-  emailLogs             EmailLog[]
-  eventParticipations   EventParticipant[]
+  babies              BabyParent[]
+  emailLogs           EmailLog[]
+  eventParticipations EventParticipant[]
 
   // Servicios para el padre (masaje prenatal, postparto, etc.)
-  appointments          Appointment[]
-  packagePurchases      PackagePurchase[]
+  appointments     Appointment[]
+  packagePurchases PackagePurchase[]
 
   // Cron job indexes (Fase 11)
-  @@index([lastSessionAt])                    // Reengagement of inactive clients
-  @@index([noShowCount, requiresPrepayment])  // Auto-activate prepayment
-  @@index([status])                           // Filter by LEAD/ACTIVE/INACTIVE
+  @@index([lastSessionAt]) // Reengagement of inactive clients
+  @@index([noShowCount, requiresPrepayment]) // Auto-activate prepayment
+  @@index([status]) // Filter by LEAD/ACTIVE/INACTIVE
   @@map("parents")
 }
 
@@ -420,21 +447,21 @@ model Baby {
 
   // Datos de nacimiento
   birthWeeks  Int?
-  birthWeight Decimal?  @db.Decimal(4, 2)
+  birthWeight Decimal?   @db.Decimal(4, 2)
   birthType   BirthType?
 
   // Datos médicos
-  birthDifficulty          Boolean  @default(false)
+  birthDifficulty          Boolean @default(false)
   birthDifficultyDesc      String?
-  pregnancyIssues          Boolean  @default(false)
+  pregnancyIssues          Boolean @default(false)
   pregnancyIssuesDesc      String?
-  priorStimulation         Boolean  @default(false)
+  priorStimulation         Boolean @default(false)
   priorStimulationType     String?
-  developmentDiagnosis     Boolean  @default(false)
+  developmentDiagnosis     Boolean @default(false)
   developmentDiagnosisDesc String?
-  diagnosedIllness         Boolean  @default(false)
+  diagnosedIllness         Boolean @default(false)
   diagnosedIllnessDesc     String?
-  recentMedication         Boolean  @default(false)
+  recentMedication         Boolean @default(false)
   recentMedicationDesc     String?
   allergies                String?
   specialObservations      String?
@@ -447,24 +474,24 @@ model Baby {
   referralSource String?
 
   // Campos para mensajería automatizada (Fase 11)
-  lastMesversaryNotifiedMonth  Int?    // Mes del último mesversario notificado
+  lastMesversaryNotifiedMonth Int? // Mes del último mesversario notificado
 
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parents               BabyParent[]
-  packagePurchases      PackagePurchase[]
-  appointments          Appointment[]
-  sessions              Session[]
-  notes                 BabyNote[]
-  eventParticipations   EventParticipant[]
-  babyCardPurchases     BabyCardPurchase[]
+  parents             BabyParent[]
+  packagePurchases    PackagePurchase[]
+  appointments        Appointment[]
+  sessions            Session[]
+  notes               BabyNote[]
+  eventParticipations EventParticipant[]
+  babyCardPurchases   BabyCardPurchase[]
 
   // Cron job indexes (Fase 11)
-  @@index([birthDate, isActive])              // Mesversaries and deactivation of old babies
-  @@index([lastMesversaryNotifiedMonth])      // Mesversary tracking
+  @@index([birthDate, isActive]) // Mesversaries and deactivation of old babies
+  @@index([lastMesversaryNotifiedMonth]) // Mesversary tracking
   @@map("babies")
 }
 
@@ -504,6 +531,7 @@ model BabyNote {
 
   createdAt DateTime @default(now())
 
+  @@index([babyId])
   @@index([userId])
   @@map("baby_notes")
 }
@@ -513,23 +541,23 @@ model BabyNote {
 // ============================================================
 
 model RegistrationLink {
-  id          String    @id @default(cuid())
-  token       String    @unique
+  id    String @id @default(cuid())
+  token String @unique
 
   // Datos pre-llenados por recepción (solo teléfono requerido)
   parentName  String?
   parentPhone String
 
-  expiresAt   DateTime  // 5 días desde creación
-  isUsed      Boolean   @default(false)
-  usedAt      DateTime?
+  expiresAt DateTime // 5 días desde creación
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
 
   createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
   // Referencias al padre y bebé creados (se llenan al completar)
-  babyId      String?
-  parentId    String?
+  babyId   String?
+  parentId String?
 
   createdAt DateTime @default(now())
 
@@ -550,7 +578,7 @@ model Category {
   name        String
   description String?
   type        CategoryType // PACKAGE o PRODUCT
-  color       String?      // Color para UI (ej: "teal", "amber")
+  color       String? // Color para UI (ej: "teal", "amber")
   sortOrder   Int          @default(0)
   isActive    Boolean      @default(true)
 
@@ -577,35 +605,36 @@ model Package {
   serviceType ServiceType @default(BABY)
 
   // Relación con categoría
-  categoryId  String?
-  categoryRef Category? @relation(fields: [categoryId], references: [id])
-  sessionCount   Int
-  basePrice      Decimal @db.Decimal(10, 2)
+  categoryId   String?
+  categoryRef  Category? @relation(fields: [categoryId], references: [id])
+  sessionCount Int
+  basePrice    Decimal   @db.Decimal(10, 2)
 
   // Duración y pago anticipado
-  duration                Int       @default(60)           // Duración en minutos
-  requiresAdvancePayment  Boolean   @default(false)        // Requiere pago anticipado
-  advancePaymentAmount    Decimal?  @db.Decimal(10, 2)     // Monto del anticipo
+  duration               Int      @default(60) // Duración en minutos
+  requiresAdvancePayment Boolean  @default(false) // Requiere pago anticipado
+  advancePaymentAmount   Decimal? @db.Decimal(10, 2) // Monto del anticipo
 
   // Configuración de cuotas (definidas por el admin)
-  allowInstallments           Boolean   @default(false)         // ¿Permite pago en cuotas?
-  installmentsCount           Int?                              // Cantidad de cuotas: 3
-  installmentsTotalPrice      Decimal?  @db.Decimal(10, 2)      // Precio total en cuotas (puede ser mayor)
-  installmentsPayOnSessions   String?                           // En qué sesiones pagar: "1,3,5"
+  allowInstallments         Boolean  @default(false) // ¿Permite pago en cuotas?
+  installmentsCount         Int? // Cantidad de cuotas: 3
+  installmentsTotalPrice    Decimal? @db.Decimal(10, 2) // Precio total en cuotas (puede ser mayor)
+  installmentsPayOnSessions String? // En qué sesiones pagar: "1,3,5"
 
-  isActive       Boolean @default(true)
-  isPublic       Boolean @default(true)  // false = solo para premios Baby Card y uso interno
-  sortOrder      Int     @default(0)
+  isActive  Boolean @default(true)
+  isPublic  Boolean @default(true) // false = solo para premios Baby Card y uso interno
+  sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   purchases             PackagePurchase[]
-  appointments          Appointment[]       // Citas que tienen este paquete pre-seleccionado
-  systemSettings        SystemSettings[]    @relation("DefaultPackage")
+  appointments          Appointment[] // Citas que tienen este paquete pre-seleccionado
+  systemSettings        SystemSettings[]       @relation("DefaultPackage")
   babyCardSpecialPrices BabyCardSpecialPrice[]
   babyCardRewards       BabyCardReward[]
 
+  @@index([categoryId])
   @@map("packages")
 }
 
@@ -614,21 +643,21 @@ model Package {
 // ============================================================
 
 model PackagePurchase {
-  id        String  @id @default(cuid())
+  id String @id @default(cuid())
 
   // Cliente: bebé O padre (según serviceType del paquete)
-  babyId    String?
-  baby      Baby?   @relation(fields: [babyId], references: [id])
-  parentId  String?
-  parent    Parent? @relation(fields: [parentId], references: [id])
+  babyId   String?
+  baby     Baby?   @relation(fields: [babyId], references: [id])
+  parentId String?
+  parent   Parent? @relation(fields: [parentId], references: [id])
 
   packageId String
   package   Package @relation(fields: [packageId], references: [id])
 
-  basePrice      Decimal  @db.Decimal(10, 2)
-  discountAmount Decimal  @default(0) @db.Decimal(10, 2)
+  basePrice      Decimal @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
   discountReason String?
-  finalPrice     Decimal  @db.Decimal(10, 2)
+  finalPrice     Decimal @db.Decimal(10, 2)
 
   totalSessions     Int
   usedSessions      Int @default(0)
@@ -640,25 +669,25 @@ model PackagePurchase {
   frequencyDays Int? // Cada X días si FREQUENCY
 
   // Financiamiento - Pago en cuotas
-  paymentPlan                String    @default("SINGLE")      // SINGLE | INSTALLMENTS
-  installments               Int       @default(1)             // Número de cuotas (1 = pago único)
-  totalPrice                 Decimal?  @db.Decimal(10, 2)      // Precio total a pagar (único o cuotas) - null usa finalPrice
-  installmentAmount          Decimal?  @db.Decimal(10, 2)      // Monto por cuota
-  paidAmount                 Decimal   @default(0) @db.Decimal(10, 2)  // Total pagado hasta ahora
-  installmentsPayOnSessions  String?                           // Copiado del paquete: "1,3,5"
+  paymentPlan               String   @default("SINGLE") // SINGLE | INSTALLMENTS
+  installments              Int      @default(1) // Número de cuotas (1 = pago único)
+  totalPrice                Decimal? @db.Decimal(10, 2) // Precio total a pagar (único o cuotas) - null usa finalPrice
+  installmentAmount         Decimal? @db.Decimal(10, 2) // Monto por cuota
+  paidAmount                Decimal  @default(0) @db.Decimal(10, 2) // Total pagado hasta ahora
+  installmentsPayOnSessions String? // Copiado del paquete: "1,3,5"
 
   // Preferencia de horario del padre (para auto-agendado masivo)
   // Formato JSON: [{"dayOfWeek": 1, "time": "09:00"}, {"dayOfWeek": 4, "time": "15:00"}]
-  schedulePreferences        String?   @db.Text
+  schedulePreferences String? @db.Text
 
   isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sessions           Session[]
-  appointments       Appointment[]
-  installmentPayments PackagePayment[]
+  sessions     Session[]
+  appointments Appointment[]
+  // installmentPayments: Ahora se usan Transactions con referenceType="PackagePurchase"
 
   // Performance indexes
   @@index([babyId, isActive])
@@ -671,7 +700,7 @@ model PackagePurchase {
 // ============================================================
 
 model Appointment {
-  id     String @id @default(cuid())
+  id String @id @default(cuid())
 
   // Cliente: bebé O padre (según serviceType del paquete)
   babyId   String?
@@ -682,16 +711,16 @@ model Appointment {
   // Paquete seleccionado (provisional hasta checkout)
   // Si el bebé tiene paquete comprado -> usa packagePurchaseId
   // Si selecciona del catálogo -> usa selectedPackageId
-  selectedPackageId   String?          // Paquete del catálogo (provisional)
-  selectedPackage     Package?         @relation(fields: [selectedPackageId], references: [id])
-  packagePurchaseId   String?          // Paquete comprado existente
-  packagePurchase     PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
+  selectedPackageId String? // Paquete del catálogo (provisional)
+  selectedPackage   Package?         @relation(fields: [selectedPackageId], references: [id])
+  packagePurchaseId String? // Paquete comprado existente
+  packagePurchase   PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
 
   // Fecha sin componente de hora (evita problemas de timezone)
   date      DateTime @db.Date
   // Horas como strings simples "09:00", "09:30", "14:30" (sin timezone)
-  startTime String   // HH:mm format
-  endTime   String   // HH:mm format
+  startTime String // HH:mm format
+  endTime   String // HH:mm format
 
   status AppointmentStatus @default(SCHEDULED)
 
@@ -703,10 +732,10 @@ model Appointment {
   isEvaluated Boolean @default(false)
 
   // Campos para recordatorios automatizados (Fase 11)
-  reminder24hSent       Boolean   @default(false)
-  reminder24hSentAt     DateTime?
-  reminderDaySent       Boolean   @default(false)    // Recordatorio del día (WhatsApp)
-  paymentReminderSent   Boolean   @default(false)    // Recordatorio de pago 48h
+  reminder24hSent     Boolean   @default(false)
+  reminder24hSentAt   DateTime?
+  reminderDaySent     Boolean   @default(false) // Recordatorio del día (WhatsApp)
+  paymentReminderSent Boolean   @default(false) // Recordatorio de pago 48h
 
   notes        String?
   cancelReason String?
@@ -721,9 +750,9 @@ model Appointment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  session  Session?
-  history  AppointmentHistory[]
-  payments AppointmentPayment[]
+  session Session?
+  history AppointmentHistory[]
+  // payments: Ahora se usan Transactions con referenceType="Appointment"
 
   // Performance indexes
   @@index([date, status])
@@ -733,9 +762,9 @@ model Appointment {
   @@index([status])
   @@index([isPendingPayment])
   // Cron job indexes (Fase 11)
-  @@index([date, status, reminder24hSent])      // 24h email reminders
-  @@index([date, status, reminderDaySent])      // Same-day WhatsApp reminders
-  @@index([date, status, paymentReminderSent])  // Payment reminders
+  @@index([date, status, reminder24hSent]) // 24h email reminders
+  @@index([date, status, reminderDaySent]) // Same-day WhatsApp reminders
+  @@index([date, status, paymentReminderSent]) // Payment reminders
   @@map("appointments")
 }
 
@@ -759,30 +788,17 @@ model AppointmentHistory {
 
   createdAt DateTime @default(now())
 
+  @@index([appointmentId])
   @@map("appointment_history")
 }
 
 // ============================================================
-// PAGOS DE CITAS (Anticipos y pagos parciales)
+// PAGOS DE CITAS - MODELO ELIMINADO
 // ============================================================
-
-model AppointmentPayment {
-  id            String        @id @default(cuid())
-  appointmentId String
-  amount        Decimal       @db.Decimal(10, 2)
-  paymentMethod PaymentMethod
-  paymentType   String        // ADVANCE | COMPLETION | PARTIAL
-  reference     String?       // Receipt/transaction number
-  notes         String?
-
-  createdAt   DateTime @default(now())
-  createdById String
-
-  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  createdBy   User        @relation(fields: [createdById], references: [id])
-
-  @@map("appointment_payments")
-}
+// Los anticipos de citas ahora se registran como Transaction con:
+//   category = APPOINTMENT_ADVANCE
+//   referenceType = "Appointment"
+//   referenceId = appointmentId
 
 // ============================================================
 // SESIONES (Ejecución)
@@ -792,7 +808,7 @@ model Session {
   id                String           @id @default(cuid())
   appointmentId     String           @unique
   appointment       Appointment      @relation(fields: [appointmentId], references: [id])
-  babyId            String?          // Optional: null for parent-only appointments
+  babyId            String? // Optional: null for parent-only appointments
   baby              Baby?            @relation(fields: [babyId], references: [id])
   therapistId       String
   therapist         User             @relation(fields: [therapistId], references: [id])
@@ -883,11 +899,11 @@ model Product {
   categoryId  String?
   categoryRef Category? @relation(fields: [categoryId], references: [id])
 
-  costPrice      Decimal @db.Decimal(10, 2)
-  salePrice      Decimal @db.Decimal(10, 2)
-  currentStock   Int     @default(0)
-  minStock       Int     @default(5)
-  isActive       Boolean @default(true)
+  costPrice    Decimal @db.Decimal(10, 2)
+  salePrice    Decimal @db.Decimal(10, 2)
+  currentStock Int     @default(0)
+  minStock     Int     @default(5)
+  isActive     Boolean @default(true)
 
   // Valor por defecto cuando se usa en sesiones
   isChargeableByDefault Boolean @default(true)
@@ -900,6 +916,7 @@ model Product {
   eventUsages     EventProductUsage[]
   babyCardRewards BabyCardReward[]
 
+  @@index([categoryId])
   @@map("products")
 }
 
@@ -938,6 +955,10 @@ model SessionProduct {
   unitPrice    Decimal @db.Decimal(10, 2)
   isChargeable Boolean @default(false)
 
+  // Campos para descuentos individuales
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
+  discountReason String?
+
   createdAt DateTime @default(now())
 
   @@index([productId])
@@ -945,63 +966,50 @@ model SessionProduct {
 }
 
 // ============================================================
-// PAGOS DE CUOTAS DE PAQUETES
+// PAGOS DE CUOTAS - MODELO ELIMINADO
 // ============================================================
-
-model PackagePayment {
-  id                  String          @id @default(cuid())
-  packagePurchaseId   String
-  packagePurchase     PackagePurchase @relation(fields: [packagePurchaseId], references: [id], onDelete: Cascade)
-  installmentNumber   Int             // 1, 2, 3, 4... (número de cuota)
-  amount              Decimal         @db.Decimal(10, 2)
-  paymentMethod       PaymentMethod
-  reference           String?         // Número de comprobante
-  notes               String?
-
-  paidAt              DateTime        @default(now())
-  createdById         String
-  createdBy           User            @relation(fields: [createdById], references: [id])
-
-  @@index([packagePurchaseId])
-  @@map("package_payments")
-}
+// Las cuotas de paquetes ahora se registran como Transaction con:
+//   category = PACKAGE_INSTALLMENT
+//   referenceType = "PackagePurchase"
+//   referenceId = packagePurchaseId
+//   items: [{ itemType: INSTALLMENT, description: "Cuota 2 de 4", ... }]
 
 // ============================================================
 // PAGOS AL PERSONAL
 // ============================================================
 
 model StaffPayment {
-  id              String            @id @default(cuid())
+  id String @id @default(cuid())
 
   // Empleado que recibe el pago
-  staffId         String
-  staff           User              @relation("StaffPaymentsReceived", fields: [staffId], references: [id])
+  staffId String
+  staff   User   @relation("StaffPaymentsReceived", fields: [staffId], references: [id])
 
   // Tipo y estado
-  type            StaffPaymentType
-  status          PaymentStatus     @default(PENDING)
+  type   StaffPaymentType
+  status PaymentStatus    @default(PENDING)
 
   // Montos
-  grossAmount     Decimal           @db.Decimal(10, 2)  // Monto bruto (puede ser negativo para deducciones)
-  netAmount       Decimal           @db.Decimal(10, 2)  // Monto neto (después de descuentos de adelanto)
+  grossAmount Decimal @db.Decimal(10, 2) // Monto bruto (puede ser negativo para deducciones)
+  netAmount   Decimal @db.Decimal(10, 2) // Monto neto (después de descuentos de adelanto)
 
   // Descuento de adelanto (solo aplica para SALARY)
-  advanceDeducted Decimal?          @db.Decimal(10, 2)  // Monto descontado de adelanto
+  advanceDeducted Decimal? @db.Decimal(10, 2) // Monto descontado de adelanto
 
   // Descripción
-  description     String
+  description String
 
   // Período de pago (fechas flexibles para cualquier frecuencia)
-  periodStart     DateTime?         // Inicio del período (nullable para migración)
-  periodEnd       DateTime?         // Fin del período (nullable para migración)
-  movementDate    DateTime?         // Fecha específica del movimiento (ej: día de la falta)
+  periodStart  DateTime? // Inicio del período (nullable para migración)
+  periodEnd    DateTime? // Fin del período (nullable para migración)
+  movementDate DateTime? // Fecha específica del movimiento (ej: día de la falta)
 
   // Campos legacy (para compatibilidad)
-  periodMonth     Int?              // Mes del período (1-12)
-  periodYear      Int?              // Año del período
+  periodMonth Int? // Mes del período (1-12)
+  periodYear  Int? // Año del período
 
   // Fecha del pago real (null si es movimiento pendiente)
-  paidAt          DateTime?
+  paidAt DateTime?
 
   // Referencia al pago de salario que incluyó este movimiento (para trazabilidad)
   includedInSalaryId String?
@@ -1009,14 +1017,14 @@ model StaffPayment {
   includedMovements  StaffPayment[] @relation("MovementsIncludedInSalary")
 
   // Auditoría
-  createdById     String
-  createdBy       User              @relation("StaffPaymentsCreated", fields: [createdById], references: [id])
-  createdAt       DateTime          @default(now())
+  createdById String
+  createdBy   User     @relation("StaffPaymentsCreated", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
 
   // Soft delete
-  deletedAt       DateTime?
-  deletedById     String?
-  deletedBy       User?             @relation("StaffPaymentsDeleted", fields: [deletedById], references: [id])
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("StaffPaymentsDeleted", fields: [deletedById], references: [id])
 
   @@index([staffId])
   @@index([status])
@@ -1031,14 +1039,14 @@ model StaffPayment {
 // ============================================================
 
 model StaffAdvanceBalance {
-  id              String    @id @default(cuid())
+  id String @id @default(cuid())
 
-  staffId         String    @unique
-  staff           User      @relation(fields: [staffId], references: [id])
+  staffId String @unique
+  staff   User   @relation(fields: [staffId], references: [id])
 
-  currentBalance  Decimal   @db.Decimal(10, 2) @default(0)  // Saldo pendiente de adelanto
+  currentBalance Decimal @default(0) @db.Decimal(10, 2) // Saldo pendiente de adelanto
 
-  updatedAt       DateTime  @updatedAt
+  updatedAt DateTime @updatedAt
 
   @@map("staff_advance_balances")
 }
@@ -1048,30 +1056,30 @@ model StaffAdvanceBalance {
 // ============================================================
 
 model Expense {
-  id              String          @id @default(cuid())
+  id String @id @default(cuid())
 
   // Categoría y descripción
-  category        ExpenseCategory
-  description     String
+  category    ExpenseCategory
+  description String
 
   // Monto
-  amount          Decimal         @db.Decimal(10, 2)
+  amount Decimal @db.Decimal(10, 2)
 
   // Referencia/comprobante
-  reference       String?         // Número de factura, etc.
+  reference String? // Número de factura, etc.
 
   // Fecha del gasto
-  expenseDate     DateTime        @db.Date @default(now())
+  expenseDate DateTime @default(now()) @db.Date
 
   // Auditoría
-  createdById     String
-  createdBy       User            @relation("ExpensesCreated", fields: [createdById], references: [id])
-  createdAt       DateTime        @default(now())
+  createdById String
+  createdBy   User     @relation("ExpensesCreated", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
 
   // Soft delete
-  deletedAt       DateTime?
-  deletedById     String?
-  deletedBy       User?           @relation("ExpensesDeleted", fields: [deletedById], references: [id])
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("ExpensesDeleted", fields: [deletedById], references: [id])
 
   @@index([expenseDate])
   @@index([category])
@@ -1084,32 +1092,32 @@ model Expense {
 // ============================================================
 
 model Notification {
-  id            String                 @id @default(cuid())
+  id String @id @default(cuid())
 
   // Tipo y contenido
-  type          StaffNotificationType
-  title         String
-  message       String
+  type    StaffNotificationType
+  title   String
+  message String
 
   // Referencia para navegación
-  entityType    String?                // "appointment"
-  entityId      String?                // ID de la cita
+  entityType String? // "appointment"
+  entityId   String? // ID de la cita
 
   // Datos adicionales para navegación
-  metadata      Json?                  // { date: "2026-01-28", isPendingPayment: true }
+  metadata Json? // { date: "2026-01-28", isPendingPayment: true }
 
   // Estado de lectura (compartido entre staff)
-  isRead        Boolean                @default(false)
-  readAt        DateTime?
-  readById      String?
-  readBy        User?                  @relation("NotificationReadBy", fields: [readById], references: [id])
+  isRead   Boolean   @default(false)
+  readAt   DateTime?
+  readById String?
+  readBy   User?     @relation("NotificationReadBy", fields: [readById], references: [id])
 
   // Audiencia
-  forRole       UserRole               @default(RECEPTION)
+  forRole UserRole @default(RECEPTION)
 
   // Timestamps
-  createdAt     DateTime               @default(now())
-  expiresAt     DateTime               // createdAt + 7 días
+  createdAt DateTime @default(now())
+  expiresAt DateTime // createdAt + 7 días
 
   @@index([isRead, forRole])
   @@index([expiresAt])
@@ -1122,13 +1130,13 @@ model Notification {
 // ============================================================
 
 model BusinessHours {
-  id             String   @id @default(cuid())
-  dayOfWeek      Int      // 0=Dom, 1=Lun, ..., 6=Sab
-  morningOpen    String?  // HH:mm format
-  morningClose   String?  // HH:mm format
-  afternoonOpen  String?  // HH:mm format
-  afternoonClose String?  // HH:mm format
-  isOpen         Boolean  @default(true)
+  id             String  @id @default(cuid())
+  dayOfWeek      Int // 0=Dom, 1=Lun, ..., 6=Sab
+  morningOpen    String? // HH:mm format
+  morningClose   String? // HH:mm format
+  afternoonOpen  String? // HH:mm format
+  afternoonClose String? // HH:mm format
+  isOpen         Boolean @default(true)
 
   @@unique([dayOfWeek])
   @@map("business_hours")
@@ -1152,32 +1160,32 @@ model ClosedDate {
 // ============================================================
 
 model SystemSettings {
-  id                    String   @id @default("default")
+  id String @id @default("default")
 
   // Paquete por defecto para citas sin paquete
-  defaultPackageId      String?
-  defaultPackage        Package? @relation("DefaultPackage", fields: [defaultPackageId], references: [id])
+  defaultPackageId String?
+  defaultPackage   Package? @relation("DefaultPackage", fields: [defaultPackageId], references: [id])
 
   // Configuración de pagos (para Fase 3.2)
-  paymentQrImage        String?  @db.Text  // Base64 encoded QR image
-  paymentQrImageUrl     String?  // URL de la imagen del QR de pago (legacy)
-  whatsappNumber        String?  // Número de WhatsApp para comprobantes
-  whatsappCountryCode   String?  @default("+591")  // Country code for WhatsApp
-  whatsappMessage       String?  @default("Hola, adjunto mi comprobante de pago para la cita del {fecha} a las {hora}. Bebé: {bebe}")
+  paymentQrImage      String? @db.Text // Base64 encoded QR image
+  paymentQrImageUrl   String? // URL de la imagen del QR de pago (legacy)
+  whatsappNumber      String? // Número de WhatsApp para comprobantes
+  whatsappCountryCode String? @default("+591") // Country code for WhatsApp
+  whatsappMessage     String? @default("Hola, adjunto mi comprobante de pago para la cita del {fecha} a las {hora}. Bebé: {bebe}")
 
   // Redes sociales y contacto
-  instagramHandle       String?  // Handle de Instagram (sin @)
-  businessAddress       String?  // Dirección física del negocio
+  instagramHandle String? // Handle de Instagram (sin @)
+  businessAddress String? // Dirección física del negocio
 
   // Configuración de notificaciones
-  notificationPollingInterval  Int @default(5)   // Intervalo de polling en minutos (1-30)
-  notificationExpirationDays   Int @default(7)   // Días hasta que expira una notificación (1-30)
+  notificationPollingInterval Int @default(5) // Intervalo de polling en minutos (1-30)
+  notificationExpirationDays  Int @default(7) // Días hasta que expira una notificación (1-30)
 
   // Configuración de slots de citas (MP-001)
-  maxSlotsStaff         Int @default(5)   // Límite de citas por slot para staff (1-10)
-  maxSlotsPortal        Int @default(2)   // Límite de citas por slot para portal padres (1-5)
+  maxSlotsStaff  Int @default(5) // Límite de citas por slot para staff (1-10)
+  maxSlotsPortal Int @default(2) // Límite de citas por slot para portal padres (1-5)
 
-  updatedAt             DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 
   @@map("system_settings")
 }
@@ -1187,43 +1195,44 @@ model SystemSettings {
 // ============================================================
 
 model Event {
-  id          String      @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   description String?
-  type        EventType   // BABIES o PARENTS
+  type        EventType // BABIES o PARENTS
 
   // Fecha y horario
-  date        DateTime    @db.Date
-  startTime   String      // HH:mm format
-  endTime     String      // HH:mm format
+  date      DateTime @db.Date
+  startTime String // HH:mm format
+  endTime   String // HH:mm format
 
   // Capacidad y bloqueo
-  maxParticipants    Int       @default(10)
-  blockedTherapists  Int       @default(0)  // 0-4: cuántos terapeutas se bloquean
+  maxParticipants   Int @default(10)
+  blockedTherapists Int @default(0) // 0-4: cuántos terapeutas se bloquean
 
   // Rango de edad (solo para eventos tipo BABIES)
-  minAgeMonths       Int?      // Edad mínima en meses
-  maxAgeMonths       Int?      // Edad máxima en meses
+  minAgeMonths Int? // Edad mínima en meses
+  maxAgeMonths Int? // Edad máxima en meses
 
   // Precio y descuentos
-  basePrice          Decimal   @db.Decimal(10, 2)
+  basePrice Decimal @db.Decimal(10, 2)
 
-  status      EventStatus @default(DRAFT)
+  status EventStatus @default(DRAFT)
 
   // Notas
-  internalNotes  String?   // Solo visible para staff
-  externalNotes  String?   // Visible para padres (descripción pública)
+  internalNotes String? // Solo visible para staff
+  externalNotes String? // Visible para padres (descripción pública)
 
   // Auditoría
   createdById String
-  createdBy   User        @relation(fields: [createdById], references: [id])
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   participants  EventParticipant[]
   productUsages EventProductUsage[]
 
+  @@index([date, status])
   @@map("events")
 }
 
@@ -1232,50 +1241,50 @@ model Event {
 // ============================================================
 
 model EventParticipant {
-  id        String            @id @default(cuid())
-  eventId   String
-  event     Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   // Participante: bebé O padre (mutuamente excluyentes según tipo evento)
-  babyId    String?
-  baby      Baby?             @relation(fields: [babyId], references: [id])
-  parentId  String?
-  parent    Parent?           @relation(fields: [parentId], references: [id])
+  babyId   String?
+  baby     Baby?   @relation(fields: [babyId], references: [id])
+  parentId String?
+  parent   Parent? @relation(fields: [parentId], references: [id])
 
-  status    ParticipantStatus @default(REGISTERED)
+  status ParticipantStatus @default(REGISTERED)
 
   // Descuentos individuales por participante
-  discountType    DiscountType?   // COURTESY o FIXED
-  discountAmount  Decimal?        @db.Decimal(10, 2)  // Monto si es FIXED
-  discountReason  String?         // Razón del descuento
+  discountType   DiscountType? // COURTESY o FIXED
+  discountAmount Decimal?      @db.Decimal(10, 2) // Monto si es FIXED
+  discountReason String? // Razón del descuento
 
   // Pago
-  amountDue       Decimal         @db.Decimal(10, 2)  // Monto a pagar (precio - descuento)
-  amountPaid      Decimal         @default(0) @db.Decimal(10, 2)
-  paymentMethod   PaymentMethod?
+  amountDue        Decimal        @db.Decimal(10, 2) // Monto a pagar (precio - descuento)
+  amountPaid       Decimal        @default(0) @db.Decimal(10, 2)
+  paymentMethod    PaymentMethod?
   paymentReference String?
-  paidAt          DateTime?
+  paidAt           DateTime?
 
   // Asistencia
-  attended        Boolean?        // null = no marcado, true = asistió, false = no asistió
-  attendedAt      DateTime?
+  attended   Boolean? // null = no marcado, true = asistió, false = no asistió
+  attendedAt DateTime?
 
   // Notas
-  notes           String?
+  notes String?
 
   // Lead data (for PARENTS events - pregnant attendees without Parent record)
-  name            String?         // Name if not linked to Parent
-  phone           String?         // Phone if not linked to Parent
-  email           String?         // Email if not linked to Parent
-  expectedDueDate DateTime?       // Expected due date for pregnant leads
-  followUpAt      DateTime?       // Last follow-up date for lead tracking
+  name            String? // Name if not linked to Parent
+  phone           String? // Phone if not linked to Parent
+  email           String? // Email if not linked to Parent
+  expectedDueDate DateTime? // Expected due date for pregnant leads
+  followUpAt      DateTime? // Last follow-up date for lead tracking
 
   // Auditoría
-  registeredById  String
-  registeredBy    User            @relation(fields: [registeredById], references: [id])
+  registeredById String
+  registeredBy   User   @relation(fields: [registeredById], references: [id])
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([eventId, babyId])
   @@unique([eventId, parentId])
@@ -1283,7 +1292,7 @@ model EventParticipant {
   @@index([eventId, status])
   @@index([babyId, status])
   @@index([parentId, status])
-  @@index([expectedDueDate])  // For lead alerts cron job
+  @@index([expectedDueDate]) // For lead alerts cron job
   @@map("event_participants")
 }
 
@@ -1292,18 +1301,23 @@ model EventParticipant {
 // ============================================================
 
 model EventProductUsage {
-  id          String    @id @default(cuid())
-  eventId     String
-  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id])
+  id        String  @id @default(cuid())
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
-  quantity    Int       @default(1)
-  unitPrice   Decimal   @db.Decimal(10, 2)
-  notes       String?
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2)
+  notes     String?
 
-  createdAt   DateTime  @default(now())
+  // Para distinguir uso interno vs venta
+  isChargeable Boolean @default(true)
 
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([productId])
   @@map("event_product_usages")
 }
 
@@ -1313,39 +1327,39 @@ model EventProductUsage {
 
 // Plantilla/Catálogo de Baby Cards
 model BabyCard {
-  id                    String    @id @default(cuid())
-  name                  String    // "Baby Spa Card Premium"
-  description           String?   @db.Text
+  id          String  @id @default(cuid())
+  name        String // "Baby Spa Card Premium"
+  description String? @db.Text
 
   // Precio y configuración
-  price                 Decimal   @db.Decimal(10, 2)  // Precio de la tarjeta
-  totalSessions         Int       // Total de sesiones para completar
-  firstSessionDiscount  Decimal   @default(0) @db.Decimal(10, 2)  // Monto de descuento en primera sesión
+  price                Decimal @db.Decimal(10, 2) // Precio de la tarjeta
+  totalSessions        Int // Total de sesiones para completar
+  firstSessionDiscount Decimal @default(0) @db.Decimal(10, 2) // Monto de descuento en primera sesión
 
   // Estado
-  isActive              Boolean   @default(true)
-  sortOrder             Int       @default(0)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relaciones
-  specialPrices         BabyCardSpecialPrice[]
-  rewards               BabyCardReward[]
-  purchases             BabyCardPurchase[]
+  specialPrices BabyCardSpecialPrice[]
+  rewards       BabyCardReward[]
+  purchases     BabyCardPurchase[]
 
   @@map("baby_cards")
 }
 
 // Precios especiales por paquete/servicio
 model BabyCardSpecialPrice {
-  id              String    @id @default(cuid())
-  babyCardId      String
-  packageId       String    // Paquete al que aplica (ej: Sesión Individual)
-  specialPrice    Decimal   @db.Decimal(10, 2)  // Precio con Baby Card
+  id           String  @id @default(cuid())
+  babyCardId   String
+  packageId    String // Paquete al que aplica (ej: Sesión Individual)
+  specialPrice Decimal @db.Decimal(10, 2) // Precio con Baby Card
 
-  babyCard        BabyCard  @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
-  package         Package   @relation(fields: [packageId], references: [id])
+  babyCard BabyCard @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
+  package  Package  @relation(fields: [packageId], references: [id])
 
   @@unique([babyCardId, packageId])
   @@map("baby_card_special_prices")
@@ -1353,32 +1367,32 @@ model BabyCardSpecialPrice {
 
 // Premios configurados en cada Baby Card
 model BabyCardReward {
-  id              String          @id @default(cuid())
-  babyCardId      String
-  sessionNumber   Int             // En qué sesión se desbloquea (3, 7, 10, etc.)
+  id            String @id @default(cuid())
+  babyCardId    String
+  sessionNumber Int // En qué sesión se desbloquea (3, 7, 10, etc.)
 
   // Tipo de premio
-  rewardType      RewardType      // SERVICE | PRODUCT | EVENT | CUSTOM
+  rewardType RewardType // SERVICE | PRODUCT | EVENT | CUSTOM
 
   // Referencias según tipo
-  packageId       String?         // Si rewardType = SERVICE
-  productId       String?         // Si rewardType = PRODUCT
+  packageId String? // Si rewardType = SERVICE
+  productId String? // Si rewardType = PRODUCT
 
   // Para premios personalizados (CUSTOM)
-  customName      String?         // "Diploma de Graduación"
-  customDescription String?       @db.Text
+  customName        String? // "Diploma de Graduación"
+  customDescription String? @db.Text
 
   // Display
-  displayName     String          // "Sesión de Fotos Gratis"
-  displayIcon     String?         // Emoji o nombre de icono lucide
+  displayName String // "Sesión de Fotos Gratis"
+  displayIcon String? // Emoji o nombre de icono lucide
 
-  createdAt       DateTime        @default(now())
+  createdAt DateTime @default(now())
 
-  babyCard        BabyCard        @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
-  package         Package?        @relation(fields: [packageId], references: [id])
-  product         Product?        @relation(fields: [productId], references: [id])
+  babyCard BabyCard @relation(fields: [babyCardId], references: [id], onDelete: Cascade)
+  package  Package? @relation(fields: [packageId], references: [id])
+  product  Product? @relation(fields: [productId], references: [id])
 
-  usages          BabyCardRewardUsage[]
+  usages BabyCardRewardUsage[]
 
   @@unique([babyCardId, sessionNumber])
   @@map("baby_card_rewards")
@@ -1386,114 +1400,157 @@ model BabyCardReward {
 
 // Compra/Asignación de Baby Card a un bebé
 model BabyCardPurchase {
-  id                    String          @id @default(cuid())
-  babyCardId            String
-  babyId                String
+  id         String @id @default(cuid())
+  babyCardId String
+  babyId     String
 
   // Pago
-  pricePaid             Decimal         @db.Decimal(10, 2)
-  paymentMethod         PaymentMethod?
-  paymentReference      String?
+  pricePaid        Decimal        @db.Decimal(10, 2)
+  paymentMethod    PaymentMethod?
+  paymentReference String?
 
   // Progreso
-  completedSessions     Int             @default(0)
+  completedSessions Int @default(0)
 
   // Estado
-  status                BabyCardStatus  @default(ACTIVE)
+  status BabyCardStatus @default(ACTIVE)
 
   // Descuento primera sesión
-  firstSessionDiscountUsed    Boolean         @default(false)
-  firstSessionDiscountAmount  Decimal?        @db.Decimal(10, 2)  // Monto realmente descontado
-  firstSessionDiscountAppliedTo String?       // ID de la cita/paquete donde se aplicó
-  firstSessionDiscountDate    DateTime?
+  firstSessionDiscountUsed      Boolean   @default(false)
+  firstSessionDiscountAmount    Decimal?  @db.Decimal(10, 2) // Monto realmente descontado
+  firstSessionDiscountAppliedTo String? // ID de la cita/paquete donde se aplicó
+  firstSessionDiscountDate      DateTime?
 
   // Fechas
-  purchaseDate          DateTime        @default(now())
-  completedDate         DateTime?       // Cuando completó todas las sesiones
-  replacedDate          DateTime?       // Si fue reemplazada por otra card
-  replacedByPurchaseId  String?         // ID de la card que la reemplazó
+  purchaseDate         DateTime  @default(now())
+  completedDate        DateTime? // Cuando completó todas las sesiones
+  replacedDate         DateTime? // Si fue reemplazada por otra card
+  replacedByPurchaseId String? // ID de la card que la reemplazó
 
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
-  createdById           String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
 
   // Relaciones
-  babyCard              BabyCard        @relation(fields: [babyCardId], references: [id])
-  baby                  Baby            @relation(fields: [babyId], references: [id])
-  createdBy             User?           @relation("BabyCardPurchasesCreated", fields: [createdById], references: [id])
+  babyCard  BabyCard @relation(fields: [babyCardId], references: [id])
+  baby      Baby     @relation(fields: [babyId], references: [id])
+  createdBy User?    @relation("BabyCardPurchasesCreated", fields: [createdById], references: [id])
 
-  rewardUsages          BabyCardRewardUsage[]
-  sessionLogs           BabyCardSessionLog[]
+  rewardUsages BabyCardRewardUsage[]
+  sessionLogs  BabyCardSessionLog[]
 
+  @@index([babyId, status])
+  @@index([babyCardId])
   @@map("baby_card_purchases")
 }
 
 // Registro de sesiones completadas en Baby Card
 model BabyCardSessionLog {
-  id                  String    @id @default(cuid())
-  babyCardPurchaseId  String
-  sessionId           String    @unique  // La sesión que contó
-  sessionNumber       Int       // Número de sesión en la card (1, 2, 3...)
+  id                 String @id @default(cuid())
+  babyCardPurchaseId String
+  sessionId          String @unique // La sesión que contó
+  sessionNumber      Int // Número de sesión en la card (1, 2, 3...)
 
-  createdAt           DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  babyCardPurchase    BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
-  session             Session          @relation(fields: [sessionId], references: [id])
+  babyCardPurchase BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
+  session          Session          @relation(fields: [sessionId], references: [id])
 
+  @@index([babyCardPurchaseId])
   @@map("baby_card_session_logs")
 }
 
 // Uso de premios de Baby Card
 model BabyCardRewardUsage {
-  id                  String    @id @default(cuid())
-  babyCardPurchaseId  String
-  babyCardRewardId    String
+  id                 String @id @default(cuid())
+  babyCardPurchaseId String
+  babyCardRewardId   String
 
   // Cuándo se usó
-  usedAt              DateTime  @default(now())
-  usedById            String    // Staff que lo aplicó
+  usedAt   DateTime @default(now())
+  usedById String // Staff que lo aplicó
 
   // Referencia a dónde se aplicó
-  appointmentId       String?   // Si se usó en una cita
-  eventParticipantId  String?   // Si se usó en un evento
-  productSaleId       String?   // Si se usó para un producto
+  appointmentId      String? // Si se usó en una cita
+  eventParticipantId String? // Si se usó en un evento
+  productSaleId      String? // Si se usó para un producto
 
-  notes               String?
+  notes String?
 
-  babyCardPurchase    BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
-  babyCardReward      BabyCardReward   @relation(fields: [babyCardRewardId], references: [id])
-  usedBy              User             @relation("BabyCardRewardsApplied", fields: [usedById], references: [id])
+  babyCardPurchase BabyCardPurchase @relation(fields: [babyCardPurchaseId], references: [id], onDelete: Cascade)
+  babyCardReward   BabyCardReward   @relation(fields: [babyCardRewardId], references: [id])
+  usedBy           User             @relation("BabyCardRewardsApplied", fields: [usedById], references: [id])
 
-  @@unique([babyCardPurchaseId, babyCardRewardId])  // Un premio solo se usa una vez
+  @@unique([babyCardPurchaseId, babyCardRewardId]) // Un premio solo se usa una vez
   @@index([usedById])
   @@map("baby_card_reward_usages")
 }
 
 // ============================================================
-// DETALLES DE PAGO (Split Payments)
+// TRANSACCIONES (Sistema centralizado de pagos)
 // ============================================================
 
-// Modelo centralizado para registrar cada "línea" de pago
-// Permite pagos divididos: ej. 350 Bs = 200 efectivo + 150 tarjeta
-model PaymentDetail {
-  id              String            @id @default(cuid())
+// Reemplaza: PaymentDetail, AppointmentPayment, PackagePayment
+// Un registro por operación, con split payments en JSON
+model Transaction {
+  id String @id @default(cuid())
 
-  // Referencia polimórfica al padre
-  parentType      PaymentParentType
-  parentId        String            // ID del Payment, BabyCardPurchase, EventParticipant, etc.
+  // Tipo y categoría
+  type     TransactionType
+  category TransactionCategory
 
-  // Detalle del pago
-  amount          Decimal           @db.Decimal(10, 2)
-  paymentMethod   PaymentMethod     // CASH, QR, CARD, TRANSFER
-  reference       String?           // Número de comprobante
+  // Referencia polimórfica
+  referenceType String // "Session", "EventParticipant", "PackagePurchase", etc.
+  referenceId   String // ID del registro relacionado
 
-  // Auditoría
-  createdAt       DateTime          @default(now())
-  createdById     String?
-  createdBy       User?             @relation("PaymentDetailsCreated", fields: [createdById], references: [id])
+  // Totales
+  subtotal      Decimal @db.Decimal(10, 2)
+  discountTotal Decimal @default(0) @db.Decimal(10, 2)
+  total         Decimal @db.Decimal(10, 2)
 
-  @@index([parentType, parentId])
-  @@map("payment_details")
+  // Métodos de pago (split payment support)
+  // JSON Array: [{ method: "CASH", amount: 200 }, { method: "QR", amount: 150, reference: "TXN-123" }]
+  paymentMethods Json
+
+  // Metadatos
+  notes       String?
+  createdById String?
+  createdBy   User?    @relation("TransactionsCreated", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  // Line items
+  items TransactionItem[]
+
+  @@index([type])
+  @@index([category])
+  @@index([referenceType, referenceId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// Line items de cada transacción
+model TransactionItem {
+  id            String      @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  // Tipo y referencia
+  itemType    ItemType
+  referenceId String? // ID del producto, paquete, etc.
+  description String // Nombre legible para reportes
+
+  // Montos
+  quantity       Int     @default(1)
+  unitPrice      Decimal @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
+  discountReason String?
+  finalPrice     Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@index([itemType])
+  @@map("transaction_items")
 }
 
 // ============================================================
@@ -1501,28 +1558,28 @@ model PaymentDetail {
 // ============================================================
 
 model Activity {
-  id            String         @id @default(cuid())
+  id String @id @default(cuid())
 
   // Tipo de actividad
-  type          ActivityType
+  type ActivityType
 
   // Descripción (key de traducción)
-  title         String         // "activity.session_completed"
-  description   String?        // Información adicional
+  title       String // "activity.session_completed"
+  description String? // Información adicional
 
   // Entidad relacionada (para navegación con botón "Ver")
-  entityType    String?        // "appointment", "baby", "session", etc.
-  entityId      String?        // ID del registro
+  entityType String? // "appointment", "baby", "session", etc.
+  entityId   String? // ID del registro
 
   // Datos adicionales para UI (JSON flexible)
-  metadata      Json?          // { userName: "María", babyName: "Lucas", amount: 350 }
+  metadata Json? // { userName: "María", babyName: "Lucas", amount: 350 }
 
   // Quién realizó la acción (null si es sistema/portal)
   performedById String?
-  performedBy   User?          @relation("ActivitiesPerformed", fields: [performedById], references: [id])
+  performedBy   User?   @relation("ActivitiesPerformed", fields: [performedById], references: [id])
 
   // Timestamp
-  createdAt     DateTime       @default(now())
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
   @@index([type, createdAt])
@@ -1535,40 +1592,40 @@ model Activity {
 // ============================================================
 
 model CashRegister {
-  id                String              @id @default(cuid())
+  id String @id @default(cuid())
 
   // Apertura
-  openedById        String
-  openedBy          User                @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
-  openedAt          DateTime            @default(now())
-  initialFund       Decimal             @default(0) @db.Decimal(10, 2)
+  openedById  String
+  openedBy    User     @relation("CashRegisterOpenedBy", fields: [openedById], references: [id])
+  openedAt    DateTime @default(now())
+  initialFund Decimal  @default(0) @db.Decimal(10, 2)
 
   // Cierre
-  closedAt          DateTime?
-  declaredAmount    Decimal?            @db.Decimal(10, 2)
-  expectedAmount    Decimal?            @db.Decimal(10, 2)
-  difference        Decimal?            @db.Decimal(10, 2)
-  closingNotes      String?             @db.Text
+  closedAt       DateTime?
+  declaredAmount Decimal?  @db.Decimal(10, 2)
+  expectedAmount Decimal?  @db.Decimal(10, 2)
+  difference     Decimal?  @db.Decimal(10, 2)
+  closingNotes   String?   @db.Text
 
   // Estado
-  status            CashRegisterStatus  @default(OPEN)
+  status CashRegisterStatus @default(OPEN)
 
   // Revisión (solo si hay diferencia)
-  reviewedById      String?
-  reviewedBy        User?               @relation("CashRegisterReviewedBy", fields: [reviewedById], references: [id])
-  reviewedAt        DateTime?
-  reviewNotes       String?             @db.Text
+  reviewedById String?
+  reviewedBy   User?     @relation("CashRegisterReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  reviewNotes  String?   @db.Text
 
   // Forzar cierre (si aplica)
-  forcedCloseById   String?
-  forcedCloseBy     User?               @relation("CashRegisterForcedBy", fields: [forcedCloseById], references: [id])
-  forcedCloseNotes  String?             @db.Text
+  forcedCloseById  String?
+  forcedCloseBy    User?   @relation("CashRegisterForcedBy", fields: [forcedCloseById], references: [id])
+  forcedCloseNotes String? @db.Text
 
   // Relaciones
-  expenses          CashRegisterExpense[]
+  expenses CashRegisterExpense[]
 
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([openedById, openedAt])
   @@index([status])
@@ -1577,18 +1634,18 @@ model CashRegister {
 }
 
 model CashRegisterExpense {
-  id                String              @id @default(cuid())
+  id String @id @default(cuid())
 
-  cashRegisterId    String
-  cashRegister      CashRegister        @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+  cashRegisterId String
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
 
-  amount            Decimal             @db.Decimal(10, 2)
-  category          CashExpenseCategory
-  description       String
+  amount      Decimal             @db.Decimal(10, 2)
+  category    CashExpenseCategory
+  description String
 
-  createdById       String
-  createdBy         User                @relation("CashRegisterExpenseCreatedBy", fields: [createdById], references: [id])
-  createdAt         DateTime            @default(now())
+  createdById String
+  createdBy   User     @relation("CashRegisterExpenseCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
 
   @@index([cashRegisterId])
   @@index([createdAt])
@@ -1602,73 +1659,73 @@ model CashRegisterExpense {
 
 // Templates de mensajes editables
 model MessageTemplate {
-  id              String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  key             String            @unique   // "APPOINTMENT_REMINDER_24H"
-  name            String                      // "Recordatorio de cita 24h"
-  description     String?
-  category        TemplateCategory
+  key         String           @unique // "APPOINTMENT_REMINDER_24H"
+  name        String // "Recordatorio de cita 24h"
+  description String?
+  category    TemplateCategory
 
   // Canales habilitados
-  emailEnabled    Boolean           @default(false)
-  whatsappEnabled Boolean           @default(false)
+  emailEnabled    Boolean @default(false)
+  whatsappEnabled Boolean @default(false)
 
   // Contenido
-  subject         String?                     // Asunto del email
-  body            String            @db.Text  // Cuerpo del mensaje
+  subject String? // Asunto del email
+  body    String  @db.Text // Cuerpo del mensaje
 
   // Para mesversarios: múltiples versiones que rotan
-  bodyVersion2    String?           @db.Text
-  bodyVersion3    String?           @db.Text
+  bodyVersion2 String? @db.Text
+  bodyVersion3 String? @db.Text
 
   // Variables disponibles para este template
-  variables       String[]          @default([])  // ["parentName", "babyName", "date"]
+  variables String[] @default([]) // ["parentName", "babyName", "date"]
 
   // Configuración adicional (JSON)
-  config          Json?             // { maxAgeMonths: 12, daysBefore: 3 }
+  config Json? // { maxAgeMonths: 12, daysBefore: 3 }
 
-  isActive        Boolean           @default(true)
+  isActive Boolean @default(true)
 
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("message_templates")
 }
 
 // Cola de mensajes WhatsApp pendientes
 model PendingMessage {
-  id              String                @id @default(cuid())
+  id String @id @default(cuid())
 
   // Categoría y template
-  category        PendingMessageCategory
-  templateKey     String
+  category    PendingMessageCategory
+  templateKey String
 
   // Destinatario
-  recipientType   RecipientType
-  recipientId     String                // parentId, babyId, o leadId
-  recipientName   String
-  recipientPhone  String
+  recipientType  RecipientType
+  recipientId    String // parentId, babyId, o leadId
+  recipientName  String
+  recipientPhone String
 
   // Mensaje ya procesado con variables
-  message         String                @db.Text
+  message String @db.Text
 
   // Entidad relacionada (para navegación)
-  entityType      String?               // "Appointment", "Baby", etc.
-  entityId        String?
-  metadata        Json?                 // Datos adicionales
+  entityType String? // "Appointment", "Baby", etc.
+  entityId   String?
+  metadata   Json? // Datos adicionales
 
   // Estado
-  status          PendingMessageStatus  @default(PENDING)
-  sentAt          DateTime?
-  sentById        String?
-  sentBy          User?                 @relation("PendingMessageSentBy", fields: [sentById], references: [id])
-  skipReason      String?
+  status     PendingMessageStatus @default(PENDING)
+  sentAt     DateTime?
+  sentById   String?
+  sentBy     User?                @relation("PendingMessageSentBy", fields: [sentById], references: [id])
+  skipReason String?
 
   // Programación
-  scheduledFor    DateTime              // Cuándo debe mostrarse
-  expiresAt       DateTime              // Cuándo expira (3 días después)
+  scheduledFor DateTime // Cuándo debe mostrarse
+  expiresAt    DateTime // Cuándo expira (3 días después)
 
-  createdAt       DateTime              @default(now())
+  createdAt DateTime @default(now())
 
   @@index([status, scheduledFor])
   @@index([category, status])
@@ -1677,42 +1734,42 @@ model PendingMessage {
 
 // Log de emails enviados (para tracking con webhooks Resend)
 model EmailLog {
-  id              String            @id @default(cuid())
+  id String @id @default(cuid())
 
   // ID de Resend para webhooks
-  resendId        String            @unique
+  resendId String @unique
 
   // Destinatario
-  toEmail         String
-  parentId        String?
-  parent          Parent?           @relation(fields: [parentId], references: [id])
+  toEmail  String
+  parentId String?
+  parent   Parent? @relation(fields: [parentId], references: [id])
 
   // Template usado
-  templateKey     String
-  category        TemplateCategory
+  templateKey String
+  category    TemplateCategory
 
   // Estado (actualizado por webhooks)
-  status          EmailStatus       @default(SENT)
+  status EmailStatus @default(SENT)
 
   // Timestamps de eventos
-  sentAt          DateTime          @default(now())
-  deliveredAt     DateTime?
-  openedAt        DateTime?
-  bouncedAt       DateTime?
-  complainedAt    DateTime?
+  sentAt       DateTime  @default(now())
+  deliveredAt  DateTime?
+  openedAt     DateTime?
+  bouncedAt    DateTime?
+  complainedAt DateTime?
 
   // Información de rebote
-  bounceType      String?           // "hard", "soft"
-  bounceReason    String?
+  bounceType   String? // "hard", "soft"
+  bounceReason String?
 
   // Contenido (para referencia)
-  subject         String?
+  subject String?
 
   // Retry para emails fallidos
-  retryCount      Int               @default(0)
-  lastRetryAt     DateTime?
+  retryCount  Int       @default(0)
+  lastRetryAt DateTime?
 
-  createdAt       DateTime          @default(now())
+  createdAt DateTime @default(now())
 
   @@index([status, createdAt])
   @@index([templateKey, createdAt])

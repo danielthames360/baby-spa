@@ -10,7 +10,10 @@ import {
 } from "@/lib/api-utils";
 import { registerInstallmentPaymentSchema } from "@/lib/validations/package";
 import { getNextInstallmentToPay, getPaidInstallmentsCount } from "@/lib/utils/installments";
-import { paymentDetailService } from "@/lib/services/payment-detail-service";
+import {
+  transactionService,
+  PaymentMethodEntry,
+} from "@/lib/services/transaction-service";
 
 // Payment detail input type for split payments
 interface PaymentDetailInput {
@@ -27,13 +30,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = validateRequest(body, registerInstallmentPaymentSchema);
 
-    // Get the package purchase with existing payments
+    // Get the package purchase
     const purchase = await prisma.packagePurchase.findUnique({
       where: { id: data.packagePurchaseId },
       include: {
-        installmentPayments: {
-          orderBy: { installmentNumber: "asc" },
-        },
         package: true,
       },
     });
@@ -47,11 +47,21 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, "INVALID_INSTALLMENT_NUMBER");
     }
 
-    // Check if this installment is already paid
-    const existingPayment = purchase.installmentPayments.find(
-      (p) => p.installmentNumber === data.installmentNumber
+    // Get existing installment payments (transactions)
+    const existingTransactions = await transactionService.getByReference(
+      "PackagePurchase",
+      data.packagePurchaseId
     );
-    if (existingPayment) {
+    const paidInstallmentNumbers = existingTransactions
+      .filter((t) => t.category === "PACKAGE_INSTALLMENT")
+      .map((t) => {
+        // Extract installment number from notes or items
+        const installmentItem = t.items.find((i) => i.itemType === "INSTALLMENT");
+        return installmentItem?.quantity ?? 0;
+      });
+
+    // Check if this installment is already paid
+    if (paidInstallmentNumbers.includes(data.installmentNumber)) {
       throw new ApiError(400, "INSTALLMENT_ALREADY_PAID");
     }
 
@@ -83,46 +93,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
-    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
-      paymentMethod: data.paymentMethod as PaymentMethod | undefined,
-      paymentReference: data.reference || null,
-      paymentDetails: data.paymentDetails as PaymentDetailInput[] | undefined,
-      totalAmount: data.amount,
-    });
-
-    // Use the first payment method as the "primary" method for backwards compatibility
-    const primaryMethod = normalizedPaymentDetails.length > 0
-      ? normalizedPaymentDetails[0].paymentMethod
-      : (data.paymentMethod as PaymentMethod);
-
-    // Create the payment and update purchase in transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create payment record
-      const payment = await tx.packagePayment.create({
-        data: {
-          packagePurchaseId: data.packagePurchaseId,
-          installmentNumber: data.installmentNumber,
+    let paymentMethods: PaymentMethodEntry[] = [];
+    if (data.paymentDetails && data.paymentDetails.length > 0) {
+      paymentMethods = (data.paymentDetails as PaymentDetailInput[]).map((pd) => ({
+        method: pd.paymentMethod,
+        amount: pd.amount,
+        reference: pd.reference || undefined,
+      }));
+    } else if (data.paymentMethod) {
+      paymentMethods = [
+        {
+          method: data.paymentMethod as PaymentMethod,
           amount: data.amount,
-          paymentMethod: primaryMethod,
-          reference: data.reference || null,
-          notes: data.notes || null,
-          createdById: session.user.id,
+          reference: data.reference || undefined,
         },
-      });
+      ];
+    }
 
-      // Create payment details for split payment tracking
-      if (normalizedPaymentDetails.length > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "PACKAGE_INSTALLMENT",
-            parentId: payment.id,
-            details: normalizedPaymentDetails,
-            createdById: session.user.id,
-          },
-          tx
-        );
-      }
-
+    // Create transaction and update purchase
+    const result = await prisma.$transaction(async (tx) => {
       // Update purchase paidAmount
       const newPaidAmount = purchase.paidAmount.toNumber() + data.amount;
       const updatedPurchase = await tx.packagePurchase.update({
@@ -131,9 +120,6 @@ export async function POST(request: NextRequest) {
           paidAmount: newPaidAmount,
         },
         include: {
-          installmentPayments: {
-            orderBy: { installmentNumber: "asc" },
-          },
           package: true,
           baby: {
             select: { id: true, name: true },
@@ -141,7 +127,27 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return { payment, purchase: updatedPurchase };
+      return { purchase: updatedPurchase };
+    });
+
+    // Create transaction record for the installment payment (outside prisma transaction)
+    const transaction = await transactionService.create({
+      type: "INCOME",
+      category: "PACKAGE_INSTALLMENT",
+      referenceType: "PackagePurchase",
+      referenceId: data.packagePurchaseId,
+      items: [
+        {
+          itemType: "INSTALLMENT",
+          referenceId: data.packagePurchaseId,
+          description: `Cuota ${data.installmentNumber} - ${purchase.package.name}`,
+          quantity: data.installmentNumber, // Store installment number in quantity
+          unitPrice: data.amount,
+        },
+      ],
+      paymentMethods,
+      notes: data.notes || undefined,
+      createdById: session.user.id,
     });
 
     // Calculate updated status
@@ -157,14 +163,22 @@ export async function POST(request: NextRequest) {
       paymentPlan: result.purchase.paymentPlan,
       installmentsPayOnSessions: result.purchase.installmentsPayOnSessions,
     };
-    const paidInstallments = getPaidInstallmentsCount(updatedPurchaseForCalc);
+    const paidInstallmentsCount = getPaidInstallmentsCount(updatedPurchaseForCalc);
 
     return createdResponse({
-      payment: result.payment,
+      payment: {
+        id: transaction.id,
+        packagePurchaseId: data.packagePurchaseId,
+        installmentNumber: data.installmentNumber,
+        amount: data.amount,
+        paymentMethods: transaction.paymentMethods,
+        notes: data.notes || null,
+        createdAt: transaction.createdAt,
+      },
       purchase: {
         ...result.purchase,
-        paidInstallments,
-        remainingInstallments: result.purchase.installments - paidInstallments,
+        paidInstallments: paidInstallmentsCount,
+        remainingInstallments: result.purchase.installments - paidInstallmentsCount,
       },
     });
   } catch (error) {

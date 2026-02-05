@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Prisma, PaymentMethod, ParticipantStatus, DiscountType } from "@prisma/client";
-import { paymentDetailService } from "./payment-detail-service";
+import { transactionService, PaymentMethodEntry } from "./transaction-service";
 import { activityService } from "./activity-service";
 import { fromDateOnly } from "@/lib/utils/date-utils";
 
@@ -428,6 +428,7 @@ export const eventParticipantService = {
   async registerPayment(input: RegisterPaymentInput) {
     const participant = await prisma.eventParticipant.findUnique({
       where: { id: input.participantId },
+      include: { event: { select: { id: true, name: true } } },
     });
 
     if (!participant) {
@@ -435,53 +436,69 @@ export const eventParticipantService = {
     }
 
     // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
-    const normalizedPaymentDetails = paymentDetailService.normalizePaymentInput({
-      paymentMethod: input.paymentMethod,
-      paymentReference: input.paymentReference,
-      paymentDetails: input.paymentDetails,
-      totalAmount: input.amount,
-    });
+    let normalizedPayments: PaymentMethodEntry[];
+    if (input.paymentDetails && input.paymentDetails.length > 0) {
+      normalizedPayments = input.paymentDetails.map((pd) => ({
+        method: pd.paymentMethod,
+        amount: pd.amount,
+        reference: pd.reference ?? undefined,
+      }));
+    } else if (input.paymentMethod) {
+      normalizedPayments = [
+        {
+          method: input.paymentMethod,
+          amount: input.amount,
+          reference: input.paymentReference ?? undefined,
+        },
+      ];
+    } else {
+      normalizedPayments = [];
+    }
 
     // Use the first payment method as the "primary" method for backwards compatibility
-    const primaryMethod = normalizedPaymentDetails.length > 0
-      ? normalizedPaymentDetails[0].paymentMethod
+    const primaryMethod = normalizedPayments.length > 0
+      ? normalizedPayments[0].method
       : input.paymentMethod;
-    const primaryReference = normalizedPaymentDetails.length > 0
-      ? normalizedPaymentDetails[0].reference
+    const primaryReference = normalizedPayments.length > 0
+      ? normalizedPayments[0].reference
       : input.paymentReference;
 
     const newAmountPaid = Number(participant.amountPaid) + input.amount;
     const isFullyPaid = newAmountPaid >= Number(participant.amountDue);
 
-    return prisma.$transaction(async (tx) => {
-      // Update participant
-      const updated = await tx.eventParticipant.update({
-        where: { id: input.participantId },
-        data: {
-          amountPaid: newAmountPaid,
-          paymentMethod: primaryMethod,
-          paymentReference: primaryReference,
-          paidAt: new Date(),
-          status: isFullyPaid ? "CONFIRMED" : participant.status,
-        },
-        include: participantInclude,
-      });
-
-      // Create payment details for split payment tracking
-      if (normalizedPaymentDetails.length > 0 && input.amount > 0) {
-        await paymentDetailService.createMany(
-          {
-            parentType: "EVENT_PARTICIPANT",
-            parentId: input.participantId,
-            details: normalizedPaymentDetails,
-            createdById: input.registeredById,
-          },
-          tx
-        );
-      }
-
-      return updated;
+    // Update participant
+    const updated = await prisma.eventParticipant.update({
+      where: { id: input.participantId },
+      data: {
+        amountPaid: newAmountPaid,
+        paymentMethod: primaryMethod,
+        paymentReference: primaryReference ?? null,
+        paidAt: new Date(),
+        status: isFullyPaid ? "CONFIRMED" : participant.status,
+      },
+      include: participantInclude,
     });
+
+    // Create transaction for payment tracking
+    if (normalizedPayments.length > 0 && input.amount > 0) {
+      await transactionService.create({
+        type: "INCOME",
+        category: "EVENT_REGISTRATION",
+        referenceType: "EventParticipant",
+        referenceId: participant.id,
+        items: [
+          {
+            itemType: "EVENT_TICKET",
+            description: participant.event.name,
+            unitPrice: input.amount,
+          },
+        ],
+        paymentMethods: normalizedPayments,
+        createdById: input.registeredById,
+      });
+    }
+
+    return updated;
   },
 
   /**

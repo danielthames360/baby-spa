@@ -32,10 +32,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ...expense,
       amount: Number(expense.amount),
       expenseDate: fromDateOnly(expense.expenseDate),
-      paymentDetails: expense.paymentDetails.map((d) => ({
-        ...d,
-        amount: Number(d.amount),
-      })),
+      paymentMethods: expense.paymentMethods,
     };
 
     return successResponse(serialized);

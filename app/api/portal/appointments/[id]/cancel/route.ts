@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notificationService } from "@/lib/services/notification-service";
 import { activityService } from "@/lib/services/activity-service";
-import { differenceInHours, parseISO } from "date-fns";
+import { transactionService } from "@/lib/services/transaction-service";
+import { differenceInHours } from "date-fns";
 import { fromDateOnly } from "@/lib/utils/date-utils";
 
 const MIN_HOURS_BEFORE_CANCEL = 24;
@@ -41,7 +42,6 @@ export async function PATCH(
           },
         },
         parent: true,
-        payments: true,
         selectedPackage: {
           select: { name: true },
         },
@@ -73,8 +73,12 @@ export async function PATCH(
       );
     }
 
-    // Check if appointment has associated payments
-    if (appointment.payments && appointment.payments.length > 0) {
+    // Check if appointment has associated payments using transaction system
+    const appointmentTransactions = await transactionService.getByReference(
+      "Appointment",
+      appointmentId
+    );
+    if (appointmentTransactions.length > 0) {
       return NextResponse.json(
         {
           error: "This appointment has associated payments. Please contact reception.",
