@@ -69,10 +69,20 @@ async function getDashboardStats(userRole: UserRole) {
 
   // Solo calcular finanzas si el rol tiene permiso
   if (hasPermission(userRole, "dashboard:view-finance")) {
+    // Income sources (all parentTypes that represent income, not expenses)
+    const INCOME_SOURCES = [
+      "SESSION",
+      "BABY_CARD",
+      "EVENT_PARTICIPANT",
+      "APPOINTMENT",
+      "PACKAGE_INSTALLMENT",
+    ] as const;
+
     const [todayPayments, monthPayments, pendingPackages] = await Promise.all([
-      // Ingresos de hoy
-      prisma.payment.aggregate({
+      // Ingresos de hoy (de PaymentDetail con TODAS las fuentes de ingreso)
+      prisma.paymentDetail.aggregate({
         where: {
+          parentType: { in: [...INCOME_SOURCES] },
           createdAt: {
             gte: today,
             lt: tomorrow,
@@ -82,9 +92,10 @@ async function getDashboardStats(userRole: UserRole) {
           amount: true,
         },
       }),
-      // Ingresos del mes
-      prisma.payment.aggregate({
+      // Ingresos del mes (de PaymentDetail con TODAS las fuentes de ingreso)
+      prisma.paymentDetail.aggregate({
         where: {
+          parentType: { in: [...INCOME_SOURCES] },
           createdAt: {
             gte: startOfMonth,
           },

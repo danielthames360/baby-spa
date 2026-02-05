@@ -21,54 +21,56 @@ export async function GET() {
       return NextResponse.json({ error: "Parent ID not found" }, { status: 400 });
     }
 
-    // Get parent data with their packages
-    const parent = await prisma.parent.findUnique({
-      where: { id: parentId },
-      select: {
-        id: true,
-        name: true,
-        requiresPrepayment: true,
-        noShowCount: true,
-        pregnancyWeeks: true,
-        packagePurchases: {
-          where: {
-            remainingSessions: { gt: 0 },
-          },
-          include: {
-            package: {
-              include: {
-                categoryRef: {
-                  select: {
-                    id: true,
-                    name: true,
-                    color: true,
+    // Get parent data and babies in parallel for better performance
+    const [parent, parentBabies] = await Promise.all([
+      // Get parent data with their packages
+      prisma.parent.findUnique({
+        where: { id: parentId },
+        select: {
+          id: true,
+          name: true,
+          requiresPrepayment: true,
+          noShowCount: true,
+          pregnancyWeeks: true,
+          packagePurchases: {
+            where: {
+              remainingSessions: { gt: 0 },
+            },
+            include: {
+              package: {
+                include: {
+                  categoryRef: {
+                    select: {
+                      id: true,
+                      name: true,
+                      color: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    });
-
-    // Get parent's babies with their packages (ALL babies, not just with sessions)
-    const parentBabies = await prisma.babyParent.findMany({
-      where: { parentId },
-      include: {
-        baby: {
-          include: {
-            packagePurchases: {
-              where: {
-                remainingSessions: { gt: 0 },
-              },
-              include: {
-                package: {
-                  include: {
-                    categoryRef: {
-                      select: {
-                        id: true,
-                        name: true,
-                        color: true,
+      }),
+      // Get parent's babies with their packages (ALL babies, not just with sessions)
+      prisma.babyParent.findMany({
+        where: { parentId },
+        include: {
+          baby: {
+            include: {
+              packagePurchases: {
+                where: {
+                  remainingSessions: { gt: 0 },
+                },
+                include: {
+                  package: {
+                    include: {
+                      categoryRef: {
+                        select: {
+                          id: true,
+                          name: true,
+                          color: true,
+                        },
                       },
                     },
                   },
@@ -77,8 +79,8 @@ export async function GET() {
             },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     const babyIds = parentBabies.map((bp) => bp.babyId);
 

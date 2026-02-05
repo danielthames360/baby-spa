@@ -912,7 +912,7 @@ export const staffPaymentService = {
     const daysWithSessionsSet = new Set<number>();
     sessions.forEach((s) => {
       if (s.completedAt) {
-        daysWithSessionsSet.add(s.completedAt.getDate());
+        daysWithSessionsSet.add(s.completedAt.getUTCDate());
       }
     });
 

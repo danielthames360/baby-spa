@@ -155,7 +155,6 @@
     "users": "Usuarios",
     "staffPayments": "Pagos Personal",
     "expenses": "Gastos",
-    "waitlist": "Lista de Espera",
     "events": "Eventos",
     "messages": "Mensajes",
     "babyCards": "Baby Cards",
@@ -2967,7 +2966,16 @@
       "totalIncome": "Ingresos Totales",
       "transactions": "transacciones",
       "dailyIncome": "Ingresos por Día",
-      "noData": "No hay ingresos registrados en este período"
+      "noData": "No hay ingresos registrados en este período",
+      "bySource": "Por Origen",
+      "byMethod": "Por Método de Pago",
+      "sources": {
+        "SESSION": "Sesiones",
+        "BABY_CARD": "Baby Cards",
+        "EVENT_PARTICIPANT": "Eventos",
+        "APPOINTMENT": "Anticipos",
+        "PACKAGE_INSTALLMENT": "Cuotas"
+      }
     },
 
     "receivables": {

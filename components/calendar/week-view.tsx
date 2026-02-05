@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { DayColumn } from "./day-column";
-import { generateTimeSlots, MAX_APPOINTMENTS_PER_HOUR } from "@/lib/constants/business-hours";
+import { generateTimeSlots, MAX_APPOINTMENTS_PER_SLOT } from "@/lib/constants/business-hours";
 
 interface Appointment {
   id: string;
@@ -165,8 +165,8 @@ export function WeekView({
     const slots = generateTimeSlots(dayOfWeek);
     return slots.map((time) => ({
       time,
-      available: MAX_APPOINTMENTS_PER_HOUR,
-      total: MAX_APPOINTMENTS_PER_HOUR,
+      available: MAX_APPOINTMENTS_PER_SLOT,
+      total: MAX_APPOINTMENTS_PER_SLOT,
     }));
   };
 

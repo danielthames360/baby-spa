@@ -18,8 +18,6 @@ export const MAX_APPOINTMENTS_FOR_STAFF = 5;
 
 // Default used in most places (staff limit)
 export const MAX_APPOINTMENTS_PER_SLOT = MAX_APPOINTMENTS_FOR_STAFF;
-// Keep for backwards compatibility
-export const MAX_APPOINTMENTS_PER_HOUR = MAX_APPOINTMENTS_PER_SLOT;
 
 // Slot duration in minutes (30 = half-hour slots, 60 = hourly slots)
 export const SLOT_DURATION_MINUTES = 30;

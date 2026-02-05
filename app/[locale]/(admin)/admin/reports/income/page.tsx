@@ -86,6 +86,7 @@ export default async function IncomeReportPage({
       <IncomeSummary
         total={report.total}
         byMethod={report.byMethod}
+        bySource={report.bySource}
         locale={locale}
       />
 

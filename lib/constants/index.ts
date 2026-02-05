@@ -1,7 +1,7 @@
 // Business hours constants - still in use
 export {
   BUSINESS_HOURS,
-  MAX_APPOINTMENTS_PER_HOUR,
+  MAX_APPOINTMENTS_PER_SLOT,
   SLOT_HEIGHT_PX,
   generateTimeSlots,
 } from "./business-hours";

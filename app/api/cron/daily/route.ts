@@ -152,23 +152,27 @@ export async function GET() {
   try {
     await withAuth(["OWNER", "ADMIN"]);
 
-    // Get pending messages count
-    const pendingMessagesCount = await prisma.pendingMessage.count({
-      where: {
-        status: "PENDING",
-        scheduledFor: { lte: new Date() },
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    // Get today's email count
+    const now = new Date();
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
-    const emailsToday = await prisma.emailLog.count({
-      where: {
-        sentAt: { gte: today },
-      },
-    });
+
+    // Run both count queries in parallel
+    const [pendingMessagesCount, emailsToday] = await Promise.all([
+      // Get pending messages count
+      prisma.pendingMessage.count({
+        where: {
+          status: "PENDING",
+          scheduledFor: { lte: now },
+          expiresAt: { gt: now },
+        },
+      }),
+      // Get today's email count
+      prisma.emailLog.count({
+        where: {
+          sentAt: { gte: today },
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       status: "ok",

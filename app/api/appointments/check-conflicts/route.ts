@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withAuth, handleApiError } from '@/lib/api-utils';
-import { parseDateToUTCNoon } from '@/lib/utils/date-utils';
+import { parseDateToUTCNoon, formatLocalDateString } from '@/lib/utils/date-utils';
 import { getStaffSlotLimit } from '@/lib/services/settings-service';
 
 /**
@@ -34,35 +34,48 @@ export async function GET(request: Request) {
     // Get configurable staff slot limit
     const maxSlotsStaff = await getStaffSlotLimit();
 
-    const conflicts = [];
+    // Parse all dates to UTC noon format for database query
+    const parsedDates: Date[] = [];
+    const dateStrMap = new Map<string, string>(); // Map from ISO string to original YYYY-MM-DD
 
-    // For each date/time combination, check appointment count
     for (const dateStr of dates) {
       const [year, month, day] = dateStr.split('-').map(Number);
       if (isNaN(year) || isNaN(month) || isNaN(day)) continue;
 
       const date = parseDateToUTCNoon(year, month, day);
-
-      for (const time of times) {
-        const count = await prisma.appointment.count({
-          where: {
-            date,
-            startTime: time,
-            status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
-          },
-        });
-
-        // Only report if there are existing appointments
-        if (count > 0) {
-          conflicts.push({
-            date: dateStr,
-            time,
-            count,
-            available: Math.max(0, maxSlotsStaff - count),
-          });
-        }
-      }
+      parsedDates.push(date);
+      // Store mapping from ISO date to original string for response
+      dateStrMap.set(date.toISOString(), dateStr);
     }
+
+    if (parsedDates.length === 0) {
+      return NextResponse.json({ conflicts: [] });
+    }
+
+    // Single batch query using groupBy - replaces N*M individual count queries
+    const counts = await prisma.appointment.groupBy({
+      by: ['date', 'startTime'],
+      where: {
+        date: { in: parsedDates },
+        startTime: { in: times },
+        status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
+      },
+      _count: { id: true },
+    });
+
+    // Map results to response format
+    const conflicts = counts
+      .filter((c) => c._count.id > 0)
+      .map((c) => {
+        // Get original date string from map, fallback to formatting from date
+        const dateStr = dateStrMap.get(c.date.toISOString()) || formatLocalDateString(c.date);
+        return {
+          date: dateStr,
+          time: c.startTime,
+          count: c._count.id,
+          available: Math.max(0, maxSlotsStaff - c._count.id),
+        };
+      });
 
     return NextResponse.json({ conflicts });
   } catch (error) {

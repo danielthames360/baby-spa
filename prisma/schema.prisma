@@ -186,15 +186,6 @@ enum Mood {
   IRRITABLE
 }
 
-// Para NotificationLog (notificaciones a padres)
-enum NotificationLogType {
-  MESVERSARY
-  BIRTHDAY
-  APPOINTMENT_24H
-  PATTERN_REMINDER
-  INACTIVE_CLIENT
-}
-
 // Para Notification (notificaciones en tiempo real al staff)
 enum StaffNotificationType {
   NEW_APPOINTMENT           // Cita agendada desde portal
@@ -403,7 +394,6 @@ model Parent {
 
   babies                BabyParent[]
   emailLogs             EmailLog[]
-  waitlistItems         Waitlist[]
   eventParticipations   EventParticipant[]
 
   // Servicios para el padre (masaje prenatal, postparto, etc.)
@@ -468,7 +458,6 @@ model Baby {
   packagePurchases      PackagePurchase[]
   appointments          Appointment[]
   sessions              Session[]
-  notifications         NotificationLog[]
   notes                 BabyNote[]
   eventParticipations   EventParticipant[]
   babyCardPurchases     BabyCardPurchase[]
@@ -515,6 +504,7 @@ model BabyNote {
 
   createdAt DateTime @default(now())
 
+  @@index([userId])
   @@map("baby_notes")
 }
 
@@ -663,9 +653,6 @@ model PackagePurchase {
 
   isActive Boolean @default(true)
 
-  paymentId String?  @unique
-  payment   Payment? @relation(fields: [paymentId], references: [id])
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -798,28 +785,6 @@ model AppointmentPayment {
 }
 
 // ============================================================
-// LISTA DE ESPERA
-// ============================================================
-
-model Waitlist {
-  id       String @id @default(cuid())
-  babyId   String
-  parentId String
-  parent   Parent @relation(fields: [parentId], references: [id])
-
-  desiredDate DateTime @db.Date
-  desiredTime String   // HH:mm format
-
-  notified   Boolean   @default(false)
-  notifiedAt DateTime?
-  expiresAt  DateTime
-
-  createdAt DateTime @default(now())
-
-  @@map("waitlist")
-}
-
-// ============================================================
 // SESIONES (Ejecución)
 // ============================================================
 
@@ -846,7 +811,6 @@ model Session {
 
   evaluation         Evaluation?
   products           SessionProduct[]
-  payment            Payment?
   babyCardSessionLog BabyCardSessionLog?
 
   // Performance indexes
@@ -854,6 +818,7 @@ model Session {
   @@index([babyId, status])
   @@index([packagePurchaseId, status])
   @@index([status])
+  @@index([completedAt])
   @@map("sessions")
 }
 
@@ -955,6 +920,7 @@ model InventoryMovement {
 
   createdAt DateTime @default(now())
 
+  @@index([productId])
   @@map("inventory_movements")
 }
 
@@ -974,25 +940,8 @@ model SessionProduct {
 
   createdAt DateTime @default(now())
 
+  @@index([productId])
   @@map("session_products")
-}
-
-// ============================================================
-// PAGOS
-// ============================================================
-
-model Payment {
-  id              String           @id @default(cuid())
-  sessionId       String?          @unique
-  session         Session?         @relation(fields: [sessionId], references: [id])
-  packagePurchase PackagePurchase?
-  amount          Decimal          @db.Decimal(10, 2)
-  method          PaymentMethod
-  notes           String?
-
-  createdAt DateTime @default(now())
-
-  @@map("payments")
 }
 
 // ============================================================
@@ -1131,26 +1080,6 @@ model Expense {
 }
 
 // ============================================================
-// LOG DE NOTIFICACIONES
-// ============================================================
-
-model NotificationLog {
-  id                  String              @id @default(cuid())
-  babyId              String
-  baby                Baby                @relation(fields: [babyId], references: [id])
-  type                NotificationLogType
-  emailSent           Boolean             @default(false)
-  emailSentAt         DateTime?
-  whatsappContacted   Boolean             @default(false)
-  whatsappContactedAt DateTime?
-  metadata            Json?
-
-  createdAt DateTime @default(now())
-
-  @@map("notification_logs")
-}
-
-// ============================================================
 // NOTIFICACIONES EN TIEMPO REAL (Staff)
 // ============================================================
 
@@ -1186,21 +1115,6 @@ model Notification {
   @@index([expiresAt])
   @@index([createdAt])
   @@map("notifications")
-}
-
-// ============================================================
-// CONFIGURACIÓN DEL SISTEMA
-// ============================================================
-
-model SystemConfig {
-  id          String  @id @default(cuid())
-  key         String  @unique
-  value       String
-  description String?
-
-  updatedAt DateTime @updatedAt
-
-  @@map("system_config")
 }
 
 // ============================================================
@@ -1551,6 +1465,7 @@ model BabyCardRewardUsage {
   usedBy              User             @relation("BabyCardRewardsApplied", fields: [usedById], references: [id])
 
   @@unique([babyCardPurchaseId, babyCardRewardId])  // Un premio solo se usa una vez
+  @@index([usedById])
   @@map("baby_card_reward_usages")
 }
 
@@ -1677,6 +1592,7 @@ model CashRegisterExpense {
 
   @@index([cashRegisterId])
   @@index([createdAt])
+  @@index([createdById])
   @@map("cash_register_expenses")
 }
 

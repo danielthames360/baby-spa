@@ -225,11 +225,11 @@ DOMINGO: Cerrado
                       │  (ejecución)   │      │   (agenda)    │
                       └───────┬────────┘      └───────────────┘
                               │                       
-              ┌───────────────┼───────────────┐       
-              ▼               ▼               ▼       
-        ┌──────────┐   ┌────────────┐   ┌─────────┐  
-        │Evaluation│   │SessionProd.│   │ Payment │  
-        └──────────┘   └────────────┘   └─────────┘  
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+        ┌──────────┐   ┌────────────┐   ┌─────────────┐
+        │Evaluation│   │SessionProd.│   │PaymentDetail│
+        └──────────┘   └────────────┘   └─────────────┘  
 
 
 ┌─────────────┐       ┌─────────────────┐       ┌─────────────┐
@@ -680,7 +680,6 @@ model Session {
   packagePurchase   PackagePurchase? @relation(fields: [packagePurchaseId], references: [id])
   evaluation        Evaluation?
   products          SessionProduct[]
-  payment           Payment?
   babyCardSessionLog BabyCardSessionLog?
 }
 ```
@@ -944,7 +943,9 @@ model BabyCardRewardUsage {
 
 ## 4.5 Modelos Nuevos (Fase 5-8)
 
-### PaymentDetail (Pagos Divididos)
+### PaymentDetail (Sistema Central de Pagos)
+
+> **NOTA**: Este modelo es el **único sistema de pagos** del proyecto. El modelo `Payment` legacy fue eliminado en la auditoría pre-producción. Todos los pagos (sesiones, paquetes, eventos, baby cards, etc.) se registran aquí usando el patrón polimórfico con `parentType` como discriminador.
 
 ```prisma
 model PaymentDetail {

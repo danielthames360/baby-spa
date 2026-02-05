@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { AppointmentStatus, PaymentMethod, Prisma } from "@prisma/client";
+import { getPaymentStatus, type PackagePurchaseForPayment } from "@/lib/utils/installments";
 
 // ============================================================
 // TYPES
@@ -33,11 +34,22 @@ interface IncomeByDay {
   byMethod: { method: PaymentMethod; amount: number }[];
 }
 
+// Income sources (all parentTypes that represent income, not expenses)
+const INCOME_SOURCES = [
+  "SESSION",
+  "BABY_CARD",
+  "EVENT_PARTICIPANT",
+  "APPOINTMENT",
+  "PACKAGE_INSTALLMENT",
+] as const;
+
+type IncomeSource = (typeof INCOME_SOURCES)[number];
+
 interface IncomeReport {
   total: number;
   byMethod: { method: PaymentMethod; amount: number; count: number }[];
+  bySource: { source: IncomeSource; amount: number; count: number }[];
   byDay: IncomeByDay[];
-  byService: { name: string; amount: number; count: number }[];
 }
 
 interface ReceivableItem {
@@ -116,11 +128,11 @@ export const reportService = {
       pendingEvaluations,
       receivablesData,
     ] = await Promise.all([
-      // Ingresos del período (de PaymentDetail con parentType SESSION)
+      // Ingresos del período (de PaymentDetail con TODAS las fuentes de ingreso)
       prisma.paymentDetail.groupBy({
         by: ["paymentMethod"],
         where: {
-          parentType: "SESSION",
+          parentType: { in: [...INCOME_SOURCES] },
           createdAt: { gte: from, lte: to },
         },
         _sum: { amount: true },
@@ -170,15 +182,23 @@ export const reportService = {
           evaluation: null,
         },
       }),
-      // Cuentas por cobrar
-      prisma.packagePurchase.aggregate({
+      // Cuentas por cobrar (con datos para calcular overdue)
+      prisma.packagePurchase.findMany({
         where: {
           isActive: true,
           paymentPlan: "INSTALLMENTS",
         },
-        _sum: {
+        select: {
           totalPrice: true,
+          finalPrice: true,
           paidAmount: true,
+          usedSessions: true,
+          totalSessions: true,
+          remainingSessions: true,
+          paymentPlan: true,
+          installments: true,
+          installmentAmount: true,
+          installmentsPayOnSessions: true,
         },
       }),
     ]);
@@ -198,9 +218,36 @@ export const reportService = {
       appointmentStats.map((a) => [a.status, a._count])
     ) as Record<AppointmentStatus, number>;
 
-    const totalReceivables =
-      Number(receivablesData._sum.totalPrice || 0) -
-      Number(receivablesData._sum.paidAmount || 0);
+    // Calculate receivables and overdue amounts
+    let totalReceivables = 0;
+    let overdueReceivables = 0;
+
+    for (const purchase of receivablesData) {
+      const totalPrice = Number(purchase.totalPrice || purchase.finalPrice);
+      const paidAmount = Number(purchase.paidAmount);
+      const pendingAmount = totalPrice - paidAmount;
+
+      if (pendingAmount > 0) {
+        totalReceivables += pendingAmount;
+
+        // Calculate overdue using installments logic
+        const purchaseForPayment: PackagePurchaseForPayment = {
+          usedSessions: purchase.usedSessions,
+          totalSessions: purchase.totalSessions,
+          remainingSessions: purchase.remainingSessions,
+          paymentPlan: purchase.paymentPlan,
+          installments: purchase.installments,
+          installmentAmount: purchase.installmentAmount,
+          totalPrice: purchase.totalPrice,
+          finalPrice: purchase.finalPrice,
+          paidAmount: purchase.paidAmount,
+          installmentsPayOnSessions: purchase.installmentsPayOnSessions,
+        };
+
+        const status = getPaymentStatus(purchaseForPayment);
+        overdueReceivables += status.overdueAmount;
+      }
+    }
 
     return {
       totalIncome,
@@ -218,7 +265,7 @@ export const reportService = {
       outOfStockProducts: inventoryStats.outOfStock,
       pendingEvaluations,
       totalReceivables,
-      overdueReceivables: 0, // TODO: calcular con lógica de sesiones
+      overdueReceivables,
     };
   },
 
@@ -227,21 +274,31 @@ export const reportService = {
   // ----------------------
 
   async getIncomeReport(from: Date, to: Date): Promise<IncomeReport> {
-    const [byMethod, paymentsByDay] = await Promise.all([
-      // Total por método de pago
+    const [byMethod, bySource, paymentsByDay] = await Promise.all([
+      // Total por método de pago (ALL income sources)
       prisma.paymentDetail.groupBy({
         by: ["paymentMethod"],
         where: {
-          parentType: "SESSION",
+          parentType: { in: [...INCOME_SOURCES] },
           createdAt: { gte: from, lte: to },
         },
         _sum: { amount: true },
         _count: true,
       }),
-      // Pagos por día
+      // Total por origen/fuente
+      prisma.paymentDetail.groupBy({
+        by: ["parentType"],
+        where: {
+          parentType: { in: [...INCOME_SOURCES] },
+          createdAt: { gte: from, lte: to },
+        },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      // Pagos por día (ALL income sources)
       prisma.paymentDetail.findMany({
         where: {
-          parentType: "SESSION",
+          parentType: { in: [...INCOME_SOURCES] },
           createdAt: { gte: from, lte: to },
         },
         select: {
@@ -293,8 +350,12 @@ export const reportService = {
         amount: Number(m._sum.amount || 0),
         count: m._count,
       })),
+      bySource: bySource.map((s) => ({
+        source: s.parentType as IncomeSource,
+        amount: Number(s._sum.amount || 0),
+        count: s._count,
+      })),
       byDay,
-      byService: [], // TODO: agregar cuando tengamos la relación
     };
   },
 
@@ -326,12 +387,29 @@ export const reportService = {
       orderBy: { createdAt: "desc" },
     });
 
-    return purchases.map((p) => {
+    const results = purchases.map((p) => {
       const totalPrice = Number(p.totalPrice || p.finalPrice);
       const paidAmount = Number(p.paidAmount);
       const pendingAmount = totalPrice - paidAmount;
       const paidInstallments = p.installmentPayments.length;
       const totalInstallments = p.installments;
+
+      // Calculate if overdue using installments logic
+      const purchaseForPayment: PackagePurchaseForPayment = {
+        usedSessions: p.usedSessions,
+        totalSessions: p.totalSessions,
+        remainingSessions: p.remainingSessions,
+        paymentPlan: p.paymentPlan,
+        installments: p.installments,
+        installmentAmount: p.installmentAmount,
+        totalPrice: p.totalPrice,
+        finalPrice: p.finalPrice,
+        paidAmount: p.paidAmount,
+        installmentsPayOnSessions: p.installmentsPayOnSessions,
+      };
+
+      const status = getPaymentStatus(purchaseForPayment);
+      const isOverdue = status.overdueAmount > 0;
 
       return {
         id: p.id,
@@ -344,10 +422,19 @@ export const reportService = {
         paidAmount,
         pendingAmount,
         installmentsPending: totalInstallments - paidInstallments,
-        isOverdue: false, // TODO: calcular basado en sesiones usadas
+        isOverdue,
         createdAt: p.createdAt,
       };
     });
+
+    // Apply filter if specified
+    if (filter === "overdue") {
+      return results.filter((r) => r.isOverdue);
+    } else if (filter === "pending") {
+      return results.filter((r) => !r.isOverdue && r.pendingAmount > 0);
+    }
+
+    return results;
   },
 
   // ----------------------
@@ -699,7 +786,7 @@ export const reportService = {
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
-    const [totalBabies, activeBabies, newBabies, topClients, atRiskClients] = await Promise.all([
+    const [totalBabies, activeBabies, newBabies, topClientsData, atRiskClients] = await Promise.all([
       // Total registered babies
       prisma.baby.count({ where: { isActive: true } }),
       // Active babies (with appointment in last 3 months)
@@ -713,14 +800,23 @@ export const reportService = {
       prisma.baby.count({
         where: { createdAt: { gte: oneMonthAgo } },
       }),
-      // Top clients by spending
+      // Top clients - get all babies with their purchases, sessions, baby cards, and events
       prisma.baby.findMany({
         where: { isActive: true },
         include: {
           parents: { where: { isPrimary: true }, include: { parent: true } },
           packagePurchases: { where: { isActive: true } },
+          sessions: {
+            where: { status: "COMPLETED" },
+            select: { id: true },
+          },
+          babyCardPurchases: {
+            select: { pricePaid: true },
+          },
+          eventParticipations: {
+            select: { amountPaid: true },
+          },
         },
-        take: 10,
       }),
       // At risk clients (no visit in 45+ days)
       prisma.baby.findMany({
@@ -742,21 +838,33 @@ export const reportService = {
 
     const inactiveBabies = totalBabies - activeBabies;
 
-    // Calculate top clients by total spent
-    const topClientsFormatted = topClients
-      .map((b) => ({
-        babyId: b.id,
-        babyName: b.name,
-        parentName: b.parents[0]?.parent.name || "N/A",
-        totalSpent: b.packagePurchases.reduce(
+    // Calculate top clients by TOTAL spent (packages + baby cards + events)
+    const topClientsFormatted = topClientsData
+      .map((b) => {
+        // Sum from package purchases
+        const packageSpent = b.packagePurchases.reduce(
           (sum, p) => sum + Number(p.paidAmount),
           0
-        ),
-        totalSessions: b.packagePurchases.reduce(
-          (sum, p) => sum + p.usedSessions,
+        );
+        // Sum from baby card purchases
+        const babyCardSpent = b.babyCardPurchases.reduce(
+          (sum, bc) => sum + Number(bc.pricePaid),
           0
-        ),
-      }))
+        );
+        // Sum from event participation
+        const eventSpent = b.eventParticipations.reduce(
+          (sum, ep) => sum + Number(ep.amountPaid),
+          0
+        );
+
+        return {
+          babyId: b.id,
+          babyName: b.name,
+          parentName: b.parents[0]?.parent.name || "N/A",
+          totalSpent: packageSpent + babyCardSpent + eventSpent,
+          totalSessions: b.sessions.length,
+        };
+      })
       .sort((a, b) => b.totalSpent - a.totalSpent)
       .slice(0, 10);
 

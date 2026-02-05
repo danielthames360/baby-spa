@@ -16,20 +16,20 @@ const prisma = new PrismaClient({ adapter });
 
 // IDs de paquetes existentes
 const PACKAGES = [
-  { id: 'cml5n26m8000e54iflb0vcpre', name: 'Sesión Individual', sessions: 1, price: 150 },
-  { id: 'cml5n26m8000f54ifeyo63zp8', name: 'Mini (4 sesiones)', sessions: 4, price: 550 },
-  { id: 'cml5n26m8000g54if2v6834pl', name: 'Estándar (8 sesiones)', sessions: 8, price: 1000 },
-  { id: 'cml5n26m8000h54ifo988pm5z', name: 'Plus (10 sesiones)', sessions: 10, price: 1200 },
-  { id: 'cml5n26m8000i54ifbyftuea7', name: 'Premium (20 sesiones)', sessions: 20, price: 2200 },
+  { id: 'cml9fphud000e04ify9w542aj', name: 'Sesión Individual', sessions: 1, price: 150 },
+  { id: 'cml9fphud000f04if6afj7bp3', name: 'Mini (4 sesiones)', sessions: 4, price: 550 },
+  { id: 'cml9fphud000g04if0y3xyd07', name: 'Estándar (8 sesiones)', sessions: 8, price: 1000 },
+  { id: 'cml9fphud000h04if25fevirn', name: 'Plus (10 sesiones)', sessions: 10, price: 1200 },
+  { id: 'cml9fphud000i04ifbe4cigfd', name: 'Premium (20 sesiones)', sessions: 20, price: 2200 },
 ];
 
 const THERAPIST_IDS = [
-  'cml5n26ku000354ify8549cnn',
-  'cml5n26ku000454ifgbhodolg',
+  'cml9fphsv000304ifeojr6nhs',
+  'cml9fphsv000404ife1p03pmx',
 ];
 
-const BABY_CARD_ID = 'cml5n26x3002i54ifuhbyulwo';
-const ADMIN_USER_ID = 'cml5n26kt000154ifn58pzkkn';
+const BABY_CARD_ID = 'cml9fpi73002i04ifr79i2ual';
+const ADMIN_USER_ID = 'cml9fphsv000104ifjz2br2fh';
 const PAYMENT_METHODS = ['CASH', 'QR', 'CARD', 'TRANSFER'];
 const EXPENSE_CATEGORIES = ['RENT', 'UTILITIES', 'SUPPLIES', 'MAINTENANCE', 'MARKETING', 'TAXES', 'OTHER'];
 const GENDERS = ['MALE', 'FEMALE'];
@@ -814,10 +814,6 @@ async function cleanup() {
       where: { event: { name: { startsWith: MARKER } } }
     });
     console.log(`   Productos eventos: ${r.count}`);
-
-    // Pagos de sesiones (modelo antiguo)
-    r = await prisma.payment.deleteMany({ where: { session: { appointment: { baby: { name: { startsWith: MARKER } } } } } });
-    console.log(`   Pagos (legacy): ${r.count}`);
 
     // Sesiones
     r = await prisma.session.deleteMany({ where: { appointment: { baby: { name: { startsWith: MARKER } } } } });

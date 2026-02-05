@@ -24,39 +24,79 @@ export async function GET(request: Request) {
 
     const endDate = new Date();
 
-    // Get all email logs in the period
-    const logs = await prisma.emailLog.findMany({
-      where: {
-        sentAt: {
-          gte: startDate,
-          lte: endDate,
+    // Run all queries in parallel for better performance
+    const [logs, problematicEmails, parentsWithIssues] = await Promise.all([
+      // Get all email logs in the period
+      prisma.emailLog.findMany({
+        where: {
+          sentAt: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-      select: {
-        id: true,
-        status: true,
-        category: true,
-        sentAt: true,
-        templateKey: true,
-      },
-      orderBy: { sentAt: "desc" },
-    });
+        select: {
+          id: true,
+          status: true,
+          category: true,
+          sentAt: true,
+          templateKey: true,
+        },
+        orderBy: { sentAt: "desc" },
+      }),
+      // Get problematic emails (bounced or complained)
+      prisma.emailLog.findMany({
+        where: {
+          status: { in: [EmailStatus.BOUNCED, EmailStatus.COMPLAINED] },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          parent: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      }),
+      // Get parents with email issues
+      prisma.parent.findMany({
+        where: {
+          emailBounceCount: { gte: 2 },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          emailBounceCount: true,
+        },
+        orderBy: { emailBounceCount: "desc" },
+        take: 10,
+      }),
+    ]);
 
-    // Calculate overall stats
+    // Calculate overall stats in single iteration
     const stats = {
       total: logs.length,
-      delivered: logs.filter(
-        (l) => l.status === EmailStatus.DELIVERED || l.status === EmailStatus.OPENED
-      ).length,
-      opened: logs.filter((l) => l.status === EmailStatus.OPENED).length,
-      bounced: logs.filter((l) => l.status === EmailStatus.BOUNCED).length,
-      complained: logs.filter((l) => l.status === EmailStatus.COMPLAINED).length,
-      sent: logs.filter((l) => l.status === EmailStatus.SENT).length,
+      delivered: 0,
+      opened: 0,
+      bounced: 0,
+      complained: 0,
+      sent: 0,
     };
 
-    // Calculate by category
+    // Calculate by category and by day in single iteration
     const byCategory: Record<string, { total: number; delivered: number; opened: number; bounced: number }> = {};
+    const byDay: Record<string, { total: number; delivered: number; opened: number; bounced: number }> = {};
+
     for (const log of logs) {
+      // Update overall stats
+      if (log.status === EmailStatus.DELIVERED || log.status === EmailStatus.OPENED) {
+        stats.delivered++;
+      }
+      if (log.status === EmailStatus.OPENED) stats.opened++;
+      if (log.status === EmailStatus.BOUNCED) stats.bounced++;
+      if (log.status === EmailStatus.COMPLAINED) stats.complained++;
+      if (log.status === EmailStatus.SENT) stats.sent++;
+
+      // Update by category
       if (!byCategory[log.category]) {
         byCategory[log.category] = { total: 0, delivered: 0, opened: 0, bounced: 0 };
       }
@@ -70,11 +110,8 @@ export async function GET(request: Request) {
       if (log.status === EmailStatus.BOUNCED) {
         byCategory[log.category].bounced++;
       }
-    }
 
-    // Calculate by day
-    const byDay: Record<string, { total: number; delivered: number; opened: number; bounced: number }> = {};
-    for (const log of logs) {
+      // Update by day
       const day = log.sentAt.toISOString().split("T")[0];
       if (!byDay[day]) {
         byDay[day] = { total: 0, delivered: 0, opened: 0, bounced: 0 };
@@ -90,35 +127,6 @@ export async function GET(request: Request) {
         byDay[day].bounced++;
       }
     }
-
-    // Get problematic emails (bounced or complained)
-    const problematicEmails = await prisma.emailLog.findMany({
-      where: {
-        status: { in: [EmailStatus.BOUNCED, EmailStatus.COMPLAINED] },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      include: {
-        parent: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-    });
-
-    // Get parents with email issues
-    const parentsWithIssues = await prisma.parent.findMany({
-      where: {
-        emailBounceCount: { gte: 2 },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        emailBounceCount: true,
-      },
-      orderBy: { emailBounceCount: "desc" },
-      take: 10,
-    });
 
     // Calculate rates
     const deliveryRate = stats.total > 0

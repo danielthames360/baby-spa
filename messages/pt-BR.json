@@ -155,7 +155,6 @@
     "users": "Usuários",
     "staffPayments": "Pagamentos Funcionários",
     "expenses": "Despesas",
-    "waitlist": "Lista de Espera",
     "events": "Eventos",
     "messages": "Mensagens",
     "babyCards": "Baby Cards",
@@ -2967,7 +2966,16 @@
       "totalIncome": "Receita Total",
       "transactions": "transações",
       "dailyIncome": "Receita por Dia",
-      "noData": "Nenhuma receita registrada neste período"
+      "noData": "Nenhuma receita registrada neste período",
+      "bySource": "Por Origem",
+      "byMethod": "Por Método de Pagamento",
+      "sources": {
+        "SESSION": "Sessões",
+        "BABY_CARD": "Baby Cards",
+        "EVENT_PARTICIPANT": "Eventos",
+        "APPOINTMENT": "Adiantamentos",
+        "PACKAGE_INSTALLMENT": "Parcelas"
+      }
     },
 
     "receivables": {

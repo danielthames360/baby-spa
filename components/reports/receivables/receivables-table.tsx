@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExternalLink, Phone, AlertTriangle } from "lucide-react";
+import { ExternalLink, MessageCircle, AlertTriangle } from "lucide-react";
 
 interface ReceivableItem {
   id: string;
@@ -122,11 +122,15 @@ export function ReceivablesTable({ items, locale }: ReceivablesTableProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                       asChild
                     >
-                      <a href={`tel:${item.parentPhone}`}>
-                        <Phone className="h-4 w-4 text-gray-400" />
+                      <a
+                        href={`https://wa.me/${item.parentPhone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle className="h-4 w-4" />
                       </a>
                     </Button>
                   )}

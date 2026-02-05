@@ -488,46 +488,17 @@ export const sessionService = {
       });
       const hasPaymentInfo = normalizedPaymentDetails.length > 0;
 
-      let payment = null;
+      // Create payment details directly linked to session (no intermediate Payment model)
       if (totalAmount.greaterThan(0) && hasPaymentInfo) {
-        // Build payment notes with discount reason if applicable
-        let finalPaymentNotes = paymentNotes || "";
-        if (discountAmount > 0 && discountReason) {
-          finalPaymentNotes = finalPaymentNotes
-            ? `${finalPaymentNotes} | Descuento: ${discountReason}`
-            : `Descuento: ${discountReason}`;
-        }
-        if (firstSessionDiscountAmount.greaterThan(0)) {
-          const discountNote = `Descuento Baby Card 1ra sesión: ${firstSessionDiscountAmount.toString()}`;
-          finalPaymentNotes = finalPaymentNotes
-            ? `${finalPaymentNotes} | ${discountNote}`
-            : discountNote;
-        }
-
-        // Use the first payment method as the "primary" method for backwards compatibility
-        const primaryMethod = normalizedPaymentDetails[0].paymentMethod;
-
-        payment = await tx.payment.create({
-          data: {
-            sessionId,
-            amount: totalAmount,
-            method: primaryMethod,
-            notes: finalPaymentNotes || null,
+        await paymentDetailService.createMany(
+          {
+            parentType: "SESSION",
+            parentId: sessionId, // Link directly to session
+            details: normalizedPaymentDetails,
+            createdById: userId,
           },
-        });
-
-        // Create payment details for split payment tracking
-        if (payment) {
-          await paymentDetailService.createMany(
-            {
-              parentType: "SESSION",
-              parentId: payment.id,
-              details: normalizedPaymentDetails,
-              createdById: userId,
-            },
-            tx
-          );
-        }
+          tx
+        );
       }
 
       // If selling a new package
@@ -564,7 +535,6 @@ export const sessionService = {
             discountReason: discountReason || null,
             finalPrice: packageFinalPrice,
             isActive: true,
-            paymentId: payment?.id, // Link to payment
             // Transfer schedule preferences from appointment (set by parent in portal)
             schedulePreferences: appointmentWithPreferences?.pendingSchedulePreferences || null,
           },
@@ -663,7 +633,6 @@ export const sessionService = {
 
       return {
         session: updatedSession,
-        payment,
         packagePurchase: finalPackagePurchase,
         newPackagePurchase, // Track if new package was sold
         productsAmount,
@@ -1103,7 +1072,6 @@ export const sessionService = {
         packagePurchase: {
           include: { package: true },
         },
-        payment: true,
       },
     });
   },

@@ -782,49 +782,6 @@ async function main() {
   }
 
   // ============================================================
-  // CONFIGURACIÓN DEL SISTEMA - Check if table is empty
-  // ============================================================
-  const existingConfigs = await prisma.systemConfig.count();
-
-  if (existingConfigs === 0) {
-    console.log("⚙️ Creating system config...");
-
-    await prisma.systemConfig.createMany({
-      data: [
-        {
-          key: "session_duration_minutes",
-          value: "45",
-          description: "Duración de cada sesión en minutos",
-        },
-        {
-          key: "max_concurrent_sessions",
-          value: "3",
-          description: "Máximo de sesiones simultáneas",
-        },
-        {
-          key: "no_show_penalty_threshold",
-          value: "2",
-          description: "Número de faltas para requerir prepago",
-        },
-        {
-          key: "waitlist_expiry_hours",
-          value: "24",
-          description: "Horas para expirar un item de lista de espera",
-        },
-        {
-          key: "currency",
-          value: "BOB",
-          description: "Moneda del sistema (BOB o BRL)",
-        },
-      ],
-    });
-
-    console.log("   ✅ System config created");
-  } else {
-    console.log(`⚙️ SystemConfig table already has ${existingConfigs} records - skipping`);
-  }
-
-  // ============================================================
   // SYSTEM SETTINGS - Check if exists
   // ============================================================
   const existingSettings = await prisma.systemSettings.findUnique({
@@ -874,7 +831,6 @@ async function main() {
     babyCards: await prisma.babyCard.count(),
     babyCardRewards: await prisma.babyCardReward.count(),
     businessHours: await prisma.businessHours.count(),
-    systemConfig: await prisma.systemConfig.count(),
     systemSettings: await prisma.systemSettings.count(),
   };
 
@@ -895,7 +851,6 @@ async function main() {
   console.log(`   Baby Cards:        ${finalCounts.babyCards}`);
   console.log(`   Baby Card Rewards: ${finalCounts.babyCardRewards}`);
   console.log(`   Business Hours:    ${finalCounts.businessHours}`);
-  console.log(`   System Configs:    ${finalCounts.systemConfig}`);
   console.log(`   System Settings:   ${finalCounts.systemSettings}`);
   console.log("----------------------------------------");
   if (settings?.defaultPackage) {

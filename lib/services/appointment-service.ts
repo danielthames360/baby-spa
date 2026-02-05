@@ -21,8 +21,6 @@ import { getSlotLimits } from "./settings-service";
 
 // Re-export for backwards compatibility
 export { BUSINESS_HOURS, MAX_APPOINTMENTS_PER_SLOT, SLOT_DURATION_MINUTES, generateTimeSlots, isWithinBusinessHours };
-// Legacy export
-export const MAX_APPOINTMENTS_PER_HOUR = MAX_APPOINTMENTS_PER_SLOT;
 
 // Types
 export interface AppointmentWithRelations {
@@ -160,6 +158,55 @@ function timeRangesOverlap(
 // Uses centralized date utility for consistency
 function formatDateString(date: Date): string {
   return fromDateOnly(date);
+}
+
+// Helper: Extract parent email info from appointment
+// Handles both direct parent appointments and baby appointments
+interface ParentEmailInfo {
+  parentId: string;
+  parentName: string;
+  parentEmail: string;
+}
+
+async function extractParentEmailInfo(appointment: {
+  baby?: { name: string; parents?: Array<{ parent: { id: string; name: string } }> } | null;
+  parent?: { id: string; name: string; email: string | null } | null;
+}): Promise<ParentEmailInfo | null> {
+  let parentId: string | undefined;
+  let parentName: string | undefined;
+  let parentEmail: string | undefined;
+
+  if (appointment.parent) {
+    // Direct parent appointment (parent service)
+    parentId = appointment.parent.id;
+    parentName = appointment.parent.name;
+    parentEmail = appointment.parent.email || undefined;
+  } else if (appointment.baby?.parents?.[0]) {
+    // Baby appointment - get primary parent's email
+    const primaryParent = appointment.baby.parents[0].parent;
+    parentId = primaryParent.id;
+    parentName = primaryParent.name;
+    // Need to fetch email since it's not included in the relation
+    const parentWithEmail = await prisma.parent.findUnique({
+      where: { id: parentId },
+      select: { email: true },
+    });
+    parentEmail = parentWithEmail?.email || undefined;
+  }
+
+  if (!parentEmail || !parentId || !parentName) {
+    return null;
+  }
+
+  return { parentId, parentName, parentEmail };
+}
+
+// Helper: Get package info (name and duration) in a single query
+async function getPackageInfo(packageId: string): Promise<{ name: string; duration: number } | null> {
+  return prisma.package.findUnique({
+    where: { id: packageId },
+    select: { name: true, duration: true },
+  });
 }
 
 
@@ -445,37 +492,6 @@ export const appointmentService = {
     });
 
     return !!existing;
-  },
-
-  // Count overlapping appointments for a time slot (legacy - kept for reference)
-  async countOverlappingAppointments(
-    date: Date,
-    startTime: string,
-    endTime: string,
-    excludeAppointmentId?: string
-  ): Promise<number> {
-    // Use centralized date utilities for consistent handling
-    const startOfDay = getStartOfDayUTC(date);
-    const endOfDay = getEndOfDayUTC(date);
-
-    // Get all appointments for the day
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        status: {
-          notIn: [AppointmentStatus.CANCELLED],
-        },
-        ...(excludeAppointmentId && { id: { not: excludeAppointmentId } }),
-      },
-    });
-
-    // Count how many overlap with our time range
-    return appointments.filter((apt) =>
-      timeRangesOverlap(startTime, endTime, apt.startTime, apt.endTime)
-    ).length;
   },
 
   // Check if there's availability for a time range by checking EACH 30-minute slot
@@ -838,51 +854,20 @@ export const appointmentService = {
     selectedPackageId?: string
   ): Promise<void> {
     try {
-      // Get parent email
-      let parentId: string | undefined;
-      let parentName: string | undefined;
-      let parentEmail: string | undefined;
-
-      if (appointment.parent) {
-        // Direct parent appointment (parent service)
-        parentId = appointment.parent.id;
-        parentName = appointment.parent.name;
-        parentEmail = appointment.parent.email || undefined;
-      } else if (appointment.baby?.parents?.[0]) {
-        // Baby appointment - get primary parent's email
-        const primaryParent = appointment.baby.parents[0].parent;
-        parentId = primaryParent.id;
-        parentName = primaryParent.name;
-        // Need to fetch email since it's not included in the relation
-        const parentWithEmail = await prisma.parent.findUnique({
-          where: { id: parentId },
-          select: { email: true },
-        });
-        parentEmail = parentWithEmail?.email || undefined;
-      }
-
-      // Skip if no email
-      if (!parentEmail || !parentId || !parentName) {
-        return;
-      }
+      // Get parent email using helper
+      const parentInfo = await extractParentEmailInfo(appointment);
+      if (!parentInfo) return;
 
       // Get service name from package
       let serviceName = "Sesión";
       if (selectedPackageId) {
-        const pkg = await prisma.package.findUnique({
-          where: { id: selectedPackageId },
-          select: { name: true },
-        });
-        if (pkg) {
-          serviceName = pkg.name;
-        }
+        const pkg = await getPackageInfo(selectedPackageId);
+        if (pkg) serviceName = pkg.name;
       }
 
       // Send email
       await emailService.sendAppointmentConfirmation({
-        parentId,
-        parentName,
-        parentEmail,
+        ...parentInfo,
         babyName: appointment.baby?.name,
         serviceName,
         date: appointmentDate,
@@ -1190,50 +1175,22 @@ export const appointmentService = {
     oldTimeStr: string
   ): Promise<void> {
     try {
-      // Get parent email
-      let parentId: string | undefined;
-      let parentName: string | undefined;
-      let parentEmail: string | undefined;
+      // Get parent email using helper
+      const parentInfo = await extractParentEmailInfo(newAppointment);
+      if (!parentInfo) return;
 
-      if (newAppointment.parent) {
-        parentId = newAppointment.parent.id;
-        parentName = newAppointment.parent.name;
-        parentEmail = newAppointment.parent.email || undefined;
-      } else if (newAppointment.baby?.parents?.[0]) {
-        const primaryParent = newAppointment.baby.parents[0].parent;
-        parentId = primaryParent.id;
-        parentName = primaryParent.name;
-        const parentWithEmail = await prisma.parent.findUnique({
-          where: { id: parentId },
-          select: { email: true },
-        });
-        parentEmail = parentWithEmail?.email || undefined;
-      }
-
-      if (!parentEmail || !parentId || !parentName) {
-        return;
-      }
-
-      // Get service name
+      // Get service name and duration from package (single query instead of two)
       let serviceName = "Sesión";
+      let sessionDuration = DEFAULT_SESSION_DURATION_MINUTES;
+
       if (newAppointment.selectedPackageId) {
-        const pkg = await prisma.package.findUnique({
-          where: { id: newAppointment.selectedPackageId },
-          select: { name: true },
-        });
-        if (pkg) serviceName = pkg.name;
+        const pkg = await getPackageInfo(newAppointment.selectedPackageId);
+        if (pkg) {
+          serviceName = pkg.name;
+          sessionDuration = pkg.duration;
+        }
       } else if (newAppointment.packagePurchase?.package?.name) {
         serviceName = newAppointment.packagePurchase.package.name;
-      }
-
-      // Get session duration from package
-      let sessionDuration = DEFAULT_SESSION_DURATION_MINUTES;
-      if (newAppointment.selectedPackageId) {
-        const pkg = await prisma.package.findUnique({
-          where: { id: newAppointment.selectedPackageId },
-          select: { duration: true },
-        });
-        if (pkg) sessionDuration = pkg.duration;
       }
 
       // Parse old date string to Date
@@ -1241,9 +1198,7 @@ export const appointmentService = {
       const oldDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
       await emailService.sendAppointmentRescheduled({
-        parentId,
-        parentName,
-        parentEmail,
+        ...parentInfo,
         babyName: newAppointment.baby?.name,
         serviceName,
         date: newAppointment.date,

@@ -18,11 +18,21 @@ export async function POST(request: Request) {
       throw new ApiError(400, 'MISSING_REQUIRED_FIELDS');
     }
 
-    // Verify package purchase exists and has available sessions
-    const packagePurchase = await prisma.packagePurchase.findUnique({
-      where: { id: packagePurchaseId },
-      include: { package: true },
-    });
+    // Run both queries in parallel for better performance
+    const [packagePurchase, existingScheduled] = await Promise.all([
+      // Verify package purchase exists and has available sessions
+      prisma.packagePurchase.findUnique({
+        where: { id: packagePurchaseId },
+        include: { package: true },
+      }),
+      // Count already scheduled appointments for this package
+      prisma.appointment.count({
+        where: {
+          packagePurchaseId,
+          status: { in: ['SCHEDULED', 'PENDING_PAYMENT', 'IN_PROGRESS'] },
+        },
+      }),
+    ]);
 
     if (!packagePurchase) {
       throw new ApiError(404, 'PACKAGE_PURCHASE_NOT_FOUND');
@@ -31,14 +41,6 @@ export async function POST(request: Request) {
     if (packagePurchase.babyId !== babyId) {
       throw new ApiError(400, 'PACKAGE_NOT_FOR_THIS_BABY');
     }
-
-    // Count already scheduled appointments for this package
-    const existingScheduled = await prisma.appointment.count({
-      where: {
-        packagePurchaseId,
-        status: { in: ['SCHEDULED', 'PENDING_PAYMENT', 'IN_PROGRESS'] },
-      },
-    });
 
     const availableSessions = packagePurchase.remainingSessions - existingScheduled;
 
