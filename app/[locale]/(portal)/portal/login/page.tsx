@@ -71,9 +71,8 @@ export default function ParentLoginPage() {
       return;
     }
 
-    // Login successful - force refresh to update session state
-    // The useEffect will handle the redirect once session is authenticated
-    router.refresh();
+    // Login successful - full navigation to ensure server re-evaluates layout with session
+    window.location.href = "/portal/dashboard";
   };
 
   const translateZodError = (error: string | undefined): string => {

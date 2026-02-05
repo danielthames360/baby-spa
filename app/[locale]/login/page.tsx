@@ -88,9 +88,9 @@ export default function StaffLoginPage() {
       return;
     }
 
-    // Login successful - force refresh to update session state
-    // The useEffect will handle the redirect once session is authenticated
-    router.refresh();
+    // Login successful - hard navigation to force layout re-render with session
+    // Default to admin dashboard, the layout will redirect based on role if needed
+    window.location.href = "/admin/dashboard";
   };
 
   const translateZodError = (error: string | undefined): string => {

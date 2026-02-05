@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { IntroOverlay } from "@/components/layout/intro-overlay";
 import { Toaster } from "@/components/ui/sonner";
 import { routing } from "@/i18n/routing";
+import { getSession } from "@/lib/auth";
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -22,11 +23,14 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  // Cargar mensajes para el locale
-  const messages = await getMessages();
+  // Cargar sesión y mensajes en paralelo
+  const [session, messages] = await Promise.all([
+    getSession(),
+    getMessages(),
+  ]);
 
   return (
-    <SessionProvider>
+    <SessionProvider session={session}>
       <NextIntlClientProvider messages={messages}>
         <IntroOverlay>
           {children}

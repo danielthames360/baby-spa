@@ -52,6 +52,9 @@ export default function middleware(request: NextRequest) {
     country === "brazil" ? "babyspa_brazil" : "babyspa_bolivia"
   );
 
+  // Add pathname header for server components
+  response.headers.set("x-pathname", pathname);
+
   return response;
 }
 
