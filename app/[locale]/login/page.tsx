@@ -88,12 +88,9 @@ export default function StaffLoginPage() {
       return;
     }
 
-    const session = await getSession();
-    if (session?.user?.role) {
-      const redirectUrl = getRedirectUrl(session.user.role);
-      router.push(redirectUrl);
-      router.refresh();
-    }
+    // Login successful - force refresh to update session state
+    // The useEffect will handle the redirect once session is authenticated
+    router.refresh();
   };
 
   const translateZodError = (error: string | undefined): string => {

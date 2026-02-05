@@ -44,8 +44,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN and RECEPTION can manage inventory
-    if (session.user.role !== "ADMIN" && session.user.role !== "RECEPTION") {
+    // Only OWNER, ADMIN and RECEPTION can manage inventory
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -92,8 +92,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN and RECEPTION can manage inventory
-    if (session.user.role !== "ADMIN" && session.user.role !== "RECEPTION") {
+    // Only OWNER, ADMIN and RECEPTION can manage inventory
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

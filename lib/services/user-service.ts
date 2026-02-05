@@ -193,6 +193,7 @@ export const userService = {
     if (data.baseSalary !== undefined) updateData.baseSalary = data.baseSalary;
     if (data.payFrequency) updateData.payFrequency = data.payFrequency as PayFrequency;
     if (typeof data.isActive === "boolean") updateData.isActive = data.isActive;
+    if (typeof data.mustChangePassword === "boolean") updateData.mustChangePassword = data.mustChangePassword;
 
     // Hash new password if provided
     if (data.password) {

@@ -904,6 +904,17 @@
       "loadError": "Erro ao carregar configurações",
       "saveError": "Erro ao salvar configurações",
       "saved": "Configurações salvas"
+    },
+    "slots": {
+      "title": "Configuração de Vagas",
+      "description": "Limites de consultas simultâneas por horário. Ajuste conforme a capacidade do spa.",
+      "maxStaff": "Máximo consultas por horário (Equipe)",
+      "maxStaffHelp": "Limite de consultas concorrentes para recepção e administração (1-10)",
+      "maxPortal": "Máximo consultas por horário (Portal)",
+      "maxPortalHelp": "Limite de consultas concorrentes para pais pelo portal (1-5)",
+      "perSlot": "consultas",
+      "invalidStaff": "O limite da equipe deve estar entre 1 e 10",
+      "invalidPortal": "O limite do portal deve estar entre 1 e 5"
     }
   },
 
@@ -2468,7 +2479,12 @@
       "client_updated": "Cliente atualizado: {clientName}",
       "evaluation_saved": "Avaliação salva: {babyName}",
       "staff_payment_registered": "Pagamento registrado: {staffName}",
-      "expense_registered": "Despesa registrada: {category}"
+      "expense_registered": "Despesa registrada: {category}",
+      "cash_register_opened": "Caixa aberta",
+      "cash_register_closed": "Caixa fechada",
+      "cash_register_expense_added": "Despesa adicionada ao caixa",
+      "cash_register_reviewed": "Caixa revisada",
+      "cash_register_force_closed": "Caixa fechada forçosamente"
     }
   },
 
@@ -2707,7 +2723,9 @@
       "salarySection": "Informações de Salário",
       "baseSalary": "Salário base",
       "payFrequency": "Frequência de pagamento",
-      "create": "Criar Usuário"
+      "create": "Criar Usuário",
+      "forcePasswordChange": "Forçar troca de senha",
+      "forcePasswordChangeDesc": "O usuário deverá alterar sua senha no próximo login"
     },
 
     "deactivateConfirm": {
@@ -3157,6 +3175,8 @@
       "active": "Ativos",
       "completed": "Completos",
       "progress": "Progresso dos Cartões",
+      "avgProgress": "Progresso Médio",
+      "noProgress": "Nenhum cartão com progresso",
       "noCards": "Nenhum Baby Card neste período",
       "baby": "Bebê",
       "parent": "Responsável",
@@ -3165,6 +3185,11 @@
       "status": "Status",
       "activeLabel": "Ativo",
       "completedLabel": "Completo",
+      "rewards": "Prêmios",
+      "unlocked": "Desbloqueados",
+      "delivered": "Entregues",
+      "deliveryRate": "Taxa de Entrega",
+      "deliveryProgress": "Progresso de Entrega",
       "redemptions": "Recompensas Resgatadas",
       "pendingRedemptions": "Pendentes",
       "claimed": "resgatadas",
@@ -3174,8 +3199,11 @@
     "events": {
       "totalEvents": "Total de Eventos",
       "totalAttendees": "Participantes",
+      "participants": "Participantes",
       "revenue": "Receita",
       "conversion": "Conversão",
+      "attendanceRate": "Taxa de Frequência",
+      "attendance": "Frequência",
       "eventsList": "Lista de Eventos",
       "noEvents": "Nenhum evento neste período",
       "event": "Evento",
@@ -3188,6 +3216,8 @@
       "margin": "Margem",
       "conversionLabel": "Conversão",
       "converted": "convertidos",
+      "typeBabies": "Bebês",
+      "typeParents": "Pais",
       "types": {
         "BABY": "Bebês",
         "PARENT": "Pais"
@@ -3195,11 +3225,16 @@
     },
 
     "payroll": {
+      "totalPayroll": "Total Folha de Pagamento",
       "totalPaid": "Total Pago",
+      "salaries": "Salários",
+      "commissions": "Comissões",
+      "benefits": "Benefícios",
       "paymentsByType": "Por Tipo",
       "byEmployee": "Por Colaborador",
       "pendingAdvances": "Adiantamentos Pendentes",
       "noPayments": "Nenhum pagamento neste período",
+      "noAdvances": "Nenhum adiantamento pendente",
       "employee": "Colaborador",
       "role": "Função",
       "regularPay": "Regular",

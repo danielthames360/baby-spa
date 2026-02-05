@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils/currency-utils";
+import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils/currency-utils";
 import {
   CreditCard,
   Gift,
@@ -50,7 +50,7 @@ export function BabyCardsReportComponent({ data, locale }: BabyCardsReportProps)
       <div className="grid gap-4 md:grid-cols-4">
         <SummaryCard
           title={t("babyCards.sold")}
-          value={data.summary.soldInPeriod.toString()}
+          value={formatNumber(data.summary.soldInPeriod, locale)}
           icon={<CreditCard className="h-5 w-5" />}
           variant="default"
         />
@@ -62,13 +62,13 @@ export function BabyCardsReportComponent({ data, locale }: BabyCardsReportProps)
         />
         <SummaryCard
           title={t("babyCards.active")}
-          value={data.summary.activeCards.toString()}
+          value={formatNumber(data.summary.activeCards, locale)}
           icon={<Star className="h-5 w-5" />}
           variant="default"
         />
         <SummaryCard
           title={t("babyCards.completed")}
-          value={data.summary.completedCards.toString()}
+          value={formatNumber(data.summary.completedCards, locale)}
           icon={<CheckCircle className="h-5 w-5" />}
           variant="success"
         />
@@ -83,7 +83,7 @@ export function BabyCardsReportComponent({ data, locale }: BabyCardsReportProps)
             </h3>
             <div className="text-right">
               <span className="text-2xl font-bold text-teal-700">
-                {data.progress.averageProgress.toFixed(0)}%
+                {formatPercent(data.progress.averageProgress, locale, 0)}
               </span>
               <p className="text-xs text-gray-500">{t("babyCards.avgProgress")}</p>
             </div>
@@ -113,7 +113,7 @@ export function BabyCardsReportComponent({ data, locale }: BabyCardsReportProps)
                         {card.completedSessions}/{card.totalSessions}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {card.progressPercent.toFixed(0)}%
+                        {formatPercent(card.progressPercent, locale, 0)}
                       </p>
                     </div>
                   </div>
@@ -141,16 +141,16 @@ export function BabyCardsReportComponent({ data, locale }: BabyCardsReportProps)
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 p-4">
-                <p className="text-2xl font-bold text-amber-700">{data.rewards.unlocked}</p>
+                <p className="text-2xl font-bold text-amber-700">{formatNumber(data.rewards.unlocked, locale)}</p>
                 <p className="text-sm text-gray-600">{t("babyCards.unlocked")}</p>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-green-50 p-4">
-                <p className="text-2xl font-bold text-emerald-700">{data.rewards.delivered}</p>
+                <p className="text-2xl font-bold text-emerald-700">{formatNumber(data.rewards.delivered, locale)}</p>
                 <p className="text-sm text-gray-600">{t("babyCards.delivered")}</p>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-teal-50 to-cyan-50 p-4">
                 <p className="text-2xl font-bold text-teal-700">
-                  {data.rewards.deliveryRate.toFixed(0)}%
+                  {formatPercent(data.rewards.deliveryRate, locale, 0)}
                 </p>
                 <p className="text-sm text-gray-600">{t("babyCards.deliveryRate")}</p>
               </div>

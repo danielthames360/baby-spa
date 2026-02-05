@@ -364,11 +364,23 @@ async function getEmailConfig() {
 }
 
 /**
+ * Get timezone offset in hours from WhatsApp country code
+ * This is a temporary solution until timezone is added to system settings
+ */
+function getTimezoneOffsetFromCountryCode(countryCode: string): number {
+  const offsets: Record<string, number> = {
+    "+591": -4,  // Bolivia UTC-4
+    "+55": -3,   // Brazil (São Paulo) UTC-3
+  };
+  return offsets[countryCode] ?? -4; // Default to Bolivia
+}
+
+/**
  * Create calendar event details from appointment data
  */
 function createCalendarEvent(
   data: AppointmentEmailData,
-  config: { businessAddress?: string }
+  config: { businessAddress?: string; whatsappCountryCode?: string }
 ): {
   title: string;
   description: string;
@@ -385,12 +397,21 @@ function createCalendarEvent(
     : `Cita en Baby Spa. Servicio: ${data.serviceName}.`;
 
   // Parse time and create start/end dates
+  // The time is in local business time (e.g., "15:00" means 15:00 Bolivia/Brazil)
+  // We need to convert to UTC for calendar links to work correctly
   const [hours, minutes] = data.time.split(":").map(Number);
-  const startTime = new Date(data.date);
-  startTime.setUTCHours(hours, minutes, 0, 0);
+  const timezoneOffset = getTimezoneOffsetFromCountryCode(config.whatsappCountryCode || "+591");
+
+  // Convert local business time to UTC
+  // For Bolivia (UTC-4): 15:00 local = 15:00 - (-4) = 19:00 UTC
+  const utcHours = hours - timezoneOffset;
+
+  const dateOnly = data.date.toISOString().split("T")[0];
+  const startTime = new Date(`${dateOnly}T00:00:00Z`);
+  startTime.setUTCHours(utcHours, minutes, 0, 0);
 
   const endTime = new Date(startTime);
-  endTime.setMinutes(endTime.getMinutes() + data.duration);
+  endTime.setUTCMinutes(endTime.getUTCMinutes() + data.duration);
 
   return {
     title,

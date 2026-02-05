@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { formatPercent, formatNumber } from "@/lib/utils/currency-utils";
 import {
   UserPlus,
   Users,
@@ -37,9 +38,10 @@ interface AcquisitionReportProps {
     convertedLeads: number;
     conversionRate: number;
   };
+  locale: string;
 }
 
-export function AcquisitionReport({ data }: AcquisitionReportProps) {
+export function AcquisitionReport({ data, locale }: AcquisitionReportProps) {
   const t = useTranslations("reports");
 
   return (
@@ -48,20 +50,20 @@ export function AcquisitionReport({ data }: AcquisitionReportProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
           title={t("acquisition.newClients")}
-          value={data.newClients.count.toString()}
+          value={formatNumber(data.newClients.count, locale)}
           icon={<UserPlus className="h-5 w-5" />}
           variant="success"
         />
         <SummaryCard
           title={t("acquisition.activeLeads")}
-          value={data.leads.total.toString()}
+          value={formatNumber(data.leads.total, locale)}
           icon={<Users className="h-5 w-5" />}
           variant="default"
         />
         <SummaryCard
           title={t("acquisition.conversionRate")}
-          value={`${data.conversionRate.toFixed(1)}%`}
-          subtitle={`${data.convertedLeads} ${t("acquisition.converted")}`}
+          value={formatPercent(data.conversionRate, locale)}
+          subtitle={`${formatNumber(data.convertedLeads, locale)} ${t("acquisition.converted")}`}
           icon={<TrendingUp className="h-5 w-5" />}
           variant={data.conversionRate >= 20 ? "success" : "warning"}
         />
@@ -121,12 +123,14 @@ export function AcquisitionReport({ data }: AcquisitionReportProps) {
               value={data.leads.total}
               percent={100}
               variant="full"
+              locale={locale}
             />
             <FunnelStep
               label={t("acquisition.converted")}
               value={data.convertedLeads}
               percent={data.conversionRate}
               variant="partial"
+              locale={locale}
             />
           </div>
 
@@ -240,17 +244,19 @@ function FunnelStep({
   value,
   percent,
   variant,
+  locale,
 }: {
   label: string;
   value: number;
   percent: number;
   variant: "full" | "partial";
+  locale: string;
 }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
         <span className="text-gray-600">{label}</span>
-        <span className="font-semibold text-gray-800">{value} ({percent.toFixed(0)}%)</span>
+        <span className="font-semibold text-gray-800">{formatNumber(value, locale)} ({formatPercent(percent, locale, 0)})</span>
       </div>
       <div
         className={cn(

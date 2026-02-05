@@ -76,6 +76,8 @@ export async function PUT(request: Request) {
       businessAddress,
       notificationPollingInterval,
       notificationExpirationDays,
+      maxSlotsStaff,
+      maxSlotsPortal,
     } = body;
 
     // Validate QR image size if provided (max 2MB for base64)
@@ -116,6 +118,28 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Validate max slots for staff (1-10)
+    if (maxSlotsStaff !== undefined) {
+      const slots = Number(maxSlotsStaff);
+      if (isNaN(slots) || slots < 1 || slots > 10) {
+        return NextResponse.json(
+          { error: "INVALID_MAX_SLOTS_STAFF" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate max slots for portal (1-5)
+    if (maxSlotsPortal !== undefined) {
+      const slots = Number(maxSlotsPortal);
+      if (isNaN(slots) || slots < 1 || slots > 5) {
+        return NextResponse.json(
+          { error: "INVALID_MAX_SLOTS_PORTAL" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Update or create settings
     const settings = await prisma.systemSettings.upsert({
       where: { id: "default" },
@@ -130,6 +154,8 @@ export async function PUT(request: Request) {
         businessAddress,
         notificationPollingInterval: notificationPollingInterval ?? 5,
         notificationExpirationDays: notificationExpirationDays ?? 7,
+        maxSlotsStaff: maxSlotsStaff ?? 5,
+        maxSlotsPortal: maxSlotsPortal ?? 2,
       },
       update: {
         ...(defaultPackageId !== undefined && { defaultPackageId }),
@@ -141,6 +167,8 @@ export async function PUT(request: Request) {
         ...(businessAddress !== undefined && { businessAddress }),
         ...(notificationPollingInterval !== undefined && { notificationPollingInterval: Number(notificationPollingInterval) }),
         ...(notificationExpirationDays !== undefined && { notificationExpirationDays: Number(notificationExpirationDays) }),
+        ...(maxSlotsStaff !== undefined && { maxSlotsStaff: Number(maxSlotsStaff) }),
+        ...(maxSlotsPortal !== undefined && { maxSlotsPortal: Number(maxSlotsPortal) }),
       },
       include: {
         defaultPackage: {

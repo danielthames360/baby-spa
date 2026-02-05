@@ -197,7 +197,7 @@ export function CancelAppointmentDialog({
       const response = await fetch(`/api/portal/appointments/${appointment.id}/cancel`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason, locale }),
+        body: JSON.stringify({ reason, locale, clientTimestamp: Date.now() }),
       });
 
       const data = await response.json();
@@ -583,6 +583,7 @@ export function RescheduleAppointmentDialog({
           newStartTime: selectedTime,
           newEndTime: calculateEndTime(selectedTime),
           locale,
+          clientTimestamp: Date.now(),
         }),
       });
 

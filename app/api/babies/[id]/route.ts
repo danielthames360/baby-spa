@@ -41,6 +41,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Only OWNER, ADMIN, and RECEPTION can modify baby data
+    const allowedRoles = ["OWNER", "ADMIN", "RECEPTION"];
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 

@@ -20,8 +20,8 @@ export default async function EditEventPage({
     redirect(`/${locale}/login`);
   }
 
-  // Only ADMIN and RECEPTION can edit events
-  if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+  // Only OWNER, ADMIN and RECEPTION can edit events
+  if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
     redirect(`/${locale}/admin/events/${id}`);
   }
 

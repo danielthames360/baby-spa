@@ -552,24 +552,24 @@ export const reportService = {
         },
         _sum: { amount: true },
       }),
-      // Direct costs: products used in sessions
-      prisma.sessionProduct.aggregate({
+      // Direct costs: products used in sessions (need to multiply quantity * unitPrice)
+      prisma.sessionProduct.findMany({
         where: {
           session: {
             completedAt: { gte: from, lte: to },
           },
         },
-        _sum: { unitPrice: true },
+        select: { quantity: true, unitPrice: true },
       }),
-      // Direct costs: products used in events
-      prisma.eventProductUsage.aggregate({
+      // Direct costs: products used in events (need to multiply quantity * unitPrice)
+      prisma.eventProductUsage.findMany({
         where: {
           event: {
             date: { gte: from, lte: to },
             status: "COMPLETED",
           },
         },
-        _sum: { unitPrice: true },
+        select: { quantity: true, unitPrice: true },
       }),
       // Staff payments (payroll)
       prisma.staffPayment.aggregate({
@@ -598,8 +598,15 @@ export const reportService = {
     const incomeFromInstallments = Number(packageInstallmentIncome._sum.amount || 0);
     const totalIncome = incomeFromSessions + incomeFromBabyCards + incomeFromEvents + incomeFromInstallments;
 
-    const sessionProductCosts = Number(productCosts._sum.unitPrice || 0);
-    const eventProductsCosts = Number(eventProductCosts._sum.unitPrice || 0);
+    // Calculate product costs by multiplying quantity * unitPrice
+    const sessionProductCosts = productCosts.reduce(
+      (sum, p) => sum + p.quantity * Number(p.unitPrice),
+      0
+    );
+    const eventProductsCosts = eventProductCosts.reduce(
+      (sum, p) => sum + p.quantity * Number(p.unitPrice),
+      0
+    );
     const totalDirectCosts = sessionProductCosts + eventProductsCosts;
 
     const grossMargin = totalIncome - totalDirectCosts;

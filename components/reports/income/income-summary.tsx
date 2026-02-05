@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { formatCurrency } from "@/lib/utils/currency-utils";
+import { formatCurrency, formatPercent } from "@/lib/utils/currency-utils";
 import { PaymentMethod } from "@prisma/client";
 import {
   Banknote,
@@ -82,7 +82,7 @@ export function IncomeSummary({ total, byMethod, locale }: IncomeSummaryProps) {
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{data.count} {t("transactions")}</span>
-                  <span>{percentage.toFixed(1)}%</span>
+                  <span>{formatPercent(percentage, locale)}</span>
                 </div>
                 <div className="mt-1 h-1.5 w-full rounded-full bg-gray-50">
                   <div

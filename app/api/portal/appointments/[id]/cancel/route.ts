@@ -27,7 +27,7 @@ export async function PATCH(
 
     const { id: appointmentId } = await params;
     const body = await request.json();
-    const { reason, locale = "es" } = body;
+    const { reason, locale = "es", clientTimestamp } = body;
 
     // Get the appointment with related data
     const appointment = await prisma.appointment.findUnique({
@@ -84,12 +84,14 @@ export async function PATCH(
       );
     }
 
-    // Calculate hours until appointment
-    const appointmentDateTime = new Date(appointment.date);
-    const [hours, minutes] = appointment.startTime.split(":").map(Number);
-    appointmentDateTime.setUTCHours(hours, minutes, 0, 0);
+    // Calculate hours until appointment using client's local time
+    // The client sends their current timestamp, and we compare using local time interpretation
+    // This ensures the calculation matches what the user sees on their screen
+    const dateOnly = appointment.date.toISOString().split("T")[0];
+    const appointmentDateTime = new Date(`${dateOnly}T${appointment.startTime}:00`);
+    const clientNow = clientTimestamp ? new Date(clientTimestamp) : new Date();
 
-    const hoursUntilAppointment = differenceInHours(appointmentDateTime, new Date());
+    const hoursUntilAppointment = differenceInHours(appointmentDateTime, clientNow);
 
     if (hoursUntilAppointment < MIN_HOURS_BEFORE_CANCEL) {
       return NextResponse.json(

@@ -19,9 +19,15 @@ import {
   Clock,
   User,
   ClipboardCheck,
+  Wallet,
+  DollarSign,
+  Receipt,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 interface Activity {
   id: string;
@@ -132,6 +138,41 @@ const ACTIVITY_CONFIG: Record<
     bgColor: "bg-indigo-100",
     iconColor: "text-indigo-600",
   },
+  STAFF_PAYMENT_REGISTERED: {
+    icon: Wallet,
+    bgColor: "bg-green-100",
+    iconColor: "text-green-600",
+  },
+  EXPENSE_REGISTERED: {
+    icon: Receipt,
+    bgColor: "bg-orange-100",
+    iconColor: "text-orange-600",
+  },
+  CASH_REGISTER_OPENED: {
+    icon: DollarSign,
+    bgColor: "bg-teal-100",
+    iconColor: "text-teal-600",
+  },
+  CASH_REGISTER_CLOSED: {
+    icon: DollarSign,
+    bgColor: "bg-slate-100",
+    iconColor: "text-slate-600",
+  },
+  CASH_REGISTER_EXPENSE_ADDED: {
+    icon: Receipt,
+    bgColor: "bg-amber-100",
+    iconColor: "text-amber-600",
+  },
+  CASH_REGISTER_REVIEWED: {
+    icon: ShieldCheck,
+    bgColor: "bg-blue-100",
+    iconColor: "text-blue-600",
+  },
+  CASH_REGISTER_FORCE_CLOSED: {
+    icon: AlertTriangle,
+    bgColor: "bg-red-100",
+    iconColor: "text-red-600",
+  },
 };
 
 const DEFAULT_CONFIG = {
@@ -190,7 +231,7 @@ export function ActivityCard({ activity, locale }: ActivityCardProps) {
     }
 
     if (metadata.amount !== undefined) {
-      parts.push(`R$ ${Number(metadata.amount).toFixed(2)}`);
+      parts.push(formatCurrency(Number(metadata.amount), locale));
     }
 
     return parts.length > 0 ? parts.join(" • ") : activity.description;

@@ -18,6 +18,9 @@ import {
   CheckCircle,
   Instagram,
   MapPin,
+  CalendarClock,
+  Users,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +38,8 @@ interface SystemSettings {
   businessAddress: string | null;
   notificationPollingInterval: number;
   notificationExpirationDays: number;
+  maxSlotsStaff: number;
+  maxSlotsPortal: number;
   defaultPackage?: {
     id: string;
     name: string;
@@ -66,6 +71,10 @@ export default function SettingsPage() {
   const [pollingInterval, setPollingInterval] = useState(5);
   const [expirationDays, setExpirationDays] = useState(7);
 
+  // Form state - Slots
+  const [maxSlotsStaff, setMaxSlotsStaff] = useState(5);
+  const [maxSlotsPortal, setMaxSlotsPortal] = useState(2);
+
   // Track original values for change detection
   const [originalValues, setOriginalValues] = useState<Record<string, unknown>>({});
 
@@ -84,10 +93,12 @@ export default function SettingsPage() {
       businessAddress,
       pollingInterval,
       expirationDays,
+      maxSlotsStaff,
+      maxSlotsPortal,
     };
     const changed = JSON.stringify(currentValues) !== JSON.stringify(originalValues);
     setHasChanges(changed);
-  }, [qrImage, whatsappCountryCode, whatsappNumber, whatsappMessage, instagramHandle, businessAddress, pollingInterval, expirationDays, originalValues]);
+  }, [qrImage, whatsappCountryCode, whatsappNumber, whatsappMessage, instagramHandle, businessAddress, pollingInterval, expirationDays, maxSlotsStaff, maxSlotsPortal, originalValues]);
 
   const fetchSettings = async () => {
     try {
@@ -106,6 +117,8 @@ export default function SettingsPage() {
           businessAddress: settings.businessAddress || "",
           pollingInterval: settings.notificationPollingInterval || 5,
           expirationDays: settings.notificationExpirationDays || 7,
+          maxSlotsStaff: settings.maxSlotsStaff || 5,
+          maxSlotsPortal: settings.maxSlotsPortal || 2,
         };
 
         setQrImage(values.qrImage);
@@ -117,6 +130,8 @@ export default function SettingsPage() {
         setBusinessAddress(values.businessAddress);
         setPollingInterval(values.pollingInterval);
         setExpirationDays(values.expirationDays);
+        setMaxSlotsStaff(values.maxSlotsStaff);
+        setMaxSlotsPortal(values.maxSlotsPortal);
         setOriginalValues(values);
       }
     } catch (err) {
@@ -174,6 +189,8 @@ export default function SettingsPage() {
           businessAddress: businessAddress || null,
           notificationPollingInterval: pollingInterval,
           notificationExpirationDays: expirationDays,
+          maxSlotsStaff,
+          maxSlotsPortal,
         }),
       });
 
@@ -191,6 +208,8 @@ export default function SettingsPage() {
           businessAddress,
           pollingInterval,
           expirationDays,
+          maxSlotsStaff,
+          maxSlotsPortal,
         });
         setHasChanges(false);
       } else {
@@ -199,6 +218,10 @@ export default function SettingsPage() {
           toast.error(t("settings.payment.fileTooLarge"));
         } else if (data.error === "INVALID_WHATSAPP_NUMBER") {
           toast.error(t("settings.payment.invalidPhone"));
+        } else if (data.error === "INVALID_MAX_SLOTS_STAFF") {
+          toast.error(t("settings.slots.invalidStaff"));
+        } else if (data.error === "INVALID_MAX_SLOTS_PORTAL") {
+          toast.error(t("settings.slots.invalidPortal"));
         } else {
           toast.error(t("settings.actions.saveError"));
         }
@@ -459,6 +482,77 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-gray-500">
                 {t("settings.notifications.expirationDaysHelp")}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <hr className="border-gray-200" />
+
+        {/* Slot Configuration */}
+        <section>
+          <div className="mb-4 flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-teal-600" />
+            <h2 className="text-lg font-semibold text-gray-800">
+              {t("settings.slots.title")}
+            </h2>
+          </div>
+          <p className="mb-6 text-sm text-gray-500">
+            {t("settings.slots.description")}
+          </p>
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* Max Slots for Staff */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-gray-500" />
+                {t("settings.slots.maxStaff")}
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={maxSlotsStaff}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setMaxSlotsStaff(Math.min(10, Math.max(1, value)));
+                  }}
+                  className="w-24 rounded-xl text-center"
+                />
+                <span className="text-sm text-gray-500">
+                  {t("settings.slots.perSlot")}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {t("settings.slots.maxStaffHelp")}
+              </p>
+            </div>
+
+            {/* Max Slots for Portal */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <UserCircle className="h-4 w-4 text-gray-500" />
+                {t("settings.slots.maxPortal")}
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={maxSlotsPortal}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setMaxSlotsPortal(Math.min(5, Math.max(1, value)));
+                  }}
+                  className="w-24 rounded-xl text-center"
+                />
+                <span className="text-sm text-gray-500">
+                  {t("settings.slots.perSlot")}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {t("settings.slots.maxPortalHelp")}
               </p>
             </div>
           </div>

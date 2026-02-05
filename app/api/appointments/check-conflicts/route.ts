@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withAuth, handleApiError } from '@/lib/api-utils';
 import { parseDateToUTCNoon } from '@/lib/utils/date-utils';
+import { getStaffSlotLimit } from '@/lib/services/settings-service';
 
 /**
  * GET /api/appointments/check-conflicts
@@ -13,7 +14,7 @@ import { parseDateToUTCNoon } from '@/lib/utils/date-utils';
  */
 export async function GET(request: Request) {
   try {
-    await withAuth(['ADMIN', 'RECEPTION', 'THERAPIST']);
+    await withAuth(['OWNER', 'ADMIN', 'RECEPTION', 'THERAPIST']);
 
     const { searchParams } = new URL(request.url);
     const datesParam = searchParams.get('dates');
@@ -29,6 +30,9 @@ export async function GET(request: Request) {
     if (dates.length === 0 || times.length === 0) {
       return NextResponse.json({ conflicts: [] });
     }
+
+    // Get configurable staff slot limit
+    const maxSlotsStaff = await getStaffSlotLimit();
 
     const conflicts = [];
 
@@ -54,7 +58,7 @@ export async function GET(request: Request) {
             date: dateStr,
             time,
             count,
-            available: Math.max(0, 5 - count),
+            available: Math.max(0, maxSlotsStaff - count),
           });
         }
       }

@@ -3,8 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseDateToUTCNoon, formatLocalDateString } from "@/lib/utils/date-utils";
-
-const MAX_SLOTS_PER_HOUR = 2;
+import { getPortalSlotLimit } from "@/lib/services/settings-service";
 
 export async function GET(request: Request) {
   try {
@@ -86,9 +85,9 @@ export async function GET(request: Request) {
     // Afternoon slots
     addSlots(businessHours.afternoonOpen, businessHours.afternoonClose);
 
-    // Get existing appointments and events in parallel
+    // Get existing appointments, events, and slot limit in parallel
     // PENDING_PAYMENT appointments don't block slots
-    const [existingAppointments, events] = await Promise.all([
+    const [existingAppointments, events, maxSlotsPortal] = await Promise.all([
       prisma.appointment.findMany({
         where: {
           date,
@@ -113,6 +112,7 @@ export async function GET(request: Request) {
           blockedTherapists: true,
         },
       }),
+      getPortalSlotLimit(),
     ]);
 
     // Helper: convert time string to minutes
@@ -154,8 +154,8 @@ export async function GET(request: Request) {
         return max;
       }, 0);
 
-      // Reduce capacity based on events - if event blocks >= 2, slot is unavailable for parents
-      const effectiveCapacity = Math.max(0, MAX_SLOTS_PER_HOUR - maxBlockedByEvents);
+      // Reduce capacity based on events - if event blocks >= portal limit, slot is unavailable for parents
+      const effectiveCapacity = Math.max(0, maxSlotsPortal - maxBlockedByEvents);
 
       // For today, filter out slots that have already passed (with buffer)
       const isPastSlot = isToday && slotStart < currentMinutes;

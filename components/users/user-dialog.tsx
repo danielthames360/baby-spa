@@ -20,7 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, User, Eye, EyeOff } from "lucide-react";
+import { Loader2, User, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 type UserRole = "OWNER" | "ADMIN" | "RECEPTION" | "THERAPIST";
@@ -36,6 +37,7 @@ interface UserData {
   isActive: boolean;
   baseSalary: number | null;
   payFrequency: PayFrequency;
+  mustChangePassword?: boolean;
 }
 
 interface UserDialogProps {
@@ -85,6 +87,7 @@ export function UserDialog({
   const [phone, setPhone] = useState("");
   const [baseSalary, setBaseSalary] = useState("");
   const [payFrequency, setPayFrequency] = useState<PayFrequency>("MONTHLY");
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   // Reset form when dialog opens/closes or user changes
   useEffect(() => {
@@ -98,6 +101,7 @@ export function UserDialog({
       setPhone(user.phone || "");
       setBaseSalary(user.baseSalary?.toString() || "");
       setPayFrequency(user.payFrequency);
+      setMustChangePassword(user.mustChangePassword || false);
       setShowPassword(false);
     } else if (open && !user) {
       // Creando nuevo usuario - mostrar contraseña por defecto
@@ -109,6 +113,7 @@ export function UserDialog({
       setPhone("");
       setBaseSalary("");
       setPayFrequency("MONTHLY");
+      setMustChangePassword(true); // Nuevos usuarios deben cambiar contraseña
       setShowPassword(true); // Mostrar contraseña visible al crear
     } else if (!open) {
       // Dialog cerrado - limpiar todo
@@ -120,6 +125,7 @@ export function UserDialog({
       setPhone("");
       setBaseSalary("");
       setPayFrequency("MONTHLY");
+      setMustChangePassword(false);
       setShowPassword(false);
     }
   }, [open, user]);
@@ -147,6 +153,7 @@ export function UserDialog({
         phone: phone || undefined,
         baseSalary: baseSalary ? parseFloat(baseSalary) : undefined,
         payFrequency,
+        mustChangePassword,
       };
 
       if (password) {
@@ -270,6 +277,28 @@ export function UserDialog({
             </p>
           )}
         </div>
+
+        {/* Must Change Password - Only show when editing */}
+        {isEditing && (
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-amber-600" />
+              <div>
+                <Label htmlFor="mustChangePassword" className="text-sm font-medium text-amber-800">
+                  {t("dialog.forcePasswordChange")}
+                </Label>
+                <p className="text-xs text-amber-600">
+                  {t("dialog.forcePasswordChangeDesc")}
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="mustChangePassword"
+              checked={mustChangePassword}
+              onCheckedChange={setMustChangePassword}
+            />
+          </div>
+        )}
 
         {/* Role */}
         <div className="space-y-2">

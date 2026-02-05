@@ -12,7 +12,7 @@ import { useNotificationSound } from "./use-notification-sound";
 const DEFAULT_POLLING_INTERVAL = 5 * 60 * 1000;
 
 // Allowed roles for notifications
-const ALLOWED_ROLES = ["ADMIN", "RECEPTION"];
+const ALLOWED_ROLES = ["OWNER", "ADMIN", "RECEPTION"];
 
 interface NotificationCountResponse {
   count: number;

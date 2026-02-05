@@ -2,7 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils/currency-utils";
+import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils/currency-utils";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import {
   Calendar,
   Users,
@@ -47,13 +48,13 @@ export function EventsReportComponent({ data, locale }: EventsReportProps) {
       <div className="grid gap-4 md:grid-cols-4">
         <SummaryCard
           title={t("events.totalEvents")}
-          value={data.summary.totalEvents.toString()}
+          value={formatNumber(data.summary.totalEvents, locale)}
           icon={<Calendar className="h-5 w-5" />}
           variant="default"
         />
         <SummaryCard
           title={t("events.participants")}
-          value={data.summary.totalParticipants.toString()}
+          value={formatNumber(data.summary.totalParticipants, locale)}
           icon={<Users className="h-5 w-5" />}
           variant="default"
         />
@@ -65,7 +66,9 @@ export function EventsReportComponent({ data, locale }: EventsReportProps) {
         />
         <SummaryCard
           title={t("events.attendanceRate")}
-          value={`${data.summary.attendanceRate.toFixed(0)}%`}
+          value={data.summary.attendanceRate > 100
+            ? `${formatPercent(100, locale, 0)}+`
+            : formatPercent(data.summary.attendanceRate, locale, 0)}
           icon={<CheckCircle className="h-5 w-5" />}
           variant={data.summary.attendanceRate >= 80 ? "success" : "warning"}
         />
@@ -127,7 +130,7 @@ export function EventsReportComponent({ data, locale }: EventsReportProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {new Date(event.date).toLocaleDateString()}
+                      {formatDateForDisplay(new Date(event.date), locale === "pt-BR" ? "pt-BR" : "es-BO", { dateStyle: "short" })}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="font-medium text-gray-800">
@@ -142,7 +145,7 @@ export function EventsReportComponent({ data, locale }: EventsReportProps) {
                         "font-medium",
                         event.margin >= 70 ? "text-emerald-600" : event.margin >= 50 ? "text-amber-600" : "text-rose-600"
                       )}>
-                        {event.margin.toFixed(0)}%
+                        {formatPercent(event.margin, locale, 0)}
                       </span>
                     </td>
                   </tr>

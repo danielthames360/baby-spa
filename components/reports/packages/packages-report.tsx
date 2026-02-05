@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils/currency-utils";
+import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils/currency-utils";
 import {
   Package,
   TrendingUp,
@@ -46,7 +46,7 @@ export function PackagesReport({ data, locale }: PackagesReportProps) {
       <div className="grid gap-4 md:grid-cols-4">
         <SummaryCard
           title={t("packages.totalSold")}
-          value={totalSold.toString()}
+          value={formatNumber(totalSold, locale)}
           icon={<Package className="h-5 w-5" />}
           variant="default"
         />
@@ -58,14 +58,14 @@ export function PackagesReport({ data, locale }: PackagesReportProps) {
         />
         <SummaryCard
           title={t("packages.utilizationRate")}
-          value={`${data.utilization.rate.toFixed(1)}%`}
+          value={formatPercent(data.utilization.rate, locale)}
           icon={<BarChart3 className="h-5 w-5" />}
           variant={data.utilization.rate >= 70 ? "success" : "warning"}
         />
         <SummaryCard
           title={t("packages.discountsGiven")}
           value={formatCurrency(data.discounts.totalAmount, locale)}
-          subtitle={`${data.discounts.count} ${t("packages.discountsCount")}`}
+          subtitle={`${formatNumber(data.discounts.count, locale)} ${t("packages.discountsCount")}`}
           icon={<Percent className="h-5 w-5" />}
           variant="warning"
         />
@@ -109,7 +109,7 @@ export function PackagesReport({ data, locale }: PackagesReportProps) {
                           {formatCurrency(pkg.revenue, locale)}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {percentOfTotal.toFixed(1)}%
+                          {formatPercent(percentOfTotal, locale)}
                         </p>
                       </div>
                     </div>
@@ -136,11 +136,11 @@ export function PackagesReport({ data, locale }: PackagesReportProps) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">{t("packages.sessionsSold")}</span>
-                <span className="font-semibold text-gray-800">{data.utilization.totalSold}</span>
+                <span className="font-semibold text-gray-800">{formatNumber(data.utilization.totalSold, locale)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">{t("packages.sessionsUsed")}</span>
-                <span className="font-semibold text-gray-800">{data.utilization.totalUsed}</span>
+                <span className="font-semibold text-gray-800">{formatNumber(data.utilization.totalUsed, locale)}</span>
               </div>
               <div className="h-4 overflow-hidden rounded-full bg-gray-100">
                 <div
@@ -158,7 +158,7 @@ export function PackagesReport({ data, locale }: PackagesReportProps) {
                   "text-2xl font-bold",
                   data.utilization.rate >= 70 ? "text-emerald-700" : "text-amber-700"
                 )}>
-                  {data.utilization.rate.toFixed(1)}%
+                  {formatPercent(data.utilization.rate, locale)}
                 </span>
                 <span className="ml-2 text-sm text-gray-500">{t("packages.utilizationRate")}</span>
               </div>

@@ -9,7 +9,7 @@ import { parseDateToUTCNoon } from '@/lib/utils/date-utils';
  */
 export async function POST(request: Request) {
   try {
-    const session = await withAuth(['ADMIN', 'RECEPTION']);
+    const session = await withAuth(['OWNER', 'ADMIN', 'RECEPTION']);
 
     const body = await request.json();
     const { babyId, packagePurchaseId, appointments } = body;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./time-slot";
 import { AppointmentCard } from "./appointment-card";
@@ -77,6 +77,7 @@ export function DayColumn({
   onDayClick,
 }: DayColumnProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const dayOfWeek = date.getDay();
   const dayNumber = date.getDate();
 
@@ -101,7 +102,6 @@ export function DayColumn({
   };
 
   // Get day name based on locale (fallback to Spanish)
-  const locale = "es"; // This will be dynamic based on actual locale
   const dayName = dayNames[locale]?.[dayOfWeek] || dayNames["es"][dayOfWeek];
 
   return (
@@ -156,7 +156,11 @@ export function DayColumn({
             <div className="divide-y divide-gray-100">
               {timeSlots.map((slot) => {
                 // Count appointments that overlap with this slot
+                // Only count SCHEDULED, IN_PROGRESS, PENDING_PAYMENT - exclude CANCELLED and NO_SHOW
                 const overlappingCount = appointments.filter((apt) => {
+                  // Cancelled and no-show appointments don't block slots
+                  if (apt.status === "CANCELLED" || apt.status === "NO_SHOW") return false;
+
                   const aptStart = timeToMinutes(apt.startTime);
                   const aptEnd = timeToMinutes(apt.endTime);
                   const slotStart = timeToMinutes(slot.time);

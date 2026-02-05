@@ -17,6 +17,7 @@ import {
 } from "@/lib/utils/date-utils";
 import { activityService } from "./activity-service";
 import { emailService } from "./email-service";
+import { getSlotLimits } from "./settings-service";
 
 // Re-export for backwards compatibility
 export { BUSINESS_HOURS, MAX_APPOINTMENTS_PER_SLOT, SLOT_DURATION_MINUTES, generateTimeSlots, isWithinBusinessHours };
@@ -479,20 +480,20 @@ export const appointmentService = {
 
   // Check if there's availability for a time range by checking EACH 30-minute slot
   // This is the correct way to validate therapist availability
-  // maxAppointments: defaults to staff limit (5). For parents portal, pass MAX_APPOINTMENTS_FOR_PARENTS (2)
+  // maxAppointments: if not provided, fetches from SystemSettings (configurable per country)
   async checkAvailabilityForTimeRange(
     date: Date,
     startTime: string,
     endTime: string,
     excludeAppointmentId?: string,
-    maxAppointments: number = MAX_APPOINTMENTS_FOR_STAFF
+    maxAppointments?: number
   ): Promise<{ available: boolean; conflictingSlot?: string; occupiedCount?: number; reducedByEvent?: boolean }> {
     // Use centralized date utilities for consistent handling
     const startOfDay = getStartOfDayUTC(date);
     const endOfDay = getEndOfDayUTC(date);
 
     // async-parallel: Run independent queries in parallel
-    const [appointments, overlappingEvents] = await Promise.all([
+    const [appointments, overlappingEvents, slotLimits] = await Promise.all([
       // Get all appointments for this specific date
       // Using a date range to handle any time component variations
       prisma.appointment.findMany({
@@ -524,7 +525,14 @@ export const appointmentService = {
           blockedTherapists: true,
         },
       }),
+      // Get configurable slot limits from SystemSettings
+      getSlotLimits(),
     ]);
+
+    // Use provided maxAppointments or fall back to configured staff limit
+    const effectiveMaxAppointments = maxAppointments ?? slotLimits.staff;
+    // Total capacity (therapists) equals staff slot limit
+    const totalCapacity = slotLimits.staff;
 
     // Convert times to minutes for easier calculation
     const toMinutes = (time: string) => {
@@ -554,7 +562,6 @@ export const appointmentService = {
 
     const startMins = toMinutes(startTime);
     const endMins = toMinutes(endTime);
-    const TOTAL_THERAPISTS = 4; // Baby Spa has 4 therapists
 
     // Check each 30-minute slot within the requested time range
     for (let slotStart = startMins; slotStart < endMins; slotStart += SLOT_DURATION_MINUTES) {
@@ -566,9 +573,9 @@ export const appointmentService = {
 
       // Calculate effective max appointments for this slot
       // If event blocks therapists, reduce capacity proportionally
-      let effectiveMax = maxAppointments;
+      let effectiveMax = effectiveMaxAppointments;
       if (blockedTherapists > 0) {
-        const availableTherapists = TOTAL_THERAPISTS - blockedTherapists;
+        const availableTherapists = totalCapacity - blockedTherapists;
         if (availableTherapists <= 0) {
           // All therapists blocked - no appointments possible
           return {
@@ -579,8 +586,8 @@ export const appointmentService = {
           };
         }
         // Reduce max appointments proportionally to available therapists
-        // If 2 of 4 therapists blocked, max goes from 5 to ~2-3
-        effectiveMax = Math.min(maxAppointments, availableTherapists);
+        // If 2 of 5 blocked, max goes from 5 to 3
+        effectiveMax = Math.min(effectiveMaxAppointments, availableTherapists);
       }
 
       // Count how many appointments occupy this specific slot

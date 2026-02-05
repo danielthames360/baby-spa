@@ -82,7 +82,7 @@ export default async function TherapistsReportPage({
       />
 
       {/* Therapist Performance Table */}
-      <TherapistTable data={report} />
+      <TherapistTable data={report} locale={locale} />
     </div>
   );
 }

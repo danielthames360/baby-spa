@@ -16,7 +16,7 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const ALLOWED_ROLES = ["OWNER", "ADMIN", "RECEPTION", "THERAPIST"];
+const ALLOWED_ROLES = ["OWNER", "ADMIN", "RECEPTION"];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { data: session, status } = useSession();
@@ -33,8 +33,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
 
     if (!ALLOWED_ROLES.includes(session.user.role)) {
-      // Si es PARENT, redirigir al portal
-      if (session.user.role === "PARENT") {
+      // Redirigir según el rol
+      if (session.user.role === "THERAPIST") {
+        router.replace("/therapist/today");
+      } else if (session.user.role === "PARENT") {
         router.replace("/portal/dashboard");
       } else {
         router.replace("/login");

@@ -846,6 +846,8 @@ async function main() {
         paymentQrImageUrl: null,
         whatsappNumber: "+591 70000000",
         whatsappMessage: "Hola Baby Spa! Adjunto mi comprobante de pago para la cita del {fecha} para {bebe}. Monto: {monto}",
+        maxSlotsStaff: 5,
+        maxSlotsPortal: 2,
       },
     });
 

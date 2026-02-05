@@ -904,6 +904,17 @@
       "loadError": "Error al cargar configuración",
       "saveError": "Error al guardar configuración",
       "saved": "Configuración guardada"
+    },
+    "slots": {
+      "title": "Configuración de Slots",
+      "description": "Límites de citas simultáneas por horario. Ajusta según la capacidad del spa.",
+      "maxStaff": "Máximo citas por slot (Staff)",
+      "maxStaffHelp": "Límite de citas concurrentes para recepción y administración (1-10)",
+      "maxPortal": "Máximo citas por slot (Portal)",
+      "maxPortalHelp": "Límite de citas concurrentes para padres desde el portal (1-5)",
+      "perSlot": "citas",
+      "invalidStaff": "El límite de staff debe estar entre 1 y 10",
+      "invalidPortal": "El límite de portal debe estar entre 1 y 5"
     }
   },
 
@@ -2468,7 +2479,12 @@
       "client_updated": "Cliente actualizado: {clientName}",
       "evaluation_saved": "Evaluación guardada: {babyName}",
       "staff_payment_registered": "Pago registrado: {staffName}",
-      "expense_registered": "Gasto registrado: {category}"
+      "expense_registered": "Gasto registrado: {category}",
+      "cash_register_opened": "Caja abierta",
+      "cash_register_closed": "Caja cerrada",
+      "cash_register_expense_added": "Gasto agregado a caja",
+      "cash_register_reviewed": "Arqueo revisado",
+      "cash_register_force_closed": "Caja cerrada forzosamente"
     }
   },
 
@@ -2707,7 +2723,9 @@
       "salarySection": "Información de Salario",
       "baseSalary": "Salario base",
       "payFrequency": "Frecuencia de pago",
-      "create": "Crear Usuario"
+      "create": "Crear Usuario",
+      "forcePasswordChange": "Forzar cambio de contraseña",
+      "forcePasswordChangeDesc": "El usuario deberá cambiar su contraseña en el próximo inicio de sesión"
     },
 
     "deactivateConfirm": {
@@ -3157,6 +3175,8 @@
       "active": "Activas",
       "completed": "Completadas",
       "progress": "Progreso de Tarjetas",
+      "avgProgress": "Progreso Promedio",
+      "noProgress": "No hay tarjetas con progreso",
       "noCards": "No hay Baby Cards en este período",
       "baby": "Bebé",
       "parent": "Padre/Madre",
@@ -3165,6 +3185,11 @@
       "status": "Estado",
       "activeLabel": "Activa",
       "completedLabel": "Completa",
+      "rewards": "Premios",
+      "unlocked": "Desbloqueados",
+      "delivered": "Entregados",
+      "deliveryRate": "Tasa de Entrega",
+      "deliveryProgress": "Progreso de Entrega",
       "redemptions": "Recompensas Canjeadas",
       "pendingRedemptions": "Pendientes",
       "claimed": "canjeadas",
@@ -3174,8 +3199,11 @@
     "events": {
       "totalEvents": "Total Eventos",
       "totalAttendees": "Asistentes",
+      "participants": "Participantes",
       "revenue": "Ingresos",
       "conversion": "Conversión",
+      "attendanceRate": "Tasa de Asistencia",
+      "attendance": "Asistencia",
       "eventsList": "Lista de Eventos",
       "noEvents": "No hay eventos en este período",
       "event": "Evento",
@@ -3188,6 +3216,8 @@
       "margin": "Margen",
       "conversionLabel": "Conversión",
       "converted": "convertidos",
+      "typeBabies": "Bebés",
+      "typeParents": "Padres",
       "types": {
         "BABY": "Bebés",
         "PARENT": "Padres"
@@ -3195,11 +3225,16 @@
     },
 
     "payroll": {
+      "totalPayroll": "Total Nómina",
       "totalPaid": "Total Pagado",
+      "salaries": "Salarios",
+      "commissions": "Comisiones",
+      "benefits": "Beneficios",
       "paymentsByType": "Por Tipo",
       "byEmployee": "Por Empleado",
       "pendingAdvances": "Adelantos Pendientes",
       "noPayments": "No hay pagos en este período",
+      "noAdvances": "No hay adelantos pendientes",
       "employee": "Empleado",
       "role": "Rol",
       "regularPay": "Regular",

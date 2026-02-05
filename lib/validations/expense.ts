@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalBooleanFromString } from "./zod-helpers";
 
 // Payment detail schema (for split payments)
 const paymentDetailSchema = z.object({
@@ -52,7 +53,7 @@ export const listExpensesSchema = z.object({
   categories: z.array(z.enum(expenseCategories)).optional(),
   from: z.string().optional(),
   to: z.string().optional(),
-  includeDeleted: z.coerce.boolean().optional(),
+  includeDeleted: optionalBooleanFromString,
   page: z.coerce.number().min(1).optional(),
   limit: z.coerce.number().min(1).max(100).optional(),
 });

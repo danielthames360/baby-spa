@@ -63,7 +63,7 @@ export default async function ActivityPage({
     prisma.user.findMany({
       where: {
         isActive: true,
-        role: { in: ["ADMIN", "RECEPTION", "THERAPIST"] },
+        role: { in: ["OWNER", "ADMIN", "RECEPTION", "THERAPIST"] },
       },
       select: {
         id: true,

@@ -19,8 +19,8 @@ export default async function NewEventPage({
     redirect(`/${locale}/login`);
   }
 
-  // Only ADMIN and RECEPTION can create events
-  if (!["ADMIN", "RECEPTION"].includes(session.user.role)) {
+  // Only OWNER, ADMIN and RECEPTION can create events
+  if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
     redirect(`/${locale}/admin`);
   }
 

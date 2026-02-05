@@ -1259,6 +1259,10 @@ model SystemSettings {
   notificationPollingInterval  Int @default(5)   // Intervalo de polling en minutos (1-30)
   notificationExpirationDays   Int @default(7)   // Días hasta que expira una notificación (1-30)
 
+  // Configuración de slots de citas (MP-001)
+  maxSlotsStaff         Int @default(5)   // Límite de citas por slot para staff (1-10)
+  maxSlotsPortal        Int @default(2)   // Límite de citas por slot para portal padres (1-5)
+
   updatedAt             DateTime @updatedAt
 
   @@map("system_settings")

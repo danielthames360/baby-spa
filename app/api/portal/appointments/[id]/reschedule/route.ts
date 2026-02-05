@@ -7,9 +7,9 @@ import { activityService } from "@/lib/services/activity-service";
 import { emailService } from "@/lib/services/email-service";
 import { differenceInHours } from "date-fns";
 import { fromDateOnly, toDateOnly } from "@/lib/utils/date-utils";
+import { getPortalSlotLimit } from "@/lib/services/settings-service";
 
 const MIN_HOURS_BEFORE_RESCHEDULE = 24;
-const MAX_APPOINTMENTS_PER_SLOT_PORTAL = 2;
 
 export async function PATCH(
   request: Request,
@@ -29,7 +29,7 @@ export async function PATCH(
 
     const { id: appointmentId } = await params;
     const body = await request.json();
-    const { newDate, newStartTime, newEndTime, locale = "es" } = body;
+    const { newDate, newStartTime, newEndTime, locale = "es", clientTimestamp } = body;
 
     // Validate required fields
     if (!newDate || !newStartTime || !newEndTime) {
@@ -82,12 +82,14 @@ export async function PATCH(
       );
     }
 
-    // Calculate hours until current appointment
-    const currentAppointmentDateTime = new Date(appointment.date);
-    const [currentHours, currentMinutes] = appointment.startTime.split(":").map(Number);
-    currentAppointmentDateTime.setUTCHours(currentHours, currentMinutes, 0, 0);
+    // Calculate hours until current appointment using client's local time
+    // The client sends their current timestamp, and we compare using local time interpretation
+    // This ensures the calculation matches what the user sees on their screen
+    const currentDateOnly = appointment.date.toISOString().split("T")[0];
+    const currentAppointmentDateTime = new Date(`${currentDateOnly}T${appointment.startTime}:00`);
+    const clientNow = clientTimestamp ? new Date(clientTimestamp) : new Date();
 
-    const hoursUntilAppointment = differenceInHours(currentAppointmentDateTime, new Date());
+    const hoursUntilAppointment = differenceInHours(currentAppointmentDateTime, clientNow);
 
     if (hoursUntilAppointment < MIN_HOURS_BEFORE_RESCHEDULE) {
       return NextResponse.json(
@@ -103,29 +105,30 @@ export async function PATCH(
     // Parse new date
     const newDateParsed = toDateOnly(newDate);
 
-    // Verify new date is in the future
-    const newAppointmentDateTime = new Date(newDateParsed);
-    const [newHours, newMinutes] = newStartTime.split(":").map(Number);
-    newAppointmentDateTime.setUTCHours(newHours, newMinutes, 0, 0);
+    // Verify new date is in the future using client's local time
+    const newAppointmentDateTime = new Date(`${newDate}T${newStartTime}:00`);
 
-    if (newAppointmentDateTime <= new Date()) {
+    if (newAppointmentDateTime <= clientNow) {
       return NextResponse.json(
         { error: "New appointment time must be in the future", code: "PAST_DATE" },
         { status: 400 }
       );
     }
 
-    // Check slot availability (max 2 appointments per slot for portal)
-    const existingAppointments = await prisma.appointment.count({
-      where: {
-        date: newDateParsed,
-        startTime: newStartTime,
-        status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-        id: { not: appointmentId }, // Exclude current appointment
-      },
-    });
+    // Check slot availability (configurable max per slot for portal)
+    const [existingAppointments, maxSlotsPortal] = await Promise.all([
+      prisma.appointment.count({
+        where: {
+          date: newDateParsed,
+          startTime: newStartTime,
+          status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+          id: { not: appointmentId }, // Exclude current appointment
+        },
+      }),
+      getPortalSlotLimit(),
+    ]);
 
-    if (existingAppointments >= MAX_APPOINTMENTS_PER_SLOT_PORTAL) {
+    if (existingAppointments >= maxSlotsPortal) {
       return NextResponse.json(
         { error: "This time slot is no longer available", code: "SLOT_FULL" },
         { status: 400 }

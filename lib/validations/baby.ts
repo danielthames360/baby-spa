@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalBooleanFromString } from "./zod-helpers";
 
 // Helper for optional date fields that handles empty strings
 const optionalDateSchema = z
@@ -221,7 +222,7 @@ export type ParentListFilters = z.infer<typeof parentListFiltersSchema>;
 export const babySearchParamsSchema = z.object({
   search: z.string().optional(),
   status: z.enum(["active", "inactive", "all"]).default("active"),
-  hasActivePackage: z.coerce.boolean().optional(),
+  hasActivePackage: optionalBooleanFromString,
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(10),
 });

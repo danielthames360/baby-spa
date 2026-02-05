@@ -8,7 +8,7 @@ import { withAuth, handleApiError, ApiError } from '@/lib/api-utils';
  */
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await withAuth(['ADMIN', 'RECEPTION']);
+    await withAuth(['OWNER', 'ADMIN', 'RECEPTION']);
 
     const { id } = await params;
     const body = await request.json();
@@ -50,7 +50,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await withAuth(['ADMIN', 'RECEPTION', 'THERAPIST']);
+    await withAuth(['OWNER', 'ADMIN', 'RECEPTION', 'THERAPIST']);
 
     const { id } = await params;
 

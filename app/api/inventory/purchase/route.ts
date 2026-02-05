@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN and RECEPTION can register purchases
-    if (session.user.role !== "ADMIN" && session.user.role !== "RECEPTION") {
+    // Only OWNER, ADMIN and RECEPTION can register purchases
+    if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

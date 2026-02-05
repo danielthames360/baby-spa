@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalBooleanFromString } from "./zod-helpers";
 
 // ============================================================
 // ENUMS
@@ -50,7 +51,7 @@ export const rewardSchema = z
 
     // Display
     displayName: z.string().min(1, "DISPLAY_NAME_REQUIRED").max(100),
-    displayIcon: z.string().max(10).optional().nullable(),
+    displayIcon: z.string().max(30).optional().nullable(),
   })
   .superRefine((data, ctx) => {
     // Validate based on reward type
@@ -238,7 +239,7 @@ export type UseRewardData = z.infer<typeof useRewardSchema>;
 // ============================================================
 
 export const babyCardFiltersSchema = z.object({
-  isActive: z.coerce.boolean().optional(),
+  isActive: optionalBooleanFromString,
   search: z.string().optional(),
 });
 

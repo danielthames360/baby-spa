@@ -13,7 +13,8 @@ interface PortalLayoutProps {
 }
 
 export default function PortalLayout({ children }: PortalLayoutProps) {
-  const { data: session, status } = useSession();
+  // Use required: false to prevent throwing during hydration edge cases
+  const { data: session, status } = useSession({ required: false });
   const t = useTranslations();
   const router = useRouter();
   const pathname = usePathname();

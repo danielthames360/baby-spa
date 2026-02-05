@@ -82,7 +82,7 @@ export default async function AcquisitionReportPage({
       />
 
       {/* Acquisition Report */}
-      <AcquisitionReport data={report} />
+      <AcquisitionReport data={report} locale={locale} />
     </div>
   );
 }

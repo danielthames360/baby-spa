@@ -71,7 +71,8 @@ export default function ParentLoginPage() {
       return;
     }
 
-    router.push("/portal/dashboard");
+    // Login successful - force refresh to update session state
+    // The useEffect will handle the redirect once session is authenticated
     router.refresh();
   };
 

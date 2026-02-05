@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency-utils";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import {
   Users,
   UserCheck,
@@ -144,7 +145,7 @@ export function ClientPortfolio({ data, locale }: ClientPortfolioProps) {
                       <p className="text-sm text-gray-500">{client.parentName}</p>
                       <p className="text-xs text-rose-600">
                         {client.lastVisit
-                          ? `${t("clients.lastVisit")}: ${new Date(client.lastVisit).toLocaleDateString()}`
+                          ? `${t("clients.lastVisit")}: ${formatDateForDisplay(new Date(client.lastVisit), locale === "pt-BR" ? "pt-BR" : "es-BO", { dateStyle: "short" })}`
                           : t("clients.noVisit")}
                       </p>
                     </div>

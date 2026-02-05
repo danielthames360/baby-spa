@@ -1820,6 +1820,7 @@ Ver planificación detallada en: `PlanificacionesBabySpa/PLANIFICACION-CRON-JOBS
 - [ ] QR de Pago configurable
 - [ ] Configuración avanzada del Sistema
 - Ver planificación de exportación en: `PlanificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
+- [ ] Recordar preguntar acerca de implementar SWR en el proyecto! 
 
 ---
 

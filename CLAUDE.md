@@ -297,10 +297,14 @@ npx tsc --noEmit && npm run build
 | Prisma client error | `npx prisma generate` |
 | Hydration mismatch | Verificar 'use client', código browser-only |
 | Decimal to Client | Serializar con `Number()` antes de pasar a componentes |
+| DB query `prisma.` is not a function | **CRÍTICO:** Escapar `$` como `\$` → `prisma.\$disconnect()` |
 
 ---
 
 ## 🗄️ Database Queries (Claude)
+
+> ⚠️ **IMPORTANTE:** En Windows/bash, el símbolo `$` debe escaparse como `\$`.
+> Si ves error `prisma. is not a function`, verifica que uses `prisma.\$disconnect()` (con backslash).
 
 ```bash
 cd D:/projects/next/baby-spa && node -e "

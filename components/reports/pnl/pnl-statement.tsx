@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils/currency-utils";
+import { formatCurrency, formatPercent } from "@/lib/utils/currency-utils";
 import {
   TrendingUp,
   TrendingDown,
@@ -43,7 +43,7 @@ export function PnLStatement({ data, locale }: PnLStatementProps) {
   const t = useTranslations("reports");
 
   const formatAmount = (amount: number) => formatCurrency(amount, locale);
-  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+  const formatPct = (value: number) => formatPercent(value, locale);
 
   return (
     <div className="space-y-6">
@@ -70,7 +70,7 @@ export function PnLStatement({ data, locale }: PnLStatementProps) {
         <SummaryCard
           title={t("pnl.netResult")}
           value={formatAmount(data.netResult)}
-          subtitle={formatPercent(data.netMarginPercent)}
+          subtitle={formatPct(data.netMarginPercent)}
           icon={data.netResult >= 0 ? "TrendingUp" : "TrendingDown"}
           variant={data.netResult >= 0 ? "success" : "danger"}
         />
@@ -150,7 +150,7 @@ export function PnLStatement({ data, locale }: PnLStatementProps) {
                   {formatAmount(data.netResult)}
                 </span>
                 <span className="ml-2 text-sm text-gray-500">
-                  ({formatPercent(data.netMarginPercent)} {t("pnl.margin")})
+                  ({formatPct(data.netMarginPercent)} {t("pnl.margin")})
                 </span>
               </div>
             </div>

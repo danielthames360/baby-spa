@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { formatPercent, formatNumber } from "@/lib/utils/currency-utils";
 import { User, Clock, ClipboardCheck, AlertTriangle, Trophy } from "lucide-react";
 
 interface TherapistTableProps {
@@ -13,9 +14,10 @@ interface TherapistTableProps {
     evaluatedSessions: number;
     evaluationRate: number;
   }[];
+  locale: string;
 }
 
-export function TherapistTable({ data }: TherapistTableProps) {
+export function TherapistTable({ data, locale }: TherapistTableProps) {
   const t = useTranslations("reports");
 
   if (data.length === 0) {
@@ -35,19 +37,19 @@ export function TherapistTable({ data }: TherapistTableProps) {
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
           title={t("therapists.totalSessions")}
-          value={totalSessions.toString()}
+          value={formatNumber(totalSessions, locale)}
           icon={<Clock className="h-5 w-5" />}
           variant="default"
         />
         <SummaryCard
           title={t("therapists.activeTherapists")}
-          value={data.length.toString()}
+          value={formatNumber(data.length, locale)}
           icon={<User className="h-5 w-5" />}
           variant="success"
         />
         <SummaryCard
           title={t("therapists.avgEvaluationRate")}
-          value={`${(data.reduce((sum, t) => sum + t.evaluationRate, 0) / data.length).toFixed(1)}%`}
+          value={formatPercent(data.reduce((sum, t) => sum + t.evaluationRate, 0) / data.length, locale, 1)}
           icon={<ClipboardCheck className="h-5 w-5" />}
           variant={data.some((t) => t.evaluationRate < 80) ? "warning" : "success"}
         />
@@ -113,10 +115,10 @@ export function TherapistTable({ data }: TherapistTableProps) {
                     {therapist.evaluatedSessions}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <EvaluationRateBadge rate={therapist.evaluationRate} />
+                    <EvaluationRateBadge rate={therapist.evaluationRate} locale={locale} />
                   </td>
                   <td className="px-6 py-4">
-                    <WorkloadBar percent={workloadPercent} />
+                    <WorkloadBar percent={workloadPercent} locale={locale} />
                   </td>
                 </tr>
               );
@@ -232,7 +234,7 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function EvaluationRateBadge({ rate }: { rate: number }) {
+function EvaluationRateBadge({ rate, locale }: { rate: number; locale: string }) {
   const variant = rate >= 90 ? "success" : rate >= 80 ? "warning" : "danger";
   const colors = {
     success: "bg-emerald-100 text-emerald-700",
@@ -242,12 +244,12 @@ function EvaluationRateBadge({ rate }: { rate: number }) {
 
   return (
     <span className={cn("inline-flex rounded-full px-2 py-1 text-xs font-semibold", colors[variant])}>
-      {rate.toFixed(0)}%
+      {formatPercent(rate, locale, 0)}
     </span>
   );
 }
 
-function WorkloadBar({ percent }: { percent: number }) {
+function WorkloadBar({ percent, locale }: { percent: number; locale: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-2 w-24 overflow-hidden rounded-full bg-gray-100">
@@ -256,7 +258,7 @@ function WorkloadBar({ percent }: { percent: number }) {
           style={{ width: `${Math.min(percent, 100)}%` }}
         />
       </div>
-      <span className="text-xs text-gray-500">{percent.toFixed(0)}%</span>
+      <span className="text-xs text-gray-500">{formatPercent(percent, locale, 0)}</span>
     </div>
   );
 }

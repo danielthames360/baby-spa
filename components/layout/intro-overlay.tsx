@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import BabySpaIntro from './baby-spa-intro';
-import { useSession } from 'next-auth/react';
 
 const STORAGE_KEY = 'babyspa_intro_last_shown';
 
@@ -34,26 +33,13 @@ interface IntroOverlayProps {
 }
 
 export function IntroOverlay({ children }: IntroOverlayProps) {
-  const { data: session, status } = useSession();
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
 
-  // Determine redirect target based on session (used by intro animation)
+  // The intro doesn't redirect - it just closes and reveals the page underneath
+  // So we can use a simple default target for the animation
   const getRedirectTarget = useCallback((): RedirectTarget => {
-    if (status === 'loading') return 'login';
-    if (!session) return 'login';
-
-    const role = session.user?.role;
-    switch (role) {
-      case 'ADMIN':
-      case 'RECEPTION':
-      case 'THERAPIST':
-        return 'dashboard';
-      case 'PARENT':
-        return 'parent-portal';
-      default:
-        return 'login';
-    }
-  }, [status, session]);
+    return 'login';
+  }, []);
 
   // Check if we should show intro on mount (client-side localStorage check)
   useEffect(() => {

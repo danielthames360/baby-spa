@@ -30,6 +30,7 @@ export const updateUserSchema = z.object({
   baseSalary: z.number().min(0).nullable().optional(),
   payFrequency: z.enum(["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"]).optional(),
   isActive: z.boolean().optional(),
+  mustChangePassword: z.boolean().optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
