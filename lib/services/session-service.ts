@@ -458,9 +458,25 @@ export const sessionService = {
 
     const discountDecimal = new Prisma.Decimal(discountAmount);
     const totalDiscounts = discountDecimal.add(firstSessionDiscountAmount);
-    const totalAmount = subtotalAmount.sub(totalDiscounts).greaterThan(0)
+    let totalBeforeAdvance = subtotalAmount.sub(totalDiscounts).greaterThan(0)
       ? subtotalAmount.sub(totalDiscounts)
       : new Prisma.Decimal(0);
+
+    // Query advance payments already made for this appointment
+    const advanceTransactions = await transactionService.getByReference("Appointment", session.appointmentId);
+    let advancePaidAmount = new Prisma.Decimal(0);
+    for (const t of advanceTransactions) {
+      if (t.category === "APPOINTMENT_ADVANCE") {
+        advancePaidAmount = advancePaidAmount.add(t.total);
+      }
+    }
+
+    // Deduct advance from total amount to charge
+    const totalAmount = advancePaidAmount.greaterThan(0)
+      ? (totalBeforeAdvance.sub(advancePaidAmount).greaterThan(0)
+          ? totalBeforeAdvance.sub(advancePaidAmount)
+          : new Prisma.Decimal(0))
+      : totalBeforeAdvance;
 
     // Deduct products from inventory in parallel (outside transaction to avoid nested transactions)
     await Promise.all(
@@ -633,6 +649,7 @@ export const sessionService = {
         productsAmount,
         packageAmount,
         totalAmount,
+        advancePaidAmount,
       };
     });
 
@@ -819,7 +836,18 @@ export const sessionService = {
       console.error("Error logging session activity:", error);
     }
 
-    return { ...result, babyCardInfo, firstSessionDiscountApplied };
+    // Count already-scheduled appointments for the package to calculate truly available sessions
+    let scheduledForPackage = 0;
+    if (result.packagePurchase?.id) {
+      scheduledForPackage = await prisma.appointment.count({
+        where: {
+          packagePurchaseId: result.packagePurchase.id,
+          status: { in: ["SCHEDULED", "PENDING_PAYMENT", "IN_PROGRESS"] },
+        },
+      });
+    }
+
+    return { ...result, babyCardInfo, firstSessionDiscountApplied, advancePaidAmount: Number(advancePaidAmount), scheduledForPackage };
   },
 
   /**

@@ -26,17 +26,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
-    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const { participantId } = await params;
     const body = await request.json();
 
-    // Check if this is a payment registration
-    if (body.paymentMethod !== undefined && body.amount !== undefined) {
+    // Check if this is a payment registration (supports both legacy single method and split payments)
+    if (body.amount !== undefined && (body.paymentMethod !== undefined || body.paymentDetails !== undefined)) {
       const data = validateRequest(body, registerPaymentSchema);
       const participant = await eventParticipantService.registerPayment({
         participantId,
         ...data,
+        registeredById: session.user.id,
       });
       return successResponse({ participant });
     }

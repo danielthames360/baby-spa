@@ -1465,6 +1465,7 @@ export const reportService = {
   async getCashflowReport(from: Date, to: Date): Promise<CashflowReport> {
     const [
       incomeByCategory,
+      allTransactions,
       staffPayments,
       expenses,
       futureAppointments,
@@ -1478,6 +1479,13 @@ export const reportService = {
           createdAt: { gte: from, lte: to },
         },
         _sum: { total: true },
+      }),
+      // All transactions for payment method breakdown
+      prisma.transaction.findMany({
+        where: {
+          createdAt: { gte: from, lte: to },
+        },
+        select: { type: true, paymentMethods: true },
       }),
       // Staff payments
       prisma.staffPayment.aggregate({
@@ -1537,6 +1545,26 @@ export const reportService = {
 
     const netCashflow = totalIncome - totalExpenses;
 
+    // Payment method breakdown from Transaction.paymentMethods JSON
+    const byMethod: Record<string, { income: number; expense: number }> = {};
+    for (const t of allTransactions) {
+      const methods = Array.isArray(t.paymentMethods) ? t.paymentMethods as { method: string; amount: number }[] : [];
+      for (const m of methods) {
+        if (!byMethod[m.method]) byMethod[m.method] = { income: 0, expense: 0 };
+        if (t.type === "INCOME") byMethod[m.method].income += Number(m.amount);
+        else byMethod[m.method].expense += Number(m.amount);
+      }
+    }
+    const methodOrder = ["CASH", "QR", "TRANSFER", "CARD"];
+    const paymentMethodBreakdown = methodOrder
+      .filter(method => byMethod[method])
+      .map(method => ({
+        method,
+        income: byMethod[method].income,
+        expense: byMethod[method].expense,
+        net: byMethod[method].income - byMethod[method].expense,
+      }));
+
     // Projection
     const avgSessionPrice = 350; // Approximate average
     const projectedFromAppointments = futureAppointments * avgSessionPrice;
@@ -1561,6 +1589,7 @@ export const reportService = {
         total: totalExpenses,
       },
       netCashflow,
+      byPaymentMethod: paymentMethodBreakdown,
       projection: {
         upcomingAppointments: futureAppointments,
         estimatedFromAppointments: projectedFromAppointments,
@@ -1788,6 +1817,12 @@ interface CashflowReport {
     total: number;
   };
   netCashflow: number;
+  byPaymentMethod: {
+    method: string;
+    income: number;
+    expense: number;
+    net: number;
+  }[];
   projection: {
     upcomingAppointments: number;
     estimatedFromAppointments: number;

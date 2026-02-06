@@ -67,9 +67,9 @@ export function ExpenseDialog({ locale, trigger }: ExpenseDialogProps) {
   const [expenseDate, setExpenseDate] = useState(getTodayDateString());
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
 
-  // Reset form when dialog closes
+  // Reset form when dialog opens (not on close, to avoid flash during close animation)
   useEffect(() => {
-    if (!open) {
+    if (open) {
       setCategory("SUPPLIES");
       setDescription("");
       setAmount("");
@@ -120,7 +120,8 @@ export function ExpenseDialog({ locale, trigger }: ExpenseDialogProps) {
 
       toast.success(t("createSuccess"));
       setOpen(false);
-      router.refresh();
+      // Delay refresh to let dialog close animation complete
+      setTimeout(() => router.refresh(), 300);
     } catch (error) {
       console.error("Error creating expense:", error);
       toast.error(t("errors.createFailed"));

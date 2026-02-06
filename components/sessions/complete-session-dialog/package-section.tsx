@@ -53,6 +53,9 @@ export function PackageSection({
           onSelectPackage={(pkgId, purchaseId, purchaseName) => {
             onSelectPackage(pkgId, purchaseId, purchaseName);
           }}
+          defaultCategoryId={
+            session.appointment.selectedPackage?.categoryId || undefined
+          }
           showCategories={true}
           showPrices={true}
           showExistingFirst={true}

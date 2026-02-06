@@ -115,12 +115,23 @@ export const updateParticipantSchema = z.object({
 
 export type UpdateParticipantData = z.infer<typeof updateParticipantSchema>;
 
-// Register payment schema
+// Payment detail schema for split payments
+const paymentDetailSchema = z.object({
+  amount: z.coerce.number().min(0.01),
+  paymentMethod: paymentMethodEnum,
+  reference: z.string().max(100).optional().nullable(),
+});
+
+// Register payment schema - supports both legacy single method and split payments
 export const registerPaymentSchema = z.object({
   amount: z.coerce.number().min(0.01, "AMOUNT_REQUIRED"),
-  paymentMethod: paymentMethodEnum,
+  paymentMethod: paymentMethodEnum.optional(),
   paymentReference: z.string().max(100).optional().nullable(),
-});
+  paymentDetails: z.array(paymentDetailSchema).optional(),
+}).refine(
+  (data) => data.paymentMethod !== undefined || (data.paymentDetails && data.paymentDetails.length > 0),
+  { message: "PAYMENT_METHOD_REQUIRED", path: ["paymentMethod"] }
+);
 
 export type RegisterPaymentData = z.infer<typeof registerPaymentSchema>;
 

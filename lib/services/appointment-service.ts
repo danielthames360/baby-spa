@@ -1353,6 +1353,18 @@ export const appointmentService = {
             status: true,
           },
         },
+        packagePurchase: {
+          select: {
+            id: true,
+            package: { select: { name: true } },
+          },
+        },
+        selectedPackage: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });

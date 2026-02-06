@@ -26,6 +26,7 @@ export interface SessionProduct {
 
 export interface SessionData {
   id: string;
+  appointmentId: string;
   sessionNumber: number;
   packagePurchaseId: string | null;
   packagePurchase: {

@@ -195,6 +195,14 @@ interface Appointment {
   endTime: string;
   status: string;
   notes: string | null;
+  packagePurchase: {
+    id: string;
+    package: { name: string };
+  } | null;
+  selectedPackage: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface SessionHistory {
@@ -1313,6 +1321,11 @@ export default function BabyProfilePage() {
                         </p>
                         <p className="text-sm text-gray-500">
                           {appointment.startTime} - {appointment.endTime}
+                          {(appointment.packagePurchase || appointment.selectedPackage) && (
+                            <span className="ml-2 text-teal-600">
+                              • {appointment.packagePurchase?.package.name || appointment.selectedPackage?.name}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

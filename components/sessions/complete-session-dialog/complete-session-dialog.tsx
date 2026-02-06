@@ -135,6 +135,9 @@ export function CompleteSessionDialog({
   // First session discount state
   const [useFirstSessionDiscount, setUseFirstSessionDiscount] = useState(false);
 
+  // Advance payment state
+  const [advancePaidAmount, setAdvancePaidAmount] = useState<number>(0);
+
   // Sell Baby Card dialog state
   const [showSellBabyCardDialog, setShowSellBabyCardDialog] = useState(false);
 
@@ -283,6 +286,10 @@ export function CompleteSessionDialog({
   // Effects
   useEffect(() => {
     if (open && sessionId) {
+      // Reset session first so currentSessionId changes (null → id)
+      // This ensures the initialization effect re-runs on reopen
+      setSession(null);
+
       // Reset state
       setSelectedPackageId(null);
       setSelectedPurchaseId(null);
@@ -301,6 +308,7 @@ export function CompleteSessionDialog({
       setNewlyUnlockedRewards([]);
       setUsedRewardIds([]);
       setUseFirstSessionDiscount(false);
+      setAdvancePaidAmount(0);
       setShowSellBabyCardDialog(false);
 
       fetchSession();
@@ -343,10 +351,28 @@ export function CompleteSessionDialog({
         setSelectedPurchaseName(singlePackage.package.name);
       }
 
-      // Fetch baby card info as part of initialization
+      // Fetch baby card info and advance payments in parallel
+      const promises: Promise<void>[] = [];
       if (session.appointment.baby?.id) {
-        fetchBabyCardInfo(session.appointment.baby.id);
+        promises.push(fetchBabyCardInfo(session.appointment.baby.id));
       }
+
+      // Fetch advance payments for this appointment
+      promises.push(
+        fetch(`/api/appointments/${session.appointmentId}/payments`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.payments) {
+              const advanceTotal = data.payments
+                .filter((p: { paymentType: string }) => p.paymentType === "ADVANCE")
+                .reduce((sum: number, p: { amount: number }) => sum + p.amount, 0);
+              setAdvancePaidAmount(advanceTotal);
+            }
+          })
+          .catch((err) => console.error("Error fetching advance payments:", err))
+      );
+
+      await Promise.all(promises);
     };
 
     initializePackageSelection();
@@ -499,7 +525,7 @@ export function CompleteSessionDialog({
       ? Math.min(babyCardInfo.firstSessionDiscount.amount, subtotal)
       : 0;
 
-  const grandTotal = Math.max(0, subtotal - discountAmount - firstSessionDiscountValue);
+  const grandTotal = Math.max(0, subtotal - discountAmount - firstSessionDiscountValue - advancePaidAmount);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
@@ -567,10 +593,12 @@ export function CompleteSessionDialog({
       }
 
       const purchaseData = data.packagePurchase;
-      if (purchaseData && purchaseData.remainingSessions > 0) {
+      const scheduledForPackage = data.scheduledForPackage || 0;
+      const availableToSchedule = purchaseData ? purchaseData.remainingSessions - scheduledForPackage : 0;
+      if (purchaseData && availableToSchedule > 0) {
         setCompletedPurchaseInfo({
           id: purchaseData.id,
-          remainingSessions: purchaseData.remainingSessions,
+          remainingSessions: availableToSchedule,
           packageName: purchaseData.package?.name || selectedPurchaseName,
           packageDuration: purchaseData.package?.duration || 30,
           babyId: session!.appointment.baby?.id,
@@ -723,6 +751,7 @@ export function CompleteSessionDialog({
                 subtotal={subtotal}
                 discountAmount={discountAmount}
                 firstSessionDiscountValue={firstSessionDiscountValue}
+                advancePaidAmount={advancePaidAmount}
                 grandTotal={grandTotal}
                 showDiscount={showDiscount}
                 onToggleDiscount={() => setShowDiscount(!showDiscount)}

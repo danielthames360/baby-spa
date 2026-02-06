@@ -26,6 +26,7 @@ interface PaymentSummarySectionProps {
   subtotal: number;
   discountAmount: number;
   firstSessionDiscountValue: number;
+  advancePaidAmount: number;
   grandTotal: number;
   showDiscount: boolean;
   onToggleDiscount: () => void;
@@ -50,6 +51,7 @@ export function PaymentSummarySection({
   subtotal,
   discountAmount,
   firstSessionDiscountValue,
+  advancePaidAmount,
   grandTotal,
   showDiscount,
   onToggleDiscount,
@@ -214,6 +216,16 @@ export function PaymentSummarySection({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Advance payment deduction */}
+        {advancePaidAmount > 0 && (
+          <div className="flex justify-between items-center text-sm border-t border-gray-200/50 pt-3 mb-3">
+            <span className="text-gray-600">{t("session.advancePaid")}</span>
+            <span className="font-medium text-emerald-600">
+              -{formatPrice(advancePaidAmount)}
+            </span>
           </div>
         )}
 

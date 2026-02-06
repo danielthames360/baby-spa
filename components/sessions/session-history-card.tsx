@@ -138,7 +138,7 @@ export function SessionHistoryCard({ session, locale }: SessionHistoryCardProps)
               {formatDate(session.appointment.date)}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
             <div className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
               <span>
@@ -149,6 +149,11 @@ export function SessionHistoryCard({ session, locale }: SessionHistoryCardProps)
               <User className="h-3.5 w-3.5" />
               <span>{session.therapist.name}</span>
             </div>
+            {session.packagePurchase && (
+              <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                {session.packagePurchase.package.name}
+              </span>
+            )}
           </div>
           {/* Activities preview */}
           {activities.length > 0 && (

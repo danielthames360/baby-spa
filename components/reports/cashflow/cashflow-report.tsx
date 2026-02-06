@@ -10,7 +10,18 @@ import {
   TrendingDown,
   Calendar,
   CreditCard,
+  Banknote,
+  QrCode,
+  ArrowLeftRight,
+  Wallet,
 } from "lucide-react";
+
+interface PaymentMethodItem {
+  method: string;
+  income: number;
+  expense: number;
+  net: number;
+}
 
 interface CashflowReportProps {
   data: {
@@ -31,6 +42,7 @@ interface CashflowReportProps {
       total: number;
     };
     netCashflow: number;
+    byPaymentMethod: PaymentMethodItem[];
     projection: {
       upcomingAppointments: number;
       estimatedFromAppointments: number;
@@ -39,6 +51,34 @@ interface CashflowReportProps {
   };
   locale: string;
 }
+
+const METHOD_ICONS: Record<string, typeof Banknote> = {
+  CASH: Banknote,
+  QR: QrCode,
+  TRANSFER: ArrowLeftRight,
+  CARD: CreditCard,
+};
+
+const METHOD_COLORS: Record<string, string> = {
+  CASH: "from-green-50 to-emerald-50",
+  QR: "from-violet-50 to-purple-50",
+  TRANSFER: "from-blue-50 to-sky-50",
+  CARD: "from-amber-50 to-orange-50",
+};
+
+const METHOD_ICON_COLORS: Record<string, string> = {
+  CASH: "text-green-600",
+  QR: "text-violet-600",
+  TRANSFER: "text-blue-600",
+  CARD: "text-amber-600",
+};
+
+const METHOD_NET_COLORS: Record<string, string> = {
+  CASH: "text-green-700",
+  QR: "text-violet-700",
+  TRANSFER: "text-blue-700",
+  CARD: "text-amber-700",
+};
 
 export function CashflowReportComponent({ data, locale }: CashflowReportProps) {
   const t = useTranslations("reports");
@@ -71,13 +111,67 @@ export function CashflowReportComponent({ data, locale }: CashflowReportProps) {
               : "bg-gradient-to-br from-rose-200/80 to-pink-200/80"
           )}>
             {isPositive ? (
-              <TrendingUp className={cn("h-6 w-6", isPositive ? "text-emerald-700" : "text-rose-700")} />
+              <TrendingUp className="h-6 w-6 text-emerald-700" />
             ) : (
               <TrendingDown className="h-6 w-6 text-rose-700" />
             )}
           </div>
         </div>
       </div>
+
+      {/* Payment Method Breakdown */}
+      {data.byPaymentMethod.length > 0 && (
+        <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">
+          <div className="mb-4 flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-teal-600" />
+            <h3 className="text-lg font-semibold text-gray-800">
+              {t("cashflow.byPaymentMethod")}
+            </h3>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {data.byPaymentMethod.map((item) => {
+              const Icon = METHOD_ICONS[item.method] || CreditCard;
+              const bgColor = METHOD_COLORS[item.method] || "from-gray-50 to-gray-100";
+              const iconColor = METHOD_ICON_COLORS[item.method] || "text-gray-600";
+              const netColor = METHOD_NET_COLORS[item.method] || "text-gray-700";
+
+              return (
+                <div key={item.method} className={cn("rounded-xl bg-gradient-to-br p-4", bgColor)}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <Icon className={cn("h-5 w-5", iconColor)} />
+                    <span className="font-semibold text-gray-800">
+                      {t(`cashflow.method_${item.method}`)}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">{t("cashflow.income")}</span>
+                      <span className="font-medium text-emerald-600">
+                        {formatCurrency(item.income, locale)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">{t("cashflow.expenses")}</span>
+                      <span className="font-medium text-rose-600">
+                        {formatCurrency(item.expense, locale)}
+                      </span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-1">
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-600">{t("cashflow.net")}</span>
+                        <span className={cn("font-bold", netColor)}>
+                          {formatCurrency(item.net, locale)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Income */}
@@ -98,25 +192,25 @@ export function CashflowReportComponent({ data, locale }: CashflowReportProps) {
             <LineItem
               label={t("cashflow.sessions")}
               value={formatCurrency(data.income.sessions, locale)}
-              percent={(data.income.sessions / data.income.total) * 100}
+              percent={data.income.total > 0 ? (data.income.sessions / data.income.total) * 100 : 0}
               variant="success"
             />
             <LineItem
               label={t("cashflow.babyCards")}
               value={formatCurrency(data.income.babyCards, locale)}
-              percent={(data.income.babyCards / data.income.total) * 100}
+              percent={data.income.total > 0 ? (data.income.babyCards / data.income.total) * 100 : 0}
               variant="success"
             />
             <LineItem
               label={t("cashflow.events")}
               value={formatCurrency(data.income.events, locale)}
-              percent={(data.income.events / data.income.total) * 100}
+              percent={data.income.total > 0 ? (data.income.events / data.income.total) * 100 : 0}
               variant="success"
             />
             <LineItem
               label={t("cashflow.installments")}
               value={formatCurrency(data.income.installments, locale)}
-              percent={(data.income.installments / data.income.total) * 100}
+              percent={data.income.total > 0 ? (data.income.installments / data.income.total) * 100 : 0}
               variant="success"
             />
           </div>
