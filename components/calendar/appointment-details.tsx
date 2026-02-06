@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
   Dialog,
@@ -11,27 +10,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogCancel,
-  AlertDialogDestructiveAction,
-} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CalendarClock, AlertTriangle, CreditCard } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
+import { getPaymentStatus, type PaymentStatus } from "@/lib/utils/installments";
+import { parseSchedulePreferences, formatPreferencesText } from "@/lib/utils/bulk-scheduling";
+import type { PackageData, PackagePurchaseData } from "@/components/packages/package-selector";
+
+// Import subcomponents from the extracted module
+import {
+  ClientHeader,
+  DateTimePackageRow,
+  BabyCardSection,
+  AppointmentActions,
+  PackageEditor,
+  RescheduleDialog,
+  CancelDialog,
+  NoShowDialog,
+  statusConfig,
+  type BabyCardCheckoutInfo,
+  type BabyDetails,
+  type AppointmentData,
+} from "./appointment-details/index";
 
 // bundle-dynamic-imports: Lazy load all dialog components to reduce initial bundle
 const StartSessionDialog = dynamic(
@@ -54,174 +57,13 @@ const RegisterInstallmentPaymentDialog = dynamic(
   () => import("@/components/packages/register-installment-payment-dialog").then((m) => m.RegisterInstallmentPaymentDialog),
   { ssr: false }
 );
-import {
-  PackageSelector,
-  type PackageData,
-  type PackagePurchaseData,
-} from "@/components/packages/package-selector";
-import {
-  Baby,
-  Calendar,
-  Clock,
-  User,
-  Phone,
-  MessageCircle,
-  Loader2,
-  Play,
-  Check,
-  X,
-  AlertCircle,
-  ExternalLink,
-  CalendarClock,
-  Info,
-  Package,
-  Pencil,
-  CreditCard,
-  AlertTriangle,
-  UserRound,
-  Sparkles,
-  Star,
-  Gift,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { generateTimeSlots, BUSINESS_HOURS } from "@/lib/constants/business-hours";
-import { getPaymentStatus, type PaymentStatus } from "@/lib/utils/installments";
-import { parseSchedulePreferences, formatPreferencesText } from "@/lib/utils/bulk-scheduling";
-
-// Baby Card checkout info interface
-interface BabyCardCheckoutInfo {
-  hasActiveCard: boolean;
-  purchase: {
-    id: string;
-    babyCardName: string;
-    completedSessions: number;
-    totalSessions: number;
-    progressPercent: number;
-    status: string;
-  } | null;
-  firstSessionDiscount: {
-    amount: number;
-    used: boolean;
-  } | null;
-  availableRewards: {
-    id: string;
-    displayName: string;
-    displayIcon: string | null;
-    rewardType: string;
-    sessionNumber: number;
-  }[];
-  nextReward: {
-    id: string;
-    displayName: string;
-    displayIcon: string | null;
-    sessionNumber: number;
-    sessionsUntilUnlock: number;
-  } | null;
-  specialPrices: {
-    packageId: string;
-    packageName: string;
-    normalPrice: number;
-    specialPrice: number;
-  }[];
-}
 
 interface AppointmentDetailsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  appointment: {
-    id: string;
-    babyId?: string | null; // Optional for parent appointments
-    parentId?: string | null; // For parent appointments
-    date: Date;
-    startTime: string; // HH:mm format
-    endTime: string;   // HH:mm format
-    status: "PENDING_PAYMENT" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
-    isPendingPayment?: boolean;
-    notes: string | null;
-    cancelReason: string | null;
-    packagePurchaseId?: string | null;
-    // Pending schedule preferences (from portal, before checkout)
-    pendingSchedulePreferences?: string | null;
-    session?: {
-      id: string;
-    } | null;
-    baby?: {
-      id: string;
-      name: string;
-      parents: {
-        isPrimary: boolean;
-        parent: {
-          id: string;
-          name: string;
-          phone: string;
-        };
-      }[];
-    } | null;
-    parent?: {
-      id: string;
-      name: string;
-      phone: string;
-      email: string | null;
-      pregnancyWeeks: number | null;
-    } | null;
-    packagePurchase?: {
-      id: string;
-      totalSessions?: number;
-      usedSessions?: number;
-      remainingSessions?: number;
-      // Schedule preferences (transferred from appointment at checkout)
-      schedulePreferences?: string | null;
-      // Installment fields
-      paymentPlan?: string;
-      installments?: number;
-      installmentAmount?: string | number | null;
-      totalPrice?: string | number | null;
-      finalPrice?: string | number;
-      paidAmount?: string | number;
-      installmentsPayOnSessions?: string | null;
-      package: {
-        id: string;
-        name: string;
-        basePrice?: number | string | null;
-        advancePaymentAmount?: number | string | null;
-      };
-    } | null;
-    selectedPackage?: {
-      id: string;
-      name: string;
-      basePrice?: number | string | null;
-      advancePaymentAmount?: number | string | null;
-    } | null;
-  } | null;
+  appointment: AppointmentData | null;
   onUpdate?: () => void;
 }
-
-const statusConfig = {
-  PENDING_PAYMENT: {
-    label: "pendingPayment",
-    color: "bg-orange-100 text-orange-800 border-orange-300",
-  },
-  SCHEDULED: {
-    label: "scheduled",
-    color: "bg-amber-100 text-amber-800 border-amber-300",
-  },
-  IN_PROGRESS: {
-    label: "inProgress",
-    color: "bg-blue-100 text-blue-800 border-blue-300",
-  },
-  COMPLETED: {
-    label: "completed",
-    color: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  },
-  CANCELLED: {
-    label: "cancelled",
-    color: "bg-rose-100 text-rose-800 border-rose-300",
-  },
-  NO_SHOW: {
-    label: "noShow",
-    color: "bg-gray-100 text-gray-800 border-gray-300",
-  },
-};
 
 export function AppointmentDetails({
   open,
@@ -231,57 +73,33 @@ export function AppointmentDetails({
 }: AppointmentDetailsProps) {
   const t = useTranslations();
   const locale = useLocale();
-  // Map next-intl locale to date-fns/toLocaleDateString locale
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-ES";
 
+  // Core state
   const [isUpdating, setIsUpdating] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showNoShowDialog, setShowNoShowDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
-  // Start session state
+  // Dialog states
   const [showStartSessionDialog, setShowStartSessionDialog] = useState(false);
-
-  // Complete session state
   const [showCompleteSessionDialog, setShowCompleteSessionDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [showViewBabyDialog, setShowViewBabyDialog] = useState(false);
+  const [showRegisterPaymentDialog, setShowRegisterPaymentDialog] = useState(false);
+  const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] = useState(false);
 
   // Reschedule state
-  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState<string>("");
   const [rescheduleTime, setRescheduleTime] = useState<string>("");
   const [rescheduleError, setRescheduleError] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
 
-  // View baby state
-  const [showViewBabyDialog, setShowViewBabyDialog] = useState(false);
-
-  // Register payment state
-  const [showRegisterPaymentDialog, setShowRegisterPaymentDialog] = useState(false);
-  const [babyDetails, setBabyDetails] = useState<{
-    id: string;
-    name: string;
-    birthDate: string;
-    gender: string;
-    birthWeeks?: number | null;
-    birthWeight?: number | string | null;
-    birthType?: string | null;
-    birthDifficulty?: boolean;
-    birthDifficultyDesc?: string | null;
-    diagnosedIllness?: boolean;
-    diagnosedIllnessDesc?: string | null;
-    allergies?: string | null;
-    specialObservations?: string | null;
-    parents?: Array<{
-      isPrimary: boolean;
-      parent: {
-        id: string;
-        name: string;
-      };
-    }>;
-  } | null>(null);
+  // Baby details state
+  const [babyDetails, setBabyDetails] = useState<BabyDetails | null>(null);
   const [isLoadingBaby, setIsLoadingBaby] = useState(false);
 
-  // Edit package state
+  // Package editing state
   const [isEditingPackage, setIsEditingPackage] = useState(false);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [catalogPackages, setCatalogPackages] = useState<PackageData[]>([]);
@@ -291,18 +109,16 @@ export function AppointmentDetails({
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
   const [packageError, setPackageError] = useState<string | null>(null);
 
-  // Installment payment status
+  // Payment status
   const [installmentPaymentStatus, setInstallmentPaymentStatus] = useState<PaymentStatus | null>(null);
-  const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] = useState(false);
 
-  // Baby Card info state
+  // Baby Card info
   const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
   const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
 
-  // Reset package editing state when modal closes or appointment changes
+  // Reset package editing state when modal closes
   useEffect(() => {
     if (!open) {
-      // Reset all package editing state when modal closes
       setIsEditingPackage(false);
       setIsSavingPackage(false);
       setCatalogPackages([]);
@@ -313,7 +129,7 @@ export function AppointmentDetails({
     }
   }, [open]);
 
-  // Also reset when appointment changes
+  // Reset when appointment changes
   useEffect(() => {
     setIsEditingPackage(false);
     setIsSavingPackage(false);
@@ -325,7 +141,7 @@ export function AppointmentDetails({
     setBabyCardInfo(null);
   }, [appointment?.id]);
 
-  // Fetch Baby Card info when appointment has a baby
+  // Fetch Baby Card info
   useEffect(() => {
     if (!open || !appointment?.baby?.id) {
       setBabyCardInfo(null);
@@ -350,7 +166,7 @@ export function AppointmentDetails({
     fetchBabyCardInfo();
   }, [open, appointment?.baby?.id]);
 
-  // Calculate installment payment status when appointment has a package with installments
+  // Calculate installment payment status
   useEffect(() => {
     if (!appointment?.packagePurchase) {
       setInstallmentPaymentStatus(null);
@@ -372,18 +188,13 @@ export function AppointmentDetails({
         installmentsPayOnSessions: purchase.installmentsPayOnSessions || null,
       });
 
-      // Show status if there are overdue payments
-      if (status.overdueAmount > 0) {
-        setInstallmentPaymentStatus(status);
-      } else {
-        setInstallmentPaymentStatus(null);
-      }
+      setInstallmentPaymentStatus(status.overdueAmount > 0 ? status : null);
     } else {
       setInstallmentPaymentStatus(null);
     }
   }, [appointment]);
 
-  // Generate dates for next 30 days (excluding closed days)
+  // Generate available dates for rescheduling
   const availableDates = useMemo(() => {
     const dates: { value: string; label: string }[] = [];
     const today = new Date();
@@ -394,7 +205,6 @@ export function AppointmentDetails({
       date.setDate(today.getDate() + i);
       const dayOfWeek = date.getDay();
 
-      // Skip closed days (Sunday = 0)
       if (BUSINESS_HOURS[dayOfWeek] === null) continue;
 
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -420,7 +230,6 @@ export function AppointmentDetails({
     const dayOfWeek = selectedDate.getDay();
     const slots = generateTimeSlots(dayOfWeek);
 
-    // Filter out past times if it's today
     const today = new Date();
     if (
       selectedDate.getFullYear() === today.getFullYear() &&
@@ -431,48 +240,42 @@ export function AppointmentDetails({
       const currentMinutes = today.getMinutes();
       const filteredSlots = slots.filter((slot) => {
         const [hours, minutes] = slot.split(":").map(Number);
-        if (hours > currentHour) return true;
-        if (hours === currentHour && minutes > currentMinutes) return true;
-        return false;
+        return hours > currentHour || (hours === currentHour && minutes > currentMinutes);
       });
       setAvailableSlots(filteredSlots);
     } else {
       setAvailableSlots(slots);
     }
-    setRescheduleTime(""); // Reset time when date changes
+    setRescheduleTime("");
     setRescheduleError("");
   }, [rescheduleDate]);
 
   if (!appointment) return null;
 
-  // Determine if this is a parent appointment
+  // Determine appointment type and client info
   const isParentAppointment = !appointment.babyId && appointment.parentId && appointment.parent;
   const primaryParent = !isParentAppointment
-    ? appointment.baby?.parents?.find((p) => p.isPrimary)?.parent
+    ? appointment.baby?.parents?.find((p) => p.isPrimary)?.parent || null
     : null;
-  const clientName = isParentAppointment ? appointment.parent?.name : appointment.baby?.name;
-  const clientPhone = isParentAppointment ? appointment.parent?.phone : primaryParent?.phone;
-  const ClientIcon = isParentAppointment ? UserRound : Baby;
   const statusInfo = statusConfig[appointment.status];
 
-  // Format time string to HH:mm
-  const formatTime = (time: string) => {
-    return time.slice(0, 5);
-  };
+  // Format date
+  const formattedDate = formatDateForDisplay(appointment.date, dateLocale, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-  // Format date using utility to avoid timezone issues
-  const formatDate = () => {
-    return formatDateForDisplay(appointment.date, dateLocale, {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
+  // Permission checks
+  const canStart = appointment.status === "SCHEDULED";
+  const canComplete = appointment.status === "IN_PROGRESS";
+  const canCancel = ["SCHEDULED", "IN_PROGRESS", "PENDING_PAYMENT"].includes(appointment.status);
+  const canMarkNoShow = appointment.status === "SCHEDULED";
+  const canReschedule = appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT";
+  const canRegisterPayment = appointment.status === "PENDING_PAYMENT";
 
-  const formattedDate = formatDate();
-
-  // Handle status actions
+  // Action handlers
   const handleAction = async (action: string, reason?: string) => {
     setIsUpdating(true);
     try {
@@ -484,7 +287,6 @@ export function AppointmentDetails({
 
       if (response.ok) {
         onUpdate?.();
-        // Close dialog after any action to show fresh data
         onOpenChange(false);
       }
     } catch (error) {
@@ -497,14 +299,6 @@ export function AppointmentDetails({
     }
   };
 
-  const canStart = appointment.status === "SCHEDULED";
-  const canComplete = appointment.status === "IN_PROGRESS";
-  const canCancel = ["SCHEDULED", "IN_PROGRESS", "PENDING_PAYMENT"].includes(appointment.status);
-  const canMarkNoShow = appointment.status === "SCHEDULED";
-  const canReschedule = appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT";
-  const canRegisterPayment = appointment.status === "PENDING_PAYMENT";
-
-  // Handle reschedule
   const handleReschedule = async () => {
     if (!rescheduleDate || !rescheduleTime) return;
 
@@ -515,10 +309,7 @@ export function AppointmentDetails({
       const response = await fetch(`/api/appointments/${appointment.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: rescheduleDate,
-          startTime: rescheduleTime,
-        }),
+        body: JSON.stringify({ date: rescheduleDate, startTime: rescheduleTime }),
       });
 
       const data = await response.json();
@@ -530,9 +321,7 @@ export function AppointmentDetails({
         setRescheduleDate("");
         setRescheduleTime("");
       } else {
-        // Handle validation errors
-        const errorKey = data.error || "UNKNOWN_ERROR";
-        setRescheduleError(errorKey);
+        setRescheduleError(data.error || "UNKNOWN_ERROR");
       }
     } catch (error) {
       console.error("Error rescheduling appointment:", error);
@@ -542,7 +331,6 @@ export function AppointmentDetails({
     }
   };
 
-  // Handle view baby details (only for baby appointments)
   const handleViewBaby = async () => {
     if (!appointment.baby) return;
     setIsLoadingBaby(true);
@@ -560,12 +348,10 @@ export function AppointmentDetails({
     }
   };
 
-  // Handle edit package (works for both baby and parent appointments)
   const handleEditPackage = async () => {
     setIsLoadingPackages(true);
     setPackageError(null);
 
-    // Set initial selection based on current appointment
     if (appointment.packagePurchase) {
       setSelectedPurchaseId(appointment.packagePurchase.id);
       setSelectedPackageId(appointment.packagePurchase.package.id);
@@ -575,11 +361,7 @@ export function AppointmentDetails({
     }
 
     try {
-      // Fetch packages and catalog in parallel
-      // For baby appointments, fetch baby's packages; for parent appointments, just fetch catalog
-      const promises: Promise<Response>[] = [
-        fetch("/api/packages?active=true&publicOnly=true"),
-      ];
+      const promises: Promise<Response>[] = [fetch("/api/packages?active=true&publicOnly=true")];
       if (appointment.baby) {
         promises.unshift(fetch(`/api/babies/${appointment.baby.id}/packages`));
       }
@@ -590,10 +372,7 @@ export function AppointmentDetails({
 
       if (babyPkgRes && babyPkgRes.ok) {
         const data = await babyPkgRes.json();
-        const packages = (data.packages || []).filter(
-          (p: PackagePurchaseData) => p.remainingSessions > 0
-        );
-        setBabyPackages(packages);
+        setBabyPackages((data.packages || []).filter((p: PackagePurchaseData) => p.remainingSessions > 0));
       }
 
       if (catalogRes.ok) {
@@ -609,13 +388,6 @@ export function AppointmentDetails({
     }
   };
 
-  // Handle package selection
-  const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
-    setSelectedPackageId(packageId);
-    setSelectedPurchaseId(purchaseId);
-  };
-
-  // Save package change
   const handleSavePackage = async () => {
     if (!selectedPackageId && !selectedPurchaseId) return;
 
@@ -647,25 +419,13 @@ export function AppointmentDetails({
     }
   };
 
-  // Cancel package edit
-  const handleCancelPackageEdit = () => {
-    setIsEditingPackage(false);
-    setPackageError(null);
-  };
-
-  // Check if baby has medical alerts (based on current appointment data)
-  const hasMedicalAlerts = false; // Will be updated when baby details are fetched
-
-  // Get schedule preferences text from either packagePurchase or pending appointment preferences
-  const getSchedulePreferencesText = () => {
-    const prefsJson = appointment?.packagePurchase?.schedulePreferences
-      || appointment?.pendingSchedulePreferences;
+  // Get schedule preferences text
+  const schedulePreferencesText = (() => {
+    const prefsJson = appointment?.packagePurchase?.schedulePreferences || appointment?.pendingSchedulePreferences;
     if (!prefsJson) return null;
     const prefs = parseSchedulePreferences(prefsJson);
     return prefs.length > 0 ? formatPreferencesText(prefs, locale) : null;
-  };
-
-  const schedulePreferencesText = getSchedulePreferencesText();
+  })();
 
   return (
     <>
@@ -683,253 +443,47 @@ export function AppointmentDetails({
           </DialogHeader>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            {/* Client info header - most important, shown first */}
-            <div className={cn(
-              "rounded-xl border-2 bg-white p-4",
-              isParentAppointment ? "border-rose-100" : "border-teal-100"
-            )}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-full shadow-md",
-                    isParentAppointment
-                      ? "bg-gradient-to-br from-rose-400 to-pink-500 shadow-rose-200"
-                      : "bg-gradient-to-br from-teal-500 to-cyan-500 shadow-teal-200"
-                  )}>
-                    <ClientIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-semibold text-gray-800">
-                        {clientName}
-                      </p>
-                      {isParentAppointment && (
-                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-                          {t("calendar.clientType.parent")}
-                        </span>
-                      )}
-                    </div>
-                    {/* For baby appointments, show primary parent */}
-                    {!isParentAppointment && primaryParent && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {primaryParent.name}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {primaryParent.phone}
-                        </span>
-                      </div>
-                    )}
-                    {/* For parent appointments, show phone */}
-                    {isParentAppointment && clientPhone && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {clientPhone}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {/* Action buttons */}
-                <div className="flex items-center gap-2">
-                  {/* WhatsApp button */}
-                  {clientPhone && (
-                    <a
-                      href={`https://wa.me/${clientPhone.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500 text-white transition-colors hover:bg-emerald-600"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </a>
-                  )}
-                  {/* View baby details - only for baby appointments */}
-                  {!isParentAppointment && appointment.baby && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleViewBaby}
-                        disabled={isLoadingBaby}
-                        className="h-9 w-9 p-0 text-cyan-600 hover:bg-cyan-100"
-                      >
-                        {isLoadingBaby ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Info className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Link href={`/admin/clients/${appointment.baby.id}`} target="_blank">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 w-9 p-0 text-teal-600 hover:bg-teal-100"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </>
-                  )}
-                  {/* Link to parent profile for parent appointments */}
-                  {isParentAppointment && appointment.parent && (
-                    <Link href={`/admin/parents/${appointment.parent.id}`} target="_blank">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 p-0 text-rose-600 hover:bg-rose-100"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* Client header */}
+            <ClientHeader
+              appointment={appointment}
+              isParentAppointment={!!isParentAppointment}
+              primaryParent={primaryParent}
+              isLoadingBaby={isLoadingBaby}
+              onViewBaby={handleViewBaby}
+            />
 
-            {/* Date/Time + Package - compact row */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* Date & Time combined */}
-              <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-200">
-                  <Calendar className="h-5 w-5 text-gray-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-gray-800">
-                    {formattedDate}
-                  </p>
-                  <p className="flex items-center gap-1 text-sm text-gray-500">
-                    <Clock className="h-3 w-3" />
-                    {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
-                  </p>
-                </div>
-              </div>
+            {/* Date/Time + Package row */}
+            <DateTimePackageRow
+              appointment={appointment}
+              formattedDate={formattedDate}
+              installmentPaymentStatus={installmentPaymentStatus}
+              isLoadingPackages={isLoadingPackages}
+              onEditPackage={handleEditPackage}
+            />
 
-              {/* Package - compact */}
-              <div className={cn(
-                "flex items-center gap-3 rounded-xl p-3",
-                appointment.packagePurchase || appointment.selectedPackage
-                  ? "bg-teal-50 border border-teal-200"
-                  : "bg-amber-50 border border-amber-200"
-              )}>
-                <div className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                  appointment.packagePurchase || appointment.selectedPackage
-                    ? "bg-teal-100"
-                    : "bg-amber-100"
-                )}>
-                  <Package className={cn(
-                    "h-5 w-5",
-                    appointment.packagePurchase || appointment.selectedPackage
-                      ? "text-teal-600"
-                      : "text-amber-600"
-                  )} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={cn(
-                    "truncate text-sm font-semibold",
-                    appointment.packagePurchase || appointment.selectedPackage
-                      ? "text-teal-700"
-                      : "text-amber-700"
-                  )}>
-                    {appointment.packagePurchase
-                      ? appointment.packagePurchase.package.name
-                      : appointment.selectedPackage
-                        ? appointment.selectedPackage.name
-                        : t("calendar.sessionToDefine")}
-                  </p>
-                  {/* Installment payment overdue badge */}
-                  {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && (
-                    <Badge className="mt-1 flex w-fit items-center gap-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-300 px-1.5 py-0">
-                      <AlertTriangle className="h-3 w-3" />
-                      <span className="text-[10px] font-medium">
-                        {t("packages.installments.alerts.paymentWarning")}
-                      </span>
-                    </Badge>
-                  )}
-                  {/* Advance payment amount for PENDING_PAYMENT */}
-                  {appointment.status === "PENDING_PAYMENT" && appointment.selectedPackage?.advancePaymentAmount && (
-                    <p className="mt-1 text-xs font-bold text-orange-600">
-                      💰 Bs. {parseFloat(appointment.selectedPackage.advancePaymentAmount.toString()).toFixed(2)}
-                    </p>
-                  )}
-                </div>
-                {/* Edit button - only for scheduled appointments */}
-                {appointment.status === "SCHEDULED" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleEditPackage}
-                    disabled={isLoadingPackages}
-                    className="h-8 w-8 shrink-0 p-0 text-teal-600 hover:bg-teal-100 hover:text-teal-700"
-                  >
-                    {isLoadingPackages ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Pencil className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Edit package mode - full width below */}
+            {/* Package editor */}
             {isEditingPackage && (
-              <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    {t("calendar.changePackage")}
-                  </p>
-                </div>
-                <PackageSelector
-                  babyId={appointment.baby?.id || ""}
-                  packages={catalogPackages}
-                  babyPackages={babyPackages}
-                  selectedPackageId={selectedPackageId}
-                  selectedPurchaseId={selectedPurchaseId}
-                  onSelectPackage={handlePackageSelect}
-                  showCategories={true}
-                  showPrices={false}
-                  showExistingFirst={true}
-                  allowNewPackage={true}
-                  compact={true}
-                  showProvisionalMessage={false}
-                  maxHeight="200px"
-                  forceShowCatalog={!!appointment.selectedPackage && !appointment.packagePurchase}
-                />
-                {packageError && (
-                  <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-2 text-xs text-rose-700">
-                    <AlertCircle className="h-3 w-3" />
-                    {t(`calendar.errors.${packageError}`)}
-                  </div>
-                )}
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancelPackageEdit}
-                    className="h-8"
-                  >
-                    {t("common.cancel")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSavePackage}
-                    disabled={isSavingPackage || (!selectedPackageId && !selectedPurchaseId)}
-                    className="h-8 bg-teal-600 text-white hover:bg-teal-700"
-                  >
-                    {isSavingPackage ? (
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    ) : null}
-                    {t("common.save")}
-                  </Button>
-                </div>
-              </div>
+              <PackageEditor
+                appointment={appointment}
+                catalogPackages={catalogPackages}
+                babyPackages={babyPackages}
+                selectedPackageId={selectedPackageId}
+                selectedPurchaseId={selectedPurchaseId}
+                isSaving={isSavingPackage}
+                error={packageError}
+                onSelectPackage={(pkgId, purchaseId) => {
+                  setSelectedPackageId(pkgId);
+                  setSelectedPurchaseId(purchaseId);
+                }}
+                onSave={handleSavePackage}
+                onCancel={() => {
+                  setIsEditingPackage(false);
+                  setPackageError(null);
+                }}
+              />
             )}
 
-            {/* Parent schedule preferences - shows when parent set preferred schedule */}
+            {/* Schedule preferences */}
             {schedulePreferencesText && (
               <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3">
                 <div className="flex items-center gap-2">
@@ -942,7 +496,7 @@ export function AppointmentDetails({
               </div>
             )}
 
-            {/* Installment payment alert - shows when package has overdue payments */}
+            {/* Installment payment alert */}
             {installmentPaymentStatus && installmentPaymentStatus.overdueAmount > 0 && appointment.packagePurchase && (
               <Alert className="border-amber-200 bg-amber-50">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -972,122 +526,13 @@ export function AppointmentDetails({
               </Alert>
             )}
 
-            {/* Baby Card Section - only for baby appointments */}
+            {/* Baby Card section */}
             {!isParentAppointment && appointment.baby && (
-              <div className="rounded-xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
-                {loadingBabyCardInfo ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
-                  </div>
-                ) : babyCardInfo?.hasActiveCard && babyCardInfo.purchase ? (
-                  <div className="space-y-3">
-                    {/* Card header */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
-                        <CreditCard className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800">{babyCardInfo.purchase.babyCardName}</p>
-                        <p className="text-sm text-violet-600">
-                          {t("babyCard.portal.sessionProgress", {
-                            current: babyCardInfo.purchase.completedSessions + 1,
-                            total: babyCardInfo.purchase.totalSessions,
-                          })}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1">
-                          <Sparkles className="mr-1.5 h-4 w-4 text-violet-600" />
-                          <span className="text-sm font-bold text-violet-700">
-                            {Math.round(babyCardInfo.purchase.progressPercent)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="h-2 w-full rounded-full bg-violet-200/50">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
-                        style={{ width: `${babyCardInfo.purchase.progressPercent}%` }}
-                      />
-                    </div>
-
-                    {/* Available rewards */}
-                    {babyCardInfo.availableRewards.length > 0 && (
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                        <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-                          <Gift className="h-4 w-4" />
-                          {t("babyCard.profile.availableRewards")} ({babyCardInfo.availableRewards.length})
-                        </div>
-                        <div className="mt-2 space-y-2">
-                          {babyCardInfo.availableRewards.map((reward) => (
-                            <div
-                              key={reward.id}
-                              className="flex items-center justify-between rounded-lg bg-white p-2"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">{reward.displayIcon || "🎁"}</span>
-                                <span className="text-sm font-medium text-gray-700">
-                                  {reward.displayName}
-                                </span>
-                              </div>
-                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                                {t("babyCard.rewards.readyToUse")}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="mt-2 text-xs text-emerald-600">
-                          {t("babyCard.profile.useReward")}: {t("common.view")} → {appointment.baby.name}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Next reward */}
-                    {babyCardInfo.nextReward && (
-                      <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
-                        <Star className="h-4 w-4 text-amber-600" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800">
-                            {t("babyCard.portal.nextRewardIn", {
-                              sessions: babyCardInfo.nextReward.sessionsUntilUnlock,
-                              reward: babyCardInfo.nextReward.displayName,
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* First session discount available */}
-                    {babyCardInfo.firstSessionDiscount && !babyCardInfo.firstSessionDiscount.used && (
-                      <div className="flex items-center gap-2 rounded-lg bg-teal-50 border border-teal-200 p-2.5">
-                        <Sparkles className="h-4 w-4 text-teal-600" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-teal-800">
-                            {t("babyCard.checkout.firstSessionDiscount")}
-                          </p>
-                          <p className="text-xs text-teal-600">
-                            {t("babyCard.checkout.firstSessionDiscountValue", {
-                              amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200">
-                      <CreditCard className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-600">{t("babyCard.profile.noActiveCard")}</p>
-                      <p className="text-sm text-gray-500">{t("babyCard.profile.noActiveCardDesc")}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <BabyCardSection
+                babyName={appointment.baby.name}
+                babyCardInfo={babyCardInfo}
+                loading={loadingBabyCardInfo}
+              />
             )}
 
             {/* Notes */}
@@ -1101,269 +546,71 @@ export function AppointmentDetails({
             {/* Cancel reason */}
             {appointment.cancelReason && (
               <div className="rounded-xl bg-rose-50 p-4">
-                <p className="text-sm font-medium text-rose-600">
-                  {t("calendar.cancelReason")}
-                </p>
+                <p className="text-sm font-medium text-rose-600">{t("calendar.cancelReason")}</p>
                 <p className="mt-1 text-rose-700">{appointment.cancelReason}</p>
               </div>
             )}
 
             {/* Actions */}
-            {(canStart || canComplete || canCancel || canMarkNoShow || canReschedule || canRegisterPayment) && (
-              <div className="space-y-3">
-                {/* Register Payment - for PENDING_PAYMENT appointments */}
-                {canRegisterPayment && (
-                  <Button
-                    onClick={() => setShowRegisterPaymentDialog(true)}
-                    disabled={isUpdating}
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-6 text-base font-semibold text-white shadow-lg shadow-amber-200 hover:from-amber-600 hover:to-orange-600"
-                  >
-                    <CreditCard className="mr-2 h-5 w-5" />
-                    {t("payment.registerPayment")}
-                  </Button>
-                )}
-
-                {/* Primary workflow action - Start or Complete */}
-                {(canStart || canComplete) && (
-                  <div className="flex gap-2">
-                    {canStart && (
-                      <Button
-                        onClick={() => setShowStartSessionDialog(true)}
-                        disabled={isUpdating}
-                        className="flex-1 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 py-6 text-base font-semibold text-white shadow-lg shadow-blue-200 hover:from-blue-600 hover:to-blue-700"
-                      >
-                        {isUpdating ? (
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        ) : (
-                          <Play className="mr-2 h-5 w-5" />
-                        )}
-                        {t("calendar.actions.start")}
-                      </Button>
-                    )}
-
-                    {canComplete && appointment.session?.id && (
-                      <Button
-                        onClick={() => setShowCompleteSessionDialog(true)}
-                        disabled={isUpdating}
-                        className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-6 text-base font-semibold text-white shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-700"
-                      >
-                        {isUpdating ? (
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        ) : (
-                          <Check className="mr-2 h-5 w-5" />
-                        )}
-                        {t("calendar.actions.complete")}
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {/* Reschedule - neutral action */}
-                {canReschedule && (
-                  <Button
-                    onClick={() => setShowRescheduleDialog(true)}
-                    disabled={isUpdating}
-                    variant="outline"
-                    className="w-full rounded-xl border-2 border-teal-200 py-5 text-teal-700 hover:bg-teal-50"
-                  >
-                    <CalendarClock className="mr-2 h-4 w-4" />
-                    {t("calendar.actions.reschedule")}
-                  </Button>
-                )}
-
-                {/* Negative actions - Cancel and No-Show */}
-                {(canCancel || canMarkNoShow) && (
-                  <div className="flex gap-2 pt-2 border-t border-gray-100">
-                    {canCancel && (
-                      <Button
-                        onClick={() => setShowCancelDialog(true)}
-                        disabled={isUpdating}
-                        variant="ghost"
-                        className="flex-1 rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        {t("calendar.actions.cancel")}
-                      </Button>
-                    )}
-
-                    {canMarkNoShow && (
-                      <Button
-                        onClick={() => setShowNoShowDialog(true)}
-                        disabled={isUpdating}
-                        variant="ghost"
-                        className="flex-1 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                      >
-                        <AlertCircle className="mr-2 h-4 w-4" />
-                        {t("calendar.actions.noShow")}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel confirmation dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("calendar.cancelAppointment")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("calendar.cancelConfirmation")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <Textarea
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder={t("calendar.cancelReasonPlaceholder")}
-              className="min-h-[80px] rounded-xl border-2 border-gray-200"
+            <AppointmentActions
+              canStart={canStart}
+              canComplete={canComplete}
+              canCancel={canCancel}
+              canMarkNoShow={canMarkNoShow}
+              canReschedule={canReschedule}
+              canRegisterPayment={canRegisterPayment}
+              hasSessionId={!!appointment.session?.id}
+              isUpdating={isUpdating}
+              onStart={() => setShowStartSessionDialog(true)}
+              onComplete={() => setShowCompleteSessionDialog(true)}
+              onCancel={() => setShowCancelDialog(true)}
+              onNoShow={() => setShowNoShowDialog(true)}
+              onReschedule={() => setShowRescheduleDialog(true)}
+              onRegisterPayment={() => setShowRegisterPaymentDialog(true)}
             />
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogDestructiveAction
-              onClick={() => handleAction("cancel", cancelReason)}
-              disabled={!cancelReason.trim() || isUpdating}
-            >
-              {isUpdating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {t("calendar.confirmCancel")}
-            </AlertDialogDestructiveAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* No-show confirmation dialog */}
-      <AlertDialog open={showNoShowDialog} onOpenChange={setShowNoShowDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("calendar.markNoShow")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("calendar.noShowConfirmation")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogDestructiveAction
-              onClick={() => handleAction("no-show")}
-              disabled={isUpdating}
-            >
-              {isUpdating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {t("calendar.confirmNoShow")}
-            </AlertDialogDestructiveAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reschedule dialog */}
-      <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
-        <DialogContent className="max-w-md rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-gray-800">
-              <CalendarClock className="h-5 w-5 text-teal-600" />
-              {t("calendar.reschedule.title")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-gray-500">
-              {t("calendar.reschedule.description")}
-            </p>
-
-            {/* Date selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                {t("calendar.reschedule.selectDate")}
-              </label>
-              <Select value={rescheduleDate} onValueChange={setRescheduleDate}>
-                <SelectTrigger className="w-full rounded-xl border-2 border-teal-100 focus:border-teal-400">
-                  <SelectValue placeholder={t("calendar.reschedule.selectDate")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDates.map((date) => (
-                    <SelectItem key={date.value} value={date.value}>
-                      {date.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Time selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                {t("calendar.reschedule.selectTime")}
-              </label>
-              <Select
-                value={rescheduleTime}
-                onValueChange={setRescheduleTime}
-                disabled={!rescheduleDate || availableSlots.length === 0}
-              >
-                <SelectTrigger className="w-full rounded-xl border-2 border-teal-100 focus:border-teal-400">
-                  <SelectValue
-                    placeholder={
-                      availableSlots.length === 0 && rescheduleDate
-                        ? t("calendar.reschedule.noSlotsAvailable")
-                        : t("calendar.reschedule.selectTime")
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSlots.map((slot) => (
-                    <SelectItem key={slot} value={slot}>
-                      {slot}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Error message */}
-            {rescheduleError && (
-              <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-600">
-                <AlertCircle className="h-4 w-4" />
-                {t(`calendar.errors.${rescheduleError}`)}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowRescheduleDialog(false);
-                setRescheduleDate("");
-                setRescheduleTime("");
-                setRescheduleError("");
-              }}
-              className="flex-1 rounded-xl"
-              disabled={isUpdating}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleReschedule}
-              disabled={!rescheduleDate || !rescheduleTime || isUpdating}
-              className="flex-1 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600"
-            >
-              {isUpdating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              {t("calendar.reschedule.confirm")}
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Start session dialog with therapist selection - for both baby and parent appointments */}
+      {/* Confirmation dialogs */}
+      <CancelDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        cancelReason={cancelReason}
+        onCancelReasonChange={setCancelReason}
+        onConfirm={() => handleAction("cancel", cancelReason)}
+        isUpdating={isUpdating}
+      />
+
+      <NoShowDialog
+        open={showNoShowDialog}
+        onOpenChange={setShowNoShowDialog}
+        onConfirm={() => handleAction("no-show")}
+        isUpdating={isUpdating}
+      />
+
+      {/* Reschedule dialog */}
+      <RescheduleDialog
+        open={showRescheduleDialog}
+        onOpenChange={setShowRescheduleDialog}
+        rescheduleDate={rescheduleDate}
+        rescheduleTime={rescheduleTime}
+        rescheduleError={rescheduleError}
+        availableDates={availableDates}
+        availableSlots={availableSlots}
+        isUpdating={isUpdating}
+        onDateChange={setRescheduleDate}
+        onTimeChange={setRescheduleTime}
+        onReschedule={handleReschedule}
+        onCancel={() => {
+          setShowRescheduleDialog(false);
+          setRescheduleDate("");
+          setRescheduleTime("");
+          setRescheduleError("");
+        }}
+      />
+
+      {/* Start session dialog */}
       {appointment && (appointment.baby || isParentAppointment) && (
         <StartSessionDialog
           open={showStartSessionDialog}
@@ -1376,7 +623,6 @@ export function AppointmentDetails({
           startTime={appointment.startTime}
           preselectedPurchaseId={appointment.packagePurchaseId || undefined}
           preselectedCatalogPackageId={
-            // Only pass catalog package if there's NO purchased package
             !appointment.packagePurchaseId && appointment.selectedPackage?.id
               ? appointment.selectedPackage.id
               : undefined
@@ -1388,7 +634,7 @@ export function AppointmentDetails({
         />
       )}
 
-      {/* Complete session dialog with package selection */}
+      {/* Complete session dialog */}
       {appointment?.session?.id && (
         <CompleteSessionDialog
           open={showCompleteSessionDialog}

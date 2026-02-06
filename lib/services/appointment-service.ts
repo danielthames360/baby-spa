@@ -22,6 +22,146 @@ import { getSlotLimits } from "./settings-service";
 // Re-export for backwards compatibility
 export { BUSINESS_HOURS, MAX_APPOINTMENTS_PER_SLOT, SLOT_DURATION_MINUTES, generateTimeSlots, isWithinBusinessHours };
 
+// ============================================================================
+// INCLUDE PATTERNS - Reusable Prisma include configurations
+// ============================================================================
+
+/**
+ * Base select for parent relation
+ */
+const PARENT_SELECT = {
+  id: true,
+  name: true,
+  phone: true,
+  email: true,
+  pregnancyWeeks: true,
+} as const;
+
+/**
+ * Base select for session relation
+ */
+const SESSION_SELECT = {
+  id: true,
+  status: true,
+} as const;
+
+/**
+ * Select for baby with primary parent only (most common case)
+ */
+const BABY_WITH_PRIMARY_PARENT_SELECT = {
+  id: true,
+  name: true,
+  birthDate: true,
+  gender: true,
+  parents: {
+    where: { isPrimary: true },
+    select: {
+      isPrimary: true,
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Select for baby with all parents (for cases needing to determine primary)
+ */
+const BABY_WITH_ALL_PARENTS_SELECT = {
+  id: true,
+  name: true,
+  birthDate: true,
+  gender: true,
+  parents: {
+    select: {
+      isPrimary: true,
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Select for packagePurchase with installment tracking fields
+ */
+const PACKAGE_PURCHASE_SELECT = {
+  id: true,
+  totalSessions: true,
+  usedSessions: true,
+  remainingSessions: true,
+  schedulePreferences: true,
+  paymentPlan: true,
+  installments: true,
+  installmentAmount: true,
+  totalPrice: true,
+  finalPrice: true,
+  paidAmount: true,
+  installmentsPayOnSessions: true,
+  package: {
+    select: {
+      id: true,
+      name: true,
+      basePrice: true,
+      advancePaymentAmount: true,
+    },
+  },
+} as const;
+
+/**
+ * Select for selectedPackage (provisional package selection)
+ */
+const SELECTED_PACKAGE_SELECT = {
+  id: true,
+  name: true,
+  basePrice: true,
+  advancePaymentAmount: true,
+} as const;
+
+/**
+ * Base include for appointments (baby, parent, session)
+ * Used in: create, update, noShow, complete
+ */
+export const APPOINTMENT_BASE_INCLUDE = {
+  baby: { select: BABY_WITH_PRIMARY_PARENT_SELECT },
+  parent: { select: PARENT_SELECT },
+  session: { select: SESSION_SELECT },
+} as const;
+
+/**
+ * Full include for appointments with package info
+ * Used in: getByDateRange, calendar views
+ */
+export const APPOINTMENT_FULL_INCLUDE = {
+  baby: { select: BABY_WITH_PRIMARY_PARENT_SELECT },
+  parent: { select: PARENT_SELECT },
+  session: { select: SESSION_SELECT },
+  packagePurchase: { select: PACKAGE_PURCHASE_SELECT },
+  selectedPackage: { select: SELECTED_PACKAGE_SELECT },
+} as const;
+
+/**
+ * Full include with all parents (not filtered by isPrimary)
+ * Used in: getById, operations needing to determine primary parent
+ */
+export const APPOINTMENT_FULL_INCLUDE_ALL_PARENTS = {
+  baby: { select: BABY_WITH_ALL_PARENTS_SELECT },
+  parent: { select: PARENT_SELECT },
+  session: { select: SESSION_SELECT },
+  packagePurchase: { select: PACKAGE_PURCHASE_SELECT },
+  selectedPackage: { select: SELECTED_PACKAGE_SELECT },
+} as const;
+
+// ============================================================================
+
 // Types
 export interface AppointmentWithRelations {
   id: string;
@@ -224,78 +364,7 @@ export const appointmentService = {
           lte: endDate,
         },
       },
-      include: {
-        baby: {
-          select: {
-            id: true,
-            name: true,
-            birthDate: true,
-            gender: true,
-            parents: {
-              where: { isPrimary: true },
-              select: {
-                isPrimary: true,
-                parent: {
-                  select: {
-                    id: true,
-                    name: true,
-                    phone: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            pregnancyWeeks: true,
-          },
-        },
-        session: {
-          select: {
-            id: true,
-            status: true,
-          },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            totalSessions: true,
-            usedSessions: true,
-            remainingSessions: true,
-            // Schedule preferences (transferred from appointment at checkout)
-            schedulePreferences: true,
-            // Installment fields
-            paymentPlan: true,
-            installments: true,
-            installmentAmount: true,
-            totalPrice: true,
-            finalPrice: true,
-            paidAmount: true,
-            installmentsPayOnSessions: true,
-            package: {
-              select: {
-                id: true,
-                name: true,
-                basePrice: true,
-                advancePaymentAmount: true,
-              },
-            },
-          },
-        },
-        selectedPackage: {
-          select: {
-            id: true,
-            name: true,
-            basePrice: true,
-            advancePaymentAmount: true,
-          },
-        },
-      },
+      include: APPOINTMENT_FULL_INCLUDE,
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
 
@@ -315,77 +384,8 @@ export const appointmentService = {
   async getById(id: string): Promise<AppointmentWithRelations | null> {
     const appointment = await prisma.appointment.findUnique({
       where: { id },
-      include: {
-        baby: {
-          select: {
-            id: true,
-            name: true,
-            birthDate: true,
-            gender: true,
-            parents: {
-              select: {
-                isPrimary: true,
-                parent: {
-                  select: {
-                    id: true,
-                    name: true,
-                    phone: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            pregnancyWeeks: true,
-          },
-        },
-        session: {
-          select: {
-            id: true,
-            status: true,
-          },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            totalSessions: true,
-            usedSessions: true,
-            remainingSessions: true,
-            // Schedule preferences (transferred from appointment at checkout)
-            schedulePreferences: true,
-            // Installment fields
-            paymentPlan: true,
-            installments: true,
-            installmentAmount: true,
-            totalPrice: true,
-            finalPrice: true,
-            paidAmount: true,
-            installmentsPayOnSessions: true,
-            package: {
-              select: {
-                id: true,
-                name: true,
-                basePrice: true,
-                advancePaymentAmount: true,
-              },
-            },
-          },
-        },
-        selectedPackage: {
-          select: {
-            id: true,
-            name: true,
-            basePrice: true,
-            advancePaymentAmount: true,
-          },
-        },
-      },
+      // Use ALL_PARENTS variant to be able to determine primary parent in code
+      include: APPOINTMENT_FULL_INCLUDE_ALL_PARENTS,
     });
 
     return appointment as AppointmentWithRelations | null;
@@ -758,44 +758,7 @@ export const appointmentService = {
           selectedPackageId,
           packagePurchaseId,
         },
-        include: {
-          baby: {
-            select: {
-              id: true,
-              name: true,
-              birthDate: true,
-              gender: true,
-              parents: {
-                where: { isPrimary: true },
-                select: {
-                  isPrimary: true,
-                  parent: {
-                    select: {
-                      id: true,
-                      name: true,
-                      phone: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-              pregnancyWeeks: true,
-            },
-          },
-          session: {
-            select: {
-              id: true,
-              status: true,
-            },
-          },
-        },
+        include: APPOINTMENT_BASE_INCLUDE,
       });
 
       // Create history entry
@@ -1055,44 +1018,7 @@ export const appointmentService = {
       const updated = await tx.appointment.update({
         where: { id },
         data: updateData,
-        include: {
-          baby: {
-            select: {
-              id: true,
-              name: true,
-              birthDate: true,
-              gender: true,
-              parents: {
-                where: { isPrimary: true },
-                select: {
-                  isPrimary: true,
-                  parent: {
-                    select: {
-                      id: true,
-                      name: true,
-                      phone: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-              pregnancyWeeks: true,
-            },
-          },
-          session: {
-            select: {
-              id: true,
-              status: true,
-            },
-          },
-        },
+        include: APPOINTMENT_BASE_INCLUDE,
       });
 
       // Create history entry
@@ -1248,43 +1174,7 @@ export const appointmentService = {
         data: {
           status: AppointmentStatus.NO_SHOW,
         },
-        include: {
-          baby: {
-            select: {
-              id: true,
-              name: true,
-              birthDate: true,
-              gender: true,
-              parents: {
-                select: {
-                  isPrimary: true,
-                  parent: {
-                    select: {
-                      id: true,
-                      name: true,
-                      phone: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-              pregnancyWeeks: true,
-            },
-          },
-          session: {
-            select: {
-              id: true,
-              status: true,
-            },
-          },
-        },
+        include: APPOINTMENT_BASE_INCLUDE,
       });
 
       // Determine parent ID - either from baby's primary parent or from direct parent appointment
@@ -1372,43 +1262,7 @@ export const appointmentService = {
         data: {
           status: AppointmentStatus.COMPLETED,
         },
-        include: {
-          baby: {
-            select: {
-              id: true,
-              name: true,
-              birthDate: true,
-              gender: true,
-              parents: {
-                select: {
-                  isPrimary: true,
-                  parent: {
-                    select: {
-                      id: true,
-                      name: true,
-                      phone: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-              pregnancyWeeks: true,
-            },
-          },
-          session: {
-            select: {
-              id: true,
-              status: true,
-            },
-          },
-        },
+        include: APPOINTMENT_BASE_INCLUDE,
       });
 
       // Determine parent ID - either from baby's primary parent or from direct parent appointment

@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withAuth, handleApiError } from "@/lib/api-utils";
+import { timingSafeEqual } from "crypto";
 
 // Import job functions
 import { runAppointmentReminders } from "@/cron/jobs/daily/appointment-reminders";
@@ -49,11 +50,22 @@ function getCountryConfig(country: "bolivia" | "brasil") {
   }[country];
 }
 
+// Helper for timing-safe string comparison
+function secureCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    // Compare against self to maintain constant time even when lengths differ
+    timingSafeEqual(Buffer.from(a), Buffer.from(a));
+    return false;
+  }
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 export async function POST(request: Request) {
   try {
     // Check for cron secret header (for external triggers)
+    // Using timing-safe comparison to prevent timing attacks
     const authHeader = request.headers.get("x-cron-secret");
-    const isSecretAuth = CRON_SECRET && authHeader === CRON_SECRET;
+    const isSecretAuth = CRON_SECRET && authHeader && secureCompare(authHeader, CRON_SECRET);
 
     if (!isSecretAuth) {
       // Require OWNER role if no secret

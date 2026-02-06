@@ -598,48 +598,54 @@ export const babyService = {
     });
   },
 
-  // Remove a parent from a baby
+  // Remove a parent from a baby (wrapped in transaction for data consistency)
   async removeParent(babyId: string, parentId: string): Promise<void> {
-    // Check if this is the only parent
-    const parentCount = await prisma.babyParent.count({
-      where: { babyId },
-    });
-
-    if (parentCount <= 1) {
-      throw new Error("CANNOT_REMOVE_ONLY_PARENT");
-    }
-
-    // Check if removing primary parent
-    const babyParent = await prisma.babyParent.findFirst({
-      where: { babyId, parentId },
-    });
-
-    await prisma.babyParent.delete({
-      where: {
-        babyId_parentId: {
-          babyId,
-          parentId,
-        },
-      },
-    });
-
-    // If removed parent was primary, set another as primary
-    if (babyParent?.isPrimary) {
-      const remainingParent = await prisma.babyParent.findFirst({
+    await prisma.$transaction(async (tx) => {
+      // Check if this is the only parent
+      const parentCount = await tx.babyParent.count({
         where: { babyId },
       });
-      if (remainingParent) {
-        await prisma.babyParent.update({
-          where: {
-            babyId_parentId: {
-              babyId: remainingParent.babyId,
-              parentId: remainingParent.parentId,
-            },
-          },
-          data: { isPrimary: true },
-        });
+
+      if (parentCount <= 1) {
+        throw new Error("CANNOT_REMOVE_ONLY_PARENT");
       }
-    }
+
+      // Check if removing primary parent
+      const babyParent = await tx.babyParent.findFirst({
+        where: { babyId, parentId },
+      });
+
+      if (!babyParent) {
+        throw new Error("PARENT_NOT_FOUND");
+      }
+
+      await tx.babyParent.delete({
+        where: {
+          babyId_parentId: {
+            babyId,
+            parentId,
+          },
+        },
+      });
+
+      // If removed parent was primary, set another as primary
+      if (babyParent.isPrimary) {
+        const remainingParent = await tx.babyParent.findFirst({
+          where: { babyId },
+        });
+        if (remainingParent) {
+          await tx.babyParent.update({
+            where: {
+              babyId_parentId: {
+                babyId: remainingParent.babyId,
+                parentId: remainingParent.parentId,
+              },
+            },
+            data: { isPrimary: true },
+          });
+        }
+      }
+    });
   },
 
   async update(id: string, data: Partial<BabyCreateInput>): Promise<BabyWithRelations> {

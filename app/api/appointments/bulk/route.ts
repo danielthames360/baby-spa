@@ -1,7 +1,23 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { withAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { parseDateToUTCNoon } from '@/lib/utils/date-utils';
+
+// Validation schema for bulk appointments
+const bulkAppointmentsSchema = z.object({
+  babyId: z.string().cuid("Invalid baby ID"),
+  packagePurchaseId: z.string().cuid("Invalid package purchase ID"),
+  appointments: z
+    .array(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (expected YYYY-MM-DD)"),
+        startTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (expected HH:mm)"),
+        endTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (expected HH:mm)"),
+      })
+    )
+    .min(1, "At least one appointment is required"),
+});
 
 /**
  * POST /api/appointments/bulk
@@ -9,14 +25,17 @@ import { parseDateToUTCNoon } from '@/lib/utils/date-utils';
  */
 export async function POST(request: Request) {
   try {
-    const session = await withAuth(['OWNER', 'ADMIN', 'RECEPTION']);
+    await withAuth(['OWNER', 'ADMIN', 'RECEPTION']);
 
     const body = await request.json();
-    const { babyId, packagePurchaseId, appointments } = body;
 
-    if (!babyId || !packagePurchaseId || !appointments?.length) {
-      throw new ApiError(400, 'MISSING_REQUIRED_FIELDS');
+    // Validate request body with Zod
+    const validationResult = bulkAppointmentsSchema.safeParse(body);
+    if (!validationResult.success) {
+      throw new ApiError(400, validationResult.error.issues[0]?.message || 'VALIDATION_ERROR');
     }
+
+    const { babyId, packagePurchaseId, appointments } = validationResult.data;
 
     // Run both queries in parallel for better performance
     const [packagePurchase, existingScheduled] = await Promise.all([

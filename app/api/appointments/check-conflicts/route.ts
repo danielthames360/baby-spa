@@ -1,8 +1,25 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { withAuth, handleApiError } from '@/lib/api-utils';
 import { parseDateToUTCNoon, formatLocalDateString } from '@/lib/utils/date-utils';
 import { getStaffSlotLimit } from '@/lib/services/settings-service';
+
+// Validation schema for check-conflicts query params
+const checkConflictsSchema = z.object({
+  dates: z
+    .string()
+    .min(1, "Dates parameter is required")
+    .transform((s) => s.split(",").filter((d) => d.trim()))
+    .pipe(
+      z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (expected YYYY-MM-DD)"))
+    ),
+  times: z
+    .string()
+    .min(1, "Times parameter is required")
+    .transform((s) => s.split(",").filter((t) => t.trim()))
+    .pipe(z.array(z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (expected HH:mm)"))),
+});
 
 /**
  * GET /api/appointments/check-conflicts
@@ -20,12 +37,20 @@ export async function GET(request: Request) {
     const datesParam = searchParams.get('dates');
     const timesParam = searchParams.get('times');
 
-    if (!datesParam || !timesParam) {
-      return NextResponse.json({ error: 'Missing dates or times parameter' }, { status: 400 });
+    // Validate query parameters with Zod
+    const validationResult = checkConflictsSchema.safeParse({
+      dates: datesParam || '',
+      times: timesParam || '',
+    });
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: validationResult.error.issues[0]?.message || 'Invalid parameters' },
+        { status: 400 }
+      );
     }
 
-    const dates = datesParam.split(',').filter((d) => d.trim());
-    const times = timesParam.split(',').filter((t) => t.trim());
+    const { dates, times } = validationResult.data;
 
     if (dates.length === 0 || times.length === 0) {
       return NextResponse.json({ conflicts: [] });

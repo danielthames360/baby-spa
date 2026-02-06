@@ -474,6 +474,24 @@ export const sessionService = {
     );
 
     const result = await prisma.$transaction(async (tx) => {
+      // Re-verify session status inside transaction to prevent race conditions
+      const freshSession = await tx.session.findUnique({
+        where: { id: sessionId },
+        include: { appointment: { select: { status: true } } },
+      });
+
+      if (!freshSession) {
+        throw new Error("SESSION_NOT_FOUND");
+      }
+
+      if (freshSession.appointment.status === "COMPLETED") {
+        throw new Error("SESSION_ALREADY_COMPLETED");
+      }
+
+      if (freshSession.appointment.status !== "IN_PROGRESS") {
+        throw new Error("SESSION_NOT_IN_PROGRESS");
+      }
+
       let newPackagePurchase = null;
       // Use session's pre-selected package, or fall back to any active package
       let packagePurchaseToDeduct = sessionPackage || activePackage;
