@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol, formatNumber as formatNumberUtil } from "@/lib/utils/currency-utils";
 import {
   Banknote,
   Building2,
@@ -46,7 +47,7 @@ interface SplitPaymentFormProps {
   disabled?: boolean;
   /** Show reference field for each payment line */
   showReference?: boolean;
-  /** Currency symbol/code (default: "Bs.") */
+  /** Currency symbol/code (default: locale-aware via getCurrencySymbol) */
   currency?: string;
   /** Initial payment details to populate */
   initialDetails?: PaymentDetailInput[];
@@ -62,11 +63,12 @@ export function SplitPaymentForm({
   onPaymentDetailsChange,
   disabled = false,
   showReference = true,
-  currency = "Bs.",
+  currency: currencyProp,
   initialDetails,
 }: SplitPaymentFormProps) {
   const t = useTranslations();
   const locale = useLocale();
+  const currency = currencyProp || getCurrencySymbol(locale);
 
   // Initialize lines from initialDetails or with a single empty line
   const [lines, setLines] = useState<PaymentLine[]>(() => {
@@ -87,13 +89,6 @@ export function SplitPaymentForm({
       },
     ];
   });
-
-  // Validation state
-  const [validation, setValidation] = useState<{
-    valid: boolean;
-    error?: string;
-    sum: number;
-  }>({ valid: false, sum: 0 });
 
   // Calculate sum and validate
   const validateLines = useCallback(
@@ -123,12 +118,12 @@ export function SplitPaymentForm({
     [totalAmount]
   );
 
-  // Update validation and notify parent when lines change
-  useEffect(() => {
-    const newValidation = validateLines(lines);
-    setValidation(newValidation);
+  // Derived state: compute validation during render instead of via useEffect
+  const validation = useMemo(() => validateLines(lines), [lines, validateLines]);
 
-    if (newValidation.valid) {
+  // Notify parent when validation status changes
+  useEffect(() => {
+    if (validation.valid) {
       const details: PaymentDetailInput[] = lines.map((line) => ({
         amount: line.amount,
         paymentMethod: line.paymentMethod as PaymentMethodValue,
@@ -138,15 +133,17 @@ export function SplitPaymentForm({
     } else {
       onPaymentDetailsChange([]);
     }
-  }, [lines, validateLines, onPaymentDetailsChange]);
+  }, [lines, validation.valid, onPaymentDetailsChange]);
 
-  // Update total amount when it changes (e.g., discount applied)
+  // Auto-sync single line amount when totalAmount changes (e.g., discount applied)
   useEffect(() => {
-    // If there's only one line, auto-update its amount to match total
-    if (lines.length === 1) {
-      setLines((prev) => [{ ...prev[0], amount: totalAmount }]);
-    }
-  }, [totalAmount, lines.length]);
+    setLines((prev) => {
+      if (prev.length === 1) {
+        return [{ ...prev[0], amount: totalAmount }];
+      }
+      return prev;
+    });
+  }, [totalAmount]);
 
   // Add a new payment line
   const addLine = () => {
@@ -196,13 +193,8 @@ export function SplitPaymentForm({
     );
   };
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  // Format number (without currency symbol - used for display in split lines)
+  const formatCurrency = (amount: number) => formatNumberUtil(amount, locale);
 
   const remaining = totalAmount - validation.sum;
 

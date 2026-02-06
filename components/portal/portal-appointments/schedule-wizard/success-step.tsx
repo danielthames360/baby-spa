@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   CheckCircle,
   CreditCard,
@@ -38,6 +38,8 @@ export function SuccessStep({
   onClose,
 }: SuccessStepProps) {
   const t = useTranslations();
+  const locale = useLocale();
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
 
   return (
     <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">
@@ -105,7 +107,7 @@ export function SuccessStep({
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">{t("common.date")}:</span>
           <span className="font-medium text-gray-800">
-            {selectedDate?.toLocaleDateString("es-ES", {
+            {selectedDate?.toLocaleDateString(dateLocale, {
               weekday: "long",
               day: "numeric",
               month: "long",

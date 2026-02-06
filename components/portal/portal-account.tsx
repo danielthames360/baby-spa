@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatCurrency as formatCurrencyUtil } from "@/lib/utils/currency-utils";
 import {
   Wallet,
   Package,
@@ -147,7 +148,7 @@ export function PortalAccount() {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return `Bs ${amount.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return formatCurrencyUtil(amount, locale);
   };
 
   // Format date

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Clock, Loader2, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimeSlot } from "../types";
@@ -29,6 +29,8 @@ export function DateTimeStep({
   onClearError,
 }: DateTimeStepProps) {
   const t = useTranslations();
+  const locale = useLocale();
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
 
   return (
     <div className="space-y-6 p-4">
@@ -70,7 +72,7 @@ export function DateTimeStep({
                     isSelected ? "text-teal-600" : "text-gray-400"
                   )}
                 >
-                  {date.toLocaleDateString("es-ES", { weekday: "short" })}
+                  {date.toLocaleDateString(dateLocale, { weekday: "short" })}
                 </span>
                 <span
                   className={cn(
@@ -86,7 +88,7 @@ export function DateTimeStep({
                     isSelected ? "text-teal-500" : "text-gray-400"
                   )}
                 >
-                  {date.toLocaleDateString("es-ES", { month: "short" })}
+                  {date.toLocaleDateString(dateLocale, { month: "short" })}
                 </span>
               </button>
             );

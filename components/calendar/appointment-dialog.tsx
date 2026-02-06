@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import dynamic from "next/dynamic";
 import {
   Dialog,
@@ -139,21 +140,6 @@ export function AppointmentDialog({
     }
   }, []);
 
-  // Reset form when dialog opens/closes
-  useEffect(() => {
-    if (!open) {
-      setSelectedClient(null);
-      setNotes("");
-      setError(null);
-      setSelectedPackageId(null);
-      setSelectedPurchaseId(null);
-      setShowAdvancePaymentConfirm(false);
-      setCreatedAppointment(null);
-      setShowPaymentDialog(false);
-      setBabyCardInfo(null);
-    }
-  }, [open]);
-
   // Fetch Baby Card info for the selected baby
   const fetchBabyCardInfo = useCallback(async (babyId: string) => {
     setLoadingBabyCardInfo(true);
@@ -190,12 +176,24 @@ export function AppointmentDialog({
     }
   }, []);
 
-  // Fetch catalog when dialog opens or client type changes
+  // Reset form when dialog closes, fetch catalog when dialog opens or client type changes
   useEffect(() => {
-    if (open) {
-      const serviceType = selectedClient?.type === "PARENT" ? "PARENT" : "BABY";
-      fetchCatalog(serviceType);
+    if (!open) {
+      setSelectedClient(null);
+      setNotes("");
+      setError(null);
+      setSelectedPackageId(null);
+      setSelectedPurchaseId(null);
+      setShowAdvancePaymentConfirm(false);
+      setCreatedAppointment(null);
+      setShowPaymentDialog(false);
+      setBabyCardInfo(null);
+      return;
     }
+
+    // Fetch catalog when dialog is open (also re-fetches when client type changes)
+    const serviceType = selectedClient?.type === "PARENT" ? "PARENT" : "BABY";
+    fetchCatalog(serviceType);
   }, [open, fetchCatalog, selectedClient?.type]);
 
   // Handle package selection
@@ -246,7 +244,8 @@ export function AppointmentDialog({
     return [];
   };
 
-  // Auto-select package when client is selected
+  // Auto-select package when client is selected (use primitive dep to avoid re-runs on object identity changes)
+  const selectedClientId = selectedClient?.baby?.id || selectedClient?.parent?.id;
   useEffect(() => {
     if (selectedClient) {
       let activePackages: { id: string; package: { id: string } }[] = [];
@@ -269,16 +268,18 @@ export function AppointmentDialog({
         setSelectedPackageId(null);
       }
     }
-  }, [selectedClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Use primitive ID to avoid re-runs on object identity changes
+  }, [selectedClientId]);
 
   // Fetch Baby Card info when baby is selected
+  const selectedBabyId = selectedClient?.type === "BABY" ? selectedClient.baby?.id : null;
   useEffect(() => {
-    if (selectedClient?.type === "BABY" && selectedClient.baby) {
-      fetchBabyCardInfo(selectedClient.baby.id);
+    if (selectedBabyId) {
+      fetchBabyCardInfo(selectedBabyId);
     } else {
       setBabyCardInfo(null);
     }
-  }, [selectedClient, fetchBabyCardInfo]);
+  }, [selectedBabyId, fetchBabyCardInfo]);
 
   // Auto-scroll to bottom when advance payment confirmation appears
   useEffect(() => {
@@ -518,7 +519,7 @@ export function AppointmentDialog({
                     </p>
                     <p className="text-xs text-amber-600">
                       {t("babyCard.checkout.firstSessionDiscountValue", {
-                        amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
+                        amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " " + getCurrencySymbol(locale),
                       })}
                     </p>
                   </div>

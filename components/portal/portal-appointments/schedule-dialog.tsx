@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,8 @@ export function ScheduleDialog({
   preselectedBabyId,
 }: ScheduleDialogProps) {
   const t = useTranslations();
+  const locale = useLocale();
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
   const { height: viewportHeight, isMobile } = useMobileViewport();
 
   // Wizard state
@@ -229,14 +231,17 @@ export function ScheduleDialog({
     }
   }, [step, fetchCatalog, catalogPackages.length, clientType]);
 
+  // Primitive dependency to prevent re-running when selectedBaby object reference changes
+  const selectedBabyId = selectedBaby?.id;
+
   // Fetch Baby Card info when a baby is selected
   useEffect(() => {
-    if (clientType === "baby" && selectedBaby) {
-      fetchBabyCardInfo(selectedBaby.id);
+    if (clientType === "baby" && selectedBabyId) {
+      fetchBabyCardInfo(selectedBabyId);
     } else {
       setBabyCardInfo(null);
     }
-  }, [clientType, selectedBaby, fetchBabyCardInfo]);
+  }, [clientType, selectedBabyId, fetchBabyCardInfo]);
 
   // Generate available dates
   const getAvailableDates = () => {
@@ -478,7 +483,7 @@ export function ScheduleDialog({
     message = message
       .replace(
         "{fecha}",
-        selectedDate.toLocaleDateString("es-ES", {
+        selectedDate.toLocaleDateString(dateLocale, {
           weekday: "long",
           day: "numeric",
           month: "long",

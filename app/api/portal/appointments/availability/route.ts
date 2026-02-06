@@ -38,7 +38,8 @@ export async function GET(request: Request) {
     }
 
     // Get business hours for this day
-    const dayOfWeek = date.getDay();
+    // Use UTC method since date was created with parseDateToUTCNoon (12:00 UTC)
+    const dayOfWeek = date.getUTCDay();
     const businessHours = await prisma.businessHours.findFirst({
       where: { dayOfWeek },
     });

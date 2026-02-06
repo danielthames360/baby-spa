@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Send,
   CheckCircle2,
@@ -64,23 +65,19 @@ interface EmailStats {
   }[];
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  APPOINTMENT: "Citas",
-  MESVERSARY: "Mesversarios",
-  REENGAGEMENT: "Re-engagement",
-  LEAD: "Leads",
-  ADMIN: "Admin",
-};
-
 export default function EmailStatsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const t = useTranslations("messagesModule");
+  const locale = useLocale();
 
   const isOwner = session?.user?.role === "OWNER";
 
   const [stats, setStats] = useState<EmailStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState("7");
+
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
 
   // Redirect non-OWNER users
   useEffect(() => {
@@ -125,10 +122,10 @@ export default function EmailStatsPage() {
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <ShieldAlert className="h-12 w-12 text-amber-500" />
         <h3 className="mt-4 text-lg font-semibold text-gray-800">
-          Acceso restringido
+          {t("stats.restricted")}
         </h3>
         <p className="mt-2 text-sm text-gray-500">
-          Solo los owners pueden ver las métricas de email
+          {t("stats.restrictedDescription")}
         </p>
       </div>
     );
@@ -148,10 +145,10 @@ export default function EmailStatsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">
-            Métricas de Email
+            {t("stats.title")}
           </h2>
           <p className="text-sm text-gray-500">
-            Últimos {stats.period.days} días
+            {t("stats.lastDays", { days: stats.period.days })}
           </p>
         </div>
 
@@ -161,9 +158,9 @@ export default function EmailStatsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7">Últimos 7 días</SelectItem>
-              <SelectItem value="14">Últimos 14 días</SelectItem>
-              <SelectItem value="30">Últimos 30 días</SelectItem>
+              <SelectItem value="7">{t("stats.last7")}</SelectItem>
+              <SelectItem value="14">{t("stats.last14")}</SelectItem>
+              <SelectItem value="30">{t("stats.last30")}</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -184,7 +181,7 @@ export default function EmailStatsPage() {
             <Send className="h-4 w-4" />
           </div>
           <div className="text-2xl font-bold text-gray-800">{stats.stats.total}</div>
-          <div className="text-xs text-gray-500">Enviados</div>
+          <div className="text-xs text-gray-500">{t("stats.sent")}</div>
         </div>
 
         <div className="rounded-xl border border-gray-100 bg-white p-4">
@@ -192,7 +189,7 @@ export default function EmailStatsPage() {
             <CheckCircle2 className="h-4 w-4" />
           </div>
           <div className="text-2xl font-bold text-gray-800">{stats.stats.delivered}</div>
-          <div className="text-xs text-gray-500">Entregados ({stats.rates.delivery})</div>
+          <div className="text-xs text-gray-500">{t("stats.delivered")} ({stats.rates.delivery})</div>
         </div>
 
         <div className="rounded-xl border border-gray-100 bg-white p-4">
@@ -200,7 +197,7 @@ export default function EmailStatsPage() {
             <Eye className="h-4 w-4" />
           </div>
           <div className="text-2xl font-bold text-gray-800">{stats.stats.opened}</div>
-          <div className="text-xs text-gray-500">Abiertos ({stats.rates.open})</div>
+          <div className="text-xs text-gray-500">{t("stats.opened")} ({stats.rates.open})</div>
         </div>
 
         <div className="rounded-xl border border-gray-100 bg-white p-4">
@@ -208,7 +205,7 @@ export default function EmailStatsPage() {
             <XCircle className="h-4 w-4" />
           </div>
           <div className="text-2xl font-bold text-gray-800">{stats.stats.bounced}</div>
-          <div className="text-xs text-gray-500">Rebotados ({stats.rates.bounce})</div>
+          <div className="text-xs text-gray-500">{t("stats.bounced")} ({stats.rates.bounce})</div>
         </div>
 
         <div className="rounded-xl border border-gray-100 bg-white p-4">
@@ -216,7 +213,7 @@ export default function EmailStatsPage() {
             <AlertTriangle className="h-4 w-4" />
           </div>
           <div className="text-2xl font-bold text-gray-800">{stats.stats.complained}</div>
-          <div className="text-xs text-gray-500">Quejas</div>
+          <div className="text-xs text-gray-500">{t("stats.complaints")}</div>
         </div>
       </div>
 
@@ -224,24 +221,24 @@ export default function EmailStatsPage() {
       <div className="rounded-2xl border border-gray-100 bg-white p-6">
         <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-800">
           <TrendingUp className="h-5 w-5 text-green-500" />
-          Por Categoría
+          {t("stats.byCategory")}
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b text-left text-sm text-gray-500">
-                <th className="pb-2">Categoría</th>
-                <th className="pb-2 text-right">Total</th>
-                <th className="pb-2 text-right">Entregados</th>
-                <th className="pb-2 text-right">Abiertos</th>
-                <th className="pb-2 text-right">Rebotados</th>
+                <th className="pb-2">{t("stats.colCategory")}</th>
+                <th className="pb-2 text-right">{t("stats.colTotal")}</th>
+                <th className="pb-2 text-right">{t("stats.colDelivered")}</th>
+                <th className="pb-2 text-right">{t("stats.colOpened")}</th>
+                <th className="pb-2 text-right">{t("stats.colBounced")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {Object.entries(stats.byCategory).map(([category, data]) => (
                 <tr key={category}>
                   <td className="py-3 font-medium">
-                    {CATEGORY_LABELS[category] || category}
+                    {t(`stats.categoryLabels.${category}`, { defaultValue: category })}
                   </td>
                   <td className="py-3 text-right">{data.total}</td>
                   <td className="py-3 text-right text-emerald-600">{data.delivered}</td>
@@ -258,7 +255,7 @@ export default function EmailStatsPage() {
       <div className="rounded-2xl border border-gray-100 bg-white p-6">
         <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-800">
           <Calendar className="h-5 w-5 text-green-500" />
-          Por Día
+          {t("stats.byDay")}
         </h3>
         <div className="space-y-2">
           {Object.entries(stats.byDay)
@@ -273,7 +270,7 @@ export default function EmailStatsPage() {
               return (
                 <div key={day} className="flex items-center gap-3">
                   <div className="w-24 text-sm text-gray-500">
-                    {new Date(day).toLocaleDateString("es-BO", {
+                    {new Date(day).toLocaleDateString(dateLocale, {
                       weekday: "short",
                       day: "numeric",
                     })}
@@ -285,13 +282,13 @@ export default function EmailStatsPage() {
                         style={{ width: `${width}%` }}
                       />
                       <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                        {data.total} enviados
+                        {data.total} {t("stats.sentCount")}
                       </div>
                     </div>
                   </div>
                   <div className="flex w-32 gap-2 text-xs">
-                    <span className="text-emerald-600">{data.delivered} ent.</span>
-                    <span className="text-blue-600">{data.opened} ab.</span>
+                    <span className="text-emerald-600">{data.delivered} {t("stats.deliveredShort")}</span>
+                    <span className="text-blue-600">{data.opened} {t("stats.openedShort")}</span>
                   </div>
                 </div>
               );
@@ -304,10 +301,10 @@ export default function EmailStatsPage() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
           <h3 className="mb-4 flex items-center gap-2 font-semibold text-amber-800">
             <AlertTriangle className="h-5 w-5" />
-            Padres con Problemas de Email
+            {t("stats.parentsWithIssues")}
           </h3>
           <p className="mb-4 text-sm text-amber-700">
-            Estos padres tienen 2 o más rebotes de email. Considera verificar sus direcciones.
+            {t("stats.parentsWithIssuesDescription")}
           </p>
           <div className="space-y-2">
             {stats.parentsWithIssues.map((parent) => (
@@ -323,7 +320,7 @@ export default function EmailStatsPage() {
                   </div>
                 </div>
                 <div className="rounded-full bg-amber-100 px-2 py-1 text-sm font-medium text-amber-700">
-                  {parent.emailBounceCount} rebotes
+                  {t("stats.bounceCount", { count: parent.emailBounceCount })}
                 </div>
               </div>
             ))}
@@ -336,7 +333,7 @@ export default function EmailStatsPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-6">
           <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-800">
             <XCircle className="h-5 w-5 text-rose-500" />
-            Emails con Problemas Recientes
+            {t("stats.recentProblems")}
           </h3>
           <div className="space-y-2">
             {stats.problematicEmails.slice(0, 10).map((email) => (
@@ -347,7 +344,7 @@ export default function EmailStatsPage() {
                 <div>
                   <div className="font-medium text-gray-800">{email.toEmail}</div>
                   <div className="text-sm text-gray-500">
-                    {email.templateKey} • {new Date(email.createdAt).toLocaleDateString("es-BO")}
+                    {email.templateKey} • {new Date(email.createdAt).toLocaleDateString(dateLocale)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -359,7 +356,7 @@ export default function EmailStatsPage() {
                         : "bg-rose-100 text-rose-700"
                     )}
                   >
-                    {email.status === "BOUNCED" ? "Rebotado" : "Queja"}
+                    {email.status === "BOUNCED" ? t("stats.statusBounced") : t("stats.statusComplaint")}
                   </span>
                   {email.bounceReason && (
                     <span className="text-xs text-gray-500">

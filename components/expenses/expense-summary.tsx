@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { formatCurrency as formatCurrencyUtil } from "@/lib/utils/currency-utils";
 import {
   Home,
   Lightbulb,
@@ -72,14 +73,7 @@ export function ExpenseSummary({
 }: ExpenseSummaryProps) {
   const t = useTranslations("expenses");
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      style: "currency",
-      currency: locale === "pt-BR" ? "BRL" : "BOB",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCurrencyUtil(amount, locale);
 
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg shadow-teal-500/10 backdrop-blur-md">

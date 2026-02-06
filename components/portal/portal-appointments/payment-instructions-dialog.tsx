@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Clock, CreditCard, Download, Loader2 } from "lucide-react";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import { useMobileViewport } from "./use-mobile-viewport";
 import type { Appointment, PaymentSettings } from "./types";
 
@@ -103,8 +104,7 @@ export function PaymentInstructionsDialog({
               <div className="text-center">
                 <p className="text-sm text-gray-500">{t("payment.advanceRequired")}</p>
                 <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-orange-50 px-6 py-3 text-xl font-bold text-orange-700">
-                  <span>Bs.</span>
-                  <span>{advanceAmount}</span>
+                  <span>{formatCurrency(advanceAmount, locale)}</span>
                 </div>
               </div>
 

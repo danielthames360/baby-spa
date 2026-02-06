@@ -1,74 +1,38 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth, validateRequest, handleApiError } from "@/lib/api-utils";
 import { prisma } from "@/lib/db";
-import { PaymentMethod } from "@prisma/client";
 import {
   transactionService,
   PaymentMethodEntry,
 } from "@/lib/services/transaction-service";
+import { z } from "zod";
 
-// Payment detail input type for split payments
-interface PaymentDetailInput {
-  amount: number;
-  paymentMethod: PaymentMethod;
-  reference?: string | null;
-}
+const paymentDetailSchema = z.object({
+  amount: z.number().min(0.01),
+  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
+  reference: z.string().nullable().optional(),
+});
+
+const appointmentPaymentSchema = z.object({
+  appointmentId: z.string().min(1),
+  amount: z.number().min(0.01),
+  paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]).optional(),
+  paymentType: z.enum(["ADVANCE", "COMPLETION", "PARTIAL"]),
+  reference: z.string().optional(),
+  notes: z.string().optional(),
+  paymentDetails: z.array(paymentDetailSchema).optional(),
+}).refine(
+  (data) => data.paymentMethod || (data.paymentDetails && data.paymentDetails.length > 0),
+  { message: "Either paymentMethod or paymentDetails must be provided", path: ["paymentMethod"] }
+);
 
 // POST - Register a payment for an appointment
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
     const body = await request.json();
-    const { appointmentId, amount, paymentMethod, paymentType, reference, notes, paymentDetails } = body;
-
-    // Validate required fields (paymentMethod is optional if paymentDetails is provided)
-    if (!appointmentId || !amount || !paymentType) {
-      return NextResponse.json(
-        { error: "MISSING_REQUIRED_FIELDS" },
-        { status: 400 }
-      );
-    }
-
-    // Must have either paymentMethod or paymentDetails
-    if (!paymentMethod && (!paymentDetails || paymentDetails.length === 0)) {
-      return NextResponse.json(
-        { error: "MISSING_PAYMENT_INFO" },
-        { status: 400 }
-      );
-    }
-
-    // Validate amount
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      return NextResponse.json(
-        { error: "INVALID_AMOUNT" },
-        { status: 400 }
-      );
-    }
-
-    // Validate payment method (only if provided directly, not when using paymentDetails)
-    const validMethods: PaymentMethod[] = ["CASH", "QR", "CARD", "TRANSFER"];
-    if (paymentMethod && !validMethods.includes(paymentMethod as PaymentMethod)) {
-      return NextResponse.json(
-        { error: "INVALID_PAYMENT_METHOD" },
-        { status: 400 }
-      );
-    }
-
-    // Validate payment type
-    const validTypes = ["ADVANCE", "COMPLETION", "PARTIAL"];
-    if (!validTypes.includes(paymentType)) {
-      return NextResponse.json(
-        { error: "INVALID_PAYMENT_TYPE" },
-        { status: 400 }
-      );
-    }
+    const { appointmentId, amount, paymentMethod, paymentType, reference, notes, paymentDetails } = validateRequest(body, appointmentPaymentSchema);
 
     // Get appointment with package info
     const appointment = await prisma.appointment.findUnique({
@@ -112,7 +76,7 @@ export async function POST(request: Request) {
       : 0;
 
     // Validate minimum amount for advance payments
-    if (paymentType === "ADVANCE" && requiredAdvance > 0 && amountNum < requiredAdvance) {
+    if (paymentType === "ADVANCE" && requiredAdvance > 0 && amount < requiredAdvance) {
       return NextResponse.json(
         { error: "AMOUNT_BELOW_MINIMUM", minimum: requiredAdvance },
         { status: 400 }
@@ -122,7 +86,7 @@ export async function POST(request: Request) {
     // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
     let paymentMethods: PaymentMethodEntry[] = [];
     if (paymentDetails && paymentDetails.length > 0) {
-      paymentMethods = (paymentDetails as PaymentDetailInput[]).map((pd) => ({
+      paymentMethods = paymentDetails.map((pd) => ({
         method: pd.paymentMethod,
         amount: pd.amount,
         reference: pd.reference || undefined,
@@ -130,8 +94,8 @@ export async function POST(request: Request) {
     } else if (paymentMethod) {
       paymentMethods = [
         {
-          method: paymentMethod as PaymentMethod,
-          amount: amountNum,
+          method: paymentMethod,
+          amount,
           reference: reference || undefined,
         },
       ];
@@ -164,7 +128,7 @@ export async function POST(request: Request) {
             oldValue: { status: "PENDING_PAYMENT" },
             newValue: {
               status: "SCHEDULED",
-              paymentAmount: amountNum,
+              paymentAmount: amount,
               paymentMethod,
             },
           },
@@ -204,7 +168,7 @@ export async function POST(request: Request) {
           itemType: "ADVANCE",
           referenceId: appointmentId,
           description: `Anticipo cita - ${pkg?.name || "Servicio"}`,
-          unitPrice: amountNum,
+          unitPrice: amount,
         },
       ],
       paymentMethods,
@@ -222,7 +186,7 @@ export async function POST(request: Request) {
       payment: {
         id: transaction.id,
         appointmentId,
-        amount: amountNum,
+        amount: amount,
         paymentType,
         paymentMethods: transaction.paymentMethods,
         notes,
@@ -240,10 +204,6 @@ export async function POST(request: Request) {
       })),
     });
   } catch (error) {
-    console.error("Register payment error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error, "registering appointment payment");
   }
 }

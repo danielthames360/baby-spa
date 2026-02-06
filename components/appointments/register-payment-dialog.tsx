@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatCurrency, getCurrencySymbol } from "@/lib/utils/currency-utils";
 import {
   Dialog,
   DialogContent,
@@ -184,7 +185,7 @@ export function RegisterPaymentDialog({
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{t("payment.totalPrice")}:</span>
                 <span className="font-medium text-gray-800">
-                  Bs. {packagePrice}
+                  {formatCurrency(packagePrice, locale)}
                 </span>
               </div>
             )}
@@ -194,7 +195,7 @@ export function RegisterPaymentDialog({
                   {t("payment.advanceRequired")}:
                 </span>
                 <span className="font-bold text-amber-700">
-                  Bs. {advanceAmount}
+                  {formatCurrency(advanceAmount, locale)}
                 </span>
               </div>
             )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Loader2, CreditCard } from "lucide-react";
 import {
@@ -16,6 +16,7 @@ import {
   SplitPaymentForm,
   type PaymentDetailInput,
 } from "@/components/payments/split-payment-form";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 interface RegisterPaymentDialogProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function RegisterPaymentDialog({
   onSuccess,
 }: RegisterPaymentDialogProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
@@ -109,13 +111,13 @@ export function RegisterPaymentDialog({
             <div className="mt-2 flex items-center justify-between text-sm">
               <span className="text-gray-500">{t("events.payment.pending")}</span>
               <span className="font-semibold text-amber-600">
-                Bs. {pendingAmount.toFixed(0)}
+                {formatCurrency(pendingAmount, locale)}
               </span>
             </div>
             <div className="mt-1 flex items-center justify-between text-sm">
               <span className="text-gray-500">{t("events.payment.alreadyPaid")}</span>
               <span className="font-medium text-emerald-600">
-                Bs. {amountPaid.toFixed(0)}
+                {formatCurrency(amountPaid, locale)}
               </span>
             </div>
           </div>

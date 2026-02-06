@@ -103,12 +103,13 @@ export function ClientSelector({
   const [parentResults, setParentResults] = useState<ParentSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Reset search when type changes
-  useEffect(() => {
+  // Reset search and switch client type
+  const handleClientTypeChange = (type: ClientType) => {
+    setClientType(type);
     setSearchQuery("");
     setBabyResults([]);
     setParentResults([]);
-  }, [clientType]);
+  };
 
   // Search babies
   const searchBabies = useCallback(async (query: string) => {
@@ -264,7 +265,7 @@ export function ClientSelector({
           <Button
             type="button"
             variant={clientType === "BABY" ? "default" : "outline"}
-            onClick={() => setClientType("BABY")}
+            onClick={() => handleClientTypeChange("BABY")}
             className={cn(
               "flex-1 rounded-xl",
               clientType === "BABY"
@@ -278,7 +279,7 @@ export function ClientSelector({
           <Button
             type="button"
             variant={clientType === "PARENT" ? "default" : "outline"}
-            onClick={() => setClientType("PARENT")}
+            onClick={() => handleClientTypeChange("PARENT")}
             className={cn(
               "flex-1 rounded-xl",
               clientType === "PARENT"

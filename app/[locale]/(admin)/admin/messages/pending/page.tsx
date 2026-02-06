@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   MessageSquare,
   Phone,
@@ -59,31 +59,24 @@ interface PendingMessage {
   sentBy: { id: string; name: string } | null;
 }
 
-const CATEGORY_CONFIG: Record<string, { icon: typeof Calendar; color: string; label: string }> = {
-  APPOINTMENT_REMINDER: {
-    icon: Calendar,
-    color: "bg-blue-100 text-blue-700",
-    label: "Recordatorio de cita",
-  },
-  PAYMENT_REMINDER: {
-    icon: CreditCard,
-    color: "bg-amber-100 text-amber-700",
-    label: "Recordatorio de pago",
-  },
-  MESVERSARY: {
-    icon: Heart,
-    color: "bg-pink-100 text-pink-700",
-    label: "Mesversario",
-  },
-  REENGAGEMENT: {
-    icon: Users,
-    color: "bg-purple-100 text-purple-700",
-    label: "Re-engagement",
-  },
+const CATEGORY_ICONS: Record<string, typeof Calendar> = {
+  APPOINTMENT_REMINDER: Calendar,
+  PAYMENT_REMINDER: CreditCard,
+  MESVERSARY: Heart,
+  REENGAGEMENT: Users,
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  APPOINTMENT_REMINDER: "bg-blue-100 text-blue-700",
+  PAYMENT_REMINDER: "bg-amber-100 text-amber-700",
+  MESVERSARY: "bg-pink-100 text-pink-700",
+  REENGAGEMENT: "bg-purple-100 text-purple-700",
 };
 
 export default function PendingMessagesPage() {
-  const t = useTranslations();
+  const t = useTranslations("messagesModule");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
 
   const [messages, setMessages] = useState<PendingMessage[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -110,11 +103,11 @@ export default function PendingMessagesPage() {
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
-      toast.error("Error al cargar mensajes");
+      toast.error(t("pending.toastLoadError"));
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, t]);
 
   useEffect(() => {
     fetchMessages();
@@ -130,10 +123,10 @@ export default function PendingMessagesPage() {
     try {
       await navigator.clipboard.writeText(message.message);
       setCopiedId(message.id);
-      toast.success("Mensaje copiado");
+      toast.success(t("pending.toastCopied"));
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      toast.error("Error al copiar");
+      toast.error(t("pending.toastCopyError"));
     }
   };
 
@@ -155,15 +148,15 @@ export default function PendingMessagesPage() {
       });
 
       if (response.ok) {
-        toast.success("Mensaje marcado como enviado");
+        toast.success(t("pending.toastSent"));
         setShowConfirmDialog(false);
         setSelectedMessage(null);
         fetchMessages();
       } else {
-        toast.error("Error al actualizar mensaje");
+        toast.error(t("pending.toastUpdateError"));
       }
     } catch {
-      toast.error("Error al actualizar mensaje");
+      toast.error(t("pending.toastUpdateError"));
     } finally {
       setProcessing(false);
     }
@@ -181,22 +174,23 @@ export default function PendingMessagesPage() {
       });
 
       if (response.ok) {
-        toast.success("Mensaje omitido");
+        toast.success(t("pending.toastSkipped"));
         setShowSkipDialog(false);
         setSelectedMessage(null);
         setSkipReason("");
         fetchMessages();
       } else {
-        toast.error("Error al omitir mensaje");
+        toast.error(t("pending.toastSkipError"));
       }
     } catch {
-      toast.error("Error al omitir mensaje");
+      toast.error(t("pending.toastSkipError"));
     } finally {
       setProcessing(false);
     }
   };
 
   const totalPending = Object.values(counts).reduce((a, b) => a + b, 0);
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
 
   return (
     <div className="space-y-6 p-6">
@@ -204,10 +198,10 @@ export default function PendingMessagesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">
-            WhatsApp Pendientes
+            {t("pending.title")}
           </h2>
           <p className="text-sm text-gray-500">
-            {totalPending} {totalPending === 1 ? "mensaje por enviar" : "mensajes por enviar"}
+            {t("pending.messageCount", { count: totalPending })}
           </p>
         </div>
 
@@ -219,15 +213,15 @@ export default function PendingMessagesPage() {
           className="gap-2 rounded-xl"
         >
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-          Actualizar
+          {t("pending.refresh")}
         </Button>
       </div>
 
       {/* Category Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Object.entries(CATEGORY_CONFIG).map(([key, config]) => {
+        {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => {
           const count = counts[key] || 0;
-          const Icon = config.icon;
+          const color = CATEGORY_COLORS[key] || "bg-gray-100 text-gray-700";
           return (
             <button
               key={key}
@@ -239,11 +233,11 @@ export default function PendingMessagesPage() {
                   : "border-gray-100 bg-white hover:border-gray-200"
               )}
             >
-              <div className={cn("mb-2 inline-flex rounded-lg p-2", config.color)}>
+              <div className={cn("mb-2 inline-flex rounded-lg p-2", color)}>
                 <Icon className="h-4 w-4" />
               </div>
               <div className="text-2xl font-bold text-gray-800">{count}</div>
-              <div className="text-xs text-gray-500">{config.label}</div>
+              <div className="text-xs text-gray-500">{t(`categories.${key}`)}</div>
             </button>
           );
         })}
@@ -254,14 +248,14 @@ export default function PendingMessagesPage() {
         <Filter className="h-4 w-4 text-gray-400" />
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-48 rounded-xl">
-            <SelectValue placeholder="Filtrar por categoría" />
+            <SelectValue placeholder={t("pending.filterPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="APPOINTMENT_REMINDER">Recordatorios de cita</SelectItem>
-            <SelectItem value="PAYMENT_REMINDER">Recordatorios de pago</SelectItem>
-            <SelectItem value="MESVERSARY">Mesversarios</SelectItem>
-            <SelectItem value="REENGAGEMENT">Re-engagement</SelectItem>
+            <SelectItem value="all">{t("pending.filterAll")}</SelectItem>
+            <SelectItem value="APPOINTMENT_REMINDER">{t("pending.filterAppointment")}</SelectItem>
+            <SelectItem value="PAYMENT_REMINDER">{t("pending.filterPayment")}</SelectItem>
+            <SelectItem value="MESVERSARY">{t("pending.filterMesversary")}</SelectItem>
+            <SelectItem value="REENGAGEMENT">{t("pending.filterReengagement")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -275,21 +269,18 @@ export default function PendingMessagesPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center">
           <CheckCircle className="mx-auto h-12 w-12 text-emerald-500" />
           <h3 className="mt-4 text-lg font-semibold text-gray-800">
-            No hay mensajes pendientes
+            {t("pending.emptyTitle")}
           </h3>
           <p className="mt-2 text-sm text-gray-500">
-            Todos los mensajes han sido enviados
+            {t("pending.emptyDescription")}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {messages.map((message) => {
-            const config = CATEGORY_CONFIG[message.category] || {
-              icon: MessageSquare,
-              color: "bg-gray-100 text-gray-700",
-              label: message.category,
-            };
-            const Icon = config.icon;
+            const Icon = CATEGORY_ICONS[message.category] || MessageSquare;
+            const color = CATEGORY_COLORS[message.category] || "bg-gray-100 text-gray-700";
+            const categoryLabel = t(`categories.${message.category}`, { defaultValue: message.category });
             const isCopied = copiedId === message.id;
 
             return (
@@ -302,9 +293,9 @@ export default function PendingMessagesPage() {
                   <div className="flex-1 space-y-3">
                     {/* Category Badge & Recipient */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium", config.color)}>
+                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium", color)}>
                         <Icon className="h-3 w-3" />
-                        {config.label}
+                        {categoryLabel}
                       </span>
                       <span className="flex items-center gap-1 text-sm text-gray-600">
                         {message.recipientType === "BABY" ? (
@@ -332,7 +323,7 @@ export default function PendingMessagesPage() {
                     {/* Scheduled Time */}
                     <div className="flex items-center gap-1 text-xs text-gray-400">
                       <Clock className="h-3 w-3" />
-                      Programado: {new Date(message.scheduledFor).toLocaleString("es-BO")}
+                      {t("pending.scheduled")} {new Date(message.scheduledFor).toLocaleString(dateLocale)}
                     </div>
                   </div>
 
@@ -348,7 +339,7 @@ export default function PendingMessagesPage() {
                       )}
                     >
                       {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      {isCopied ? "Copiado" : "Copiar"}
+                      {isCopied ? t("pending.copied") : t("pending.copy")}
                     </Button>
 
                     <Button
@@ -357,7 +348,7 @@ export default function PendingMessagesPage() {
                       className="gap-1 rounded-xl bg-green-500 text-white hover:bg-green-600"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      WhatsApp
+                      {t("pending.whatsapp")}
                     </Button>
 
                     <Button
@@ -370,7 +361,7 @@ export default function PendingMessagesPage() {
                       className="gap-1 rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Enviado
+                      {t("pending.markSent")}
                     </Button>
 
                     <Button
@@ -383,7 +374,7 @@ export default function PendingMessagesPage() {
                       className="gap-1 rounded-xl text-gray-400 hover:text-gray-600"
                     >
                       <XCircle className="h-4 w-4" />
-                      Omitir
+                      {t("pending.skip")}
                     </Button>
                   </div>
                 </div>
@@ -399,17 +390,15 @@ export default function PendingMessagesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-emerald-500" />
-              Confirmar envío
+              {t("pending.confirmSendTitle")}
             </DialogTitle>
             <DialogDescription>
-              ¿Confirmas que enviaste este mensaje por WhatsApp a{" "}
-              <strong>{selectedMessage?.recipientName}</strong>?
+              {t("pending.confirmSendDescription", { name: selectedMessage?.recipientName || "" })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-            <strong>Importante:</strong> Solo marca como enviado si realmente enviaste el mensaje.
-            Esta acción no se puede deshacer.
+            <strong>{t("pending.important")}</strong> {t("pending.confirmSendWarning")}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -418,7 +407,7 @@ export default function PendingMessagesPage() {
               onClick={() => setShowConfirmDialog(false)}
               className="rounded-xl"
             >
-              Cancelar
+              {tCommon("cancel")}
             </Button>
             <Button
               onClick={handleMarkAsSent}
@@ -426,7 +415,7 @@ export default function PendingMessagesPage() {
               className="gap-2 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600"
             >
               {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-              Confirmar envío
+              {t("pending.confirmSendButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -438,18 +427,17 @@ export default function PendingMessagesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-gray-500" />
-              Omitir mensaje
+              {t("pending.skipTitle")}
             </DialogTitle>
             <DialogDescription>
-              ¿Por qué quieres omitir este mensaje para{" "}
-              <strong>{selectedMessage?.recipientName}</strong>?
+              {t("pending.skipDescription", { name: selectedMessage?.recipientName || "" })}
             </DialogDescription>
           </DialogHeader>
 
           <Textarea
             value={skipReason}
             onChange={(e) => setSkipReason(e.target.value)}
-            placeholder="Razón (opcional): Número incorrecto, cliente solicitó no contactar, etc."
+            placeholder={t("pending.skipPlaceholder")}
             className="min-h-[80px] rounded-xl"
           />
 
@@ -462,7 +450,7 @@ export default function PendingMessagesPage() {
               }}
               className="rounded-xl"
             >
-              Cancelar
+              {tCommon("cancel")}
             </Button>
             <Button
               onClick={handleSkip}
@@ -471,7 +459,7 @@ export default function PendingMessagesPage() {
               className="gap-2 rounded-xl"
             >
               {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-              Omitir mensaje
+              {t("pending.skipButton")}
             </Button>
           </DialogFooter>
         </DialogContent>

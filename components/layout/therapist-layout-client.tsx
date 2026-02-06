@@ -3,6 +3,7 @@
 import { Session } from "next-auth";
 import { TherapistNav } from "@/components/layout/therapist-nav";
 import { FloatingBubbles } from "@/components/ui/floating-bubbles";
+import { ForcePasswordChange } from "@/components/auth/force-password-change";
 
 interface TherapistLayoutClientProps {
   children: React.ReactNode;
@@ -26,11 +27,13 @@ export function TherapistLayoutClient({ children, session }: TherapistLayoutClie
       <div className="relative z-10">
         <TherapistNav />
 
-        <main className="flex-1">
-          <div className="mx-auto max-w-4xl px-4 py-6">
-            {children}
-          </div>
-        </main>
+        <ForcePasswordChange>
+          <main className="flex-1">
+            <div className="mx-auto max-w-4xl px-4 py-6">
+              {children}
+            </div>
+          </main>
+        </ForcePasswordChange>
 
         {/* Footer simple */}
         <footer className="border-t border-white/50 bg-white/50 py-4 text-center text-sm text-gray-500 backdrop-blur-sm">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import React, { useState, useEffect, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 // bundle-dynamic-imports: Lazy load dialogs
 const RegisterPaymentDialog = dynamic(
@@ -95,6 +96,186 @@ interface ParticipantListProps {
   onRefresh?: () => void;
 }
 
+interface ParticipantRowProps {
+  participant: Participant;
+  eventType: "BABIES" | "PARENTS";
+  eventStatus: string;
+  locale: string;
+  t: (key: string) => string;
+  canRegisterPayment: boolean;
+  canSellProducts: boolean;
+  canViewPurchases: boolean;
+  canModify: boolean;
+  participantsWithPurchases: Set<string>;
+  onOpenPaymentDialog: (participant: Participant, name: string, amountDue: number, amountPaid: number) => void;
+  onOpenSaleDialog: (participant: Participant, name: string) => void;
+  onOpenPurchasesDialog: (participantId: string, name: string) => void;
+  onDeleteParticipant: (id: string) => void;
+  onMarkAttendance: (participantId: string, attended: boolean) => void;
+}
+
+// Memoized row to prevent re-renders when dialog state changes in parent
+const ParticipantRow = React.memo(function ParticipantRow({
+  participant,
+  eventType,
+  eventStatus,
+  locale,
+  t,
+  canRegisterPayment,
+  canSellProducts,
+  canViewPurchases,
+  canModify,
+  participantsWithPurchases,
+  onOpenPaymentDialog,
+  onOpenSaleDialog,
+  onOpenPurchasesDialog,
+  onDeleteParticipant,
+  onMarkAttendance,
+}: ParticipantRowProps) {
+  const name = participant.baby?.name || participant.parent?.name || "—";
+  const primaryParent = participant.baby?.parents.find((p) => p.isPrimary)?.parent;
+  const phone = primaryParent?.phone || participant.parent?.phone;
+  const amountDue = Number(participant.amountDue);
+  const amountPaid = Number(participant.amountPaid);
+  const isPaid = amountPaid >= amountDue;
+  const isFree = participant.discountType === "COURTESY";
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      {/* Info */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100">
+          {eventType === "BABIES" ? (
+            <Baby className="h-5 w-5 text-teal-600" />
+          ) : (
+            <UserRound className="h-5 w-5 text-cyan-600" />
+          )}
+        </div>
+        <div>
+          <p className="font-medium text-gray-800">{name}</p>
+          {phone && (
+            <p className="flex items-center gap-1 text-xs text-gray-500">
+              <Phone className="h-3 w-3" />
+              {phone}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Status & Payment */}
+      <div className="flex items-center gap-2">
+        {/* Attendance indicator */}
+        {participant.attended === true && (
+          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+        )}
+        {participant.attended === false && (
+          <XCircle className="h-5 w-5 text-rose-500" />
+        )}
+
+        {/* Payment */}
+        {isFree ? (
+          <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
+            {t("payment.free")}
+          </Badge>
+        ) : isPaid ? (
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+            <CreditCard className="mr-1 h-3 w-3" />
+            {formatCurrency(amountPaid, locale)}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+            <AlertCircle className="mr-1 h-3 w-3" />
+            {formatCurrency(amountPaid, locale)}/{formatCurrency(amountDue, locale)}
+          </Badge>
+        )}
+
+        {/* Status */}
+        <Badge
+          variant="outline"
+          className={`${PARTICIPANT_STATUS_STYLES[participant.status] || PARTICIPANT_STATUS_STYLES.REGISTERED}`}
+        >
+          {t(`participants.statuses.${participant.status}`)}
+        </Badge>
+
+        {/* Actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {/* Register Payment option */}
+            {canRegisterPayment && !isFree && !isPaid && (
+              <>
+                <DropdownMenuItem
+                  onClick={() => onOpenPaymentDialog(participant, name, amountDue, amountPaid)}
+                >
+                  <Banknote className="mr-2 h-4 w-4 text-emerald-500" />
+                  {t("payment.registerPayment")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {/* Sell products option - for events in progress */}
+            {canSellProducts && (
+              <DropdownMenuItem
+                onClick={() => onOpenSaleDialog(participant, name)}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4 text-purple-500" />
+                {t("sales.sellProduct")}
+              </DropdownMenuItem>
+            )}
+            {/* View purchases option - only if participant has purchases */}
+            {canViewPurchases && participantsWithPurchases.has(participant.id) && (
+              <DropdownMenuItem
+                onClick={() => onOpenPurchasesDialog(participant.id, name)}
+              >
+                <ShoppingBag className="mr-2 h-4 w-4 text-indigo-500" />
+                {t("sales.viewPurchases")}
+              </DropdownMenuItem>
+            )}
+            {(canSellProducts || (canViewPurchases && participantsWithPurchases.has(participant.id))) && (
+              <DropdownMenuSeparator />
+            )}
+            {/* Attendance options - show when event is in progress */}
+            {eventStatus === "IN_PROGRESS" && (
+              <>
+                {participant.attended !== true && (
+                  <DropdownMenuItem
+                    onClick={() => onMarkAttendance(participant.id, true)}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
+                    {t("attendance.attended")}
+                  </DropdownMenuItem>
+                )}
+                {participant.attended !== false && (
+                  <DropdownMenuItem
+                    onClick={() => onMarkAttendance(participant.id, false)}
+                  >
+                    <XCircle className="mr-2 h-4 w-4 text-rose-500" />
+                    {t("attendance.notAttended")}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {canModify && (
+              <DropdownMenuItem
+                className="text-rose-600"
+                onClick={() => onDeleteParticipant(participant.id)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t("participants.remove")}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+});
+
 export function ParticipantList({
   eventId,
   participants,
@@ -104,6 +285,7 @@ export function ParticipantList({
 }: ParticipantListProps) {
   const t = useTranslations("events");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -170,7 +352,7 @@ export function ParticipantList({
     }
   };
 
-  const handleMarkAttendance = async (participantId: string, attended: boolean) => {
+  const handleMarkAttendance = useCallback(async (participantId: string, attended: boolean) => {
     try {
       const response = await fetch(
         `/api/events/${eventId}/participants/${participantId}`,
@@ -187,7 +369,51 @@ export function ParticipantList({
     } catch (error) {
       toast.error("Error updating attendance");
     }
-  };
+  }, [eventId, t, onRefresh, router]);
+
+  // Stable callbacks for ParticipantRow
+  const handleOpenPaymentDialog = useCallback(
+    (participant: Participant, name: string, amountDue: number, amountPaid: number) => {
+      setPaymentDialog({
+        open: true,
+        participantId: participant.id,
+        participantName: name,
+        amountDue,
+        amountPaid,
+      });
+    },
+    []
+  );
+
+  const handleOpenSaleDialog = useCallback(
+    (participant: Participant, name: string) => {
+      setSaleDialog({
+        open: true,
+        participantId: participant.id,
+        participantName: name,
+        babyId: participant.baby?.id,
+      });
+    },
+    []
+  );
+
+  const handleOpenPurchasesDialog = useCallback(
+    (participantId: string, name: string) => {
+      setPurchasesDialog({
+        open: true,
+        participantId,
+        participantName: name,
+      });
+    },
+    []
+  );
+
+  const handleDeleteParticipant = useCallback(
+    (id: string) => {
+      setDeleteId(id);
+    },
+    []
+  );
 
   if (participants.length === 0) {
     return (
@@ -207,168 +433,26 @@ export function ParticipantList({
   return (
     <>
       <div className="divide-y divide-gray-100">
-        {participants.map((participant) => {
-          const name = participant.baby?.name || participant.parent?.name || "—";
-          const primaryParent = participant.baby?.parents.find((p) => p.isPrimary)?.parent;
-          const phone = primaryParent?.phone || participant.parent?.phone;
-          const amountDue = Number(participant.amountDue);
-          const amountPaid = Number(participant.amountPaid);
-          const isPaid = amountPaid >= amountDue;
-          const isFree = participant.discountType === "COURTESY";
-
-          return (
-            <div
-              key={participant.id}
-              className="flex items-center justify-between gap-4 py-3"
-            >
-              {/* Info */}
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100">
-                  {eventType === "BABIES" ? (
-                    <Baby className="h-5 w-5 text-teal-600" />
-                  ) : (
-                    <UserRound className="h-5 w-5 text-cyan-600" />
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">{name}</p>
-                  {phone && (
-                    <p className="flex items-center gap-1 text-xs text-gray-500">
-                      <Phone className="h-3 w-3" />
-                      {phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Status & Payment */}
-              <div className="flex items-center gap-2">
-                {/* Attendance indicator */}
-                {participant.attended === true && (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                )}
-                {participant.attended === false && (
-                  <XCircle className="h-5 w-5 text-rose-500" />
-                )}
-
-                {/* Payment */}
-                {isFree ? (
-                  <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
-                    {t("payment.free")}
-                  </Badge>
-                ) : isPaid ? (
-                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                    <CreditCard className="mr-1 h-3 w-3" />
-                    Bs. {amountPaid.toFixed(0)}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                    <AlertCircle className="mr-1 h-3 w-3" />
-                    Bs. {amountPaid.toFixed(0)}/{amountDue.toFixed(0)}
-                  </Badge>
-                )}
-
-                {/* Status */}
-                <Badge
-                  variant="outline"
-                  className={`${PARTICIPANT_STATUS_STYLES[participant.status] || PARTICIPANT_STATUS_STYLES.REGISTERED}`}
-                >
-                  {t(`participants.statuses.${participant.status}`)}
-                </Badge>
-
-                {/* Actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {/* Register Payment option */}
-                    {canRegisterPayment && !isFree && !isPaid && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => setPaymentDialog({
-                            open: true,
-                            participantId: participant.id,
-                            participantName: name,
-                            amountDue,
-                            amountPaid,
-                          })}
-                        >
-                          <Banknote className="mr-2 h-4 w-4 text-emerald-500" />
-                          {t("payment.registerPayment")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    {/* Sell products option - for events in progress */}
-                    {canSellProducts && (
-                      <DropdownMenuItem
-                        onClick={() => setSaleDialog({
-                          open: true,
-                          participantId: participant.id,
-                          participantName: name,
-                          babyId: participant.baby?.id,
-                        })}
-                      >
-                        <ShoppingCart className="mr-2 h-4 w-4 text-purple-500" />
-                        {t("sales.sellProduct")}
-                      </DropdownMenuItem>
-                    )}
-                    {/* View purchases option - only if participant has purchases */}
-                    {canViewPurchases && participantsWithPurchases.has(participant.id) && (
-                      <DropdownMenuItem
-                        onClick={() => setPurchasesDialog({
-                          open: true,
-                          participantId: participant.id,
-                          participantName: name,
-                        })}
-                      >
-                        <ShoppingBag className="mr-2 h-4 w-4 text-indigo-500" />
-                        {t("sales.viewPurchases")}
-                      </DropdownMenuItem>
-                    )}
-                    {(canSellProducts || (canViewPurchases && participantsWithPurchases.has(participant.id))) && (
-                      <DropdownMenuSeparator />
-                    )}
-                    {/* Attendance options - show when event is in progress */}
-                    {eventStatus === "IN_PROGRESS" && (
-                      <>
-                        {participant.attended !== true && (
-                          <DropdownMenuItem
-                            onClick={() => handleMarkAttendance(participant.id, true)}
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
-                            {t("attendance.attended")}
-                          </DropdownMenuItem>
-                        )}
-                        {participant.attended !== false && (
-                          <DropdownMenuItem
-                            onClick={() => handleMarkAttendance(participant.id, false)}
-                          >
-                            <XCircle className="mr-2 h-4 w-4 text-rose-500" />
-                            {t("attendance.notAttended")}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    {canModify && (
-                      <DropdownMenuItem
-                        className="text-rose-600"
-                        onClick={() => setDeleteId(participant.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {t("participants.remove")}
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          );
-        })}
+        {participants.map((participant) => (
+          <ParticipantRow
+            key={participant.id}
+            participant={participant}
+            eventType={eventType}
+            eventStatus={eventStatus}
+            locale={locale}
+            t={t}
+            canRegisterPayment={canRegisterPayment}
+            canSellProducts={canSellProducts}
+            canViewPurchases={canViewPurchases}
+            canModify={canModify}
+            participantsWithPurchases={participantsWithPurchases}
+            onOpenPaymentDialog={handleOpenPaymentDialog}
+            onOpenSaleDialog={handleOpenSaleDialog}
+            onOpenPurchasesDialog={handleOpenPurchasesDialog}
+            onDeleteParticipant={handleDeleteParticipant}
+            onMarkAttendance={handleMarkAttendance}
+          />
+        ))}
       </div>
 
       {/* Delete confirmation */}

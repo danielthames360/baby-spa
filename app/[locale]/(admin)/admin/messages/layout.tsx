@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import {
   MessageSquare,
   Clock,
@@ -18,6 +19,7 @@ export default function MessagesLayout({
 }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const t = useTranslations("messagesModule");
 
   const isOwner = session?.user?.role === "OWNER";
 
@@ -43,17 +45,17 @@ export default function MessagesLayout({
       key: "pending",
       href: "/admin/messages/pending",
       icon: Clock,
-      label: "Pendientes",
-      description: "WhatsApp por enviar",
+      label: t("tabs.pending"),
+      description: t("tabs.pendingDescription"),
       visible: true,
     },
     {
       key: "stats",
       href: "/admin/messages/stats",
       icon: BarChart3,
-      label: "Métricas",
-      description: "Estadísticas de email",
-      visible: isOwner, // Solo OWNER
+      label: t("tabs.stats"),
+      description: t("tabs.statsDescription"),
+      visible: isOwner,
     },
   ];
 
@@ -68,14 +70,14 @@ export default function MessagesLayout({
             <MessageSquare className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Mensajes</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{t("title")}</h1>
             <p className="text-sm text-gray-500">
-              Gestión de comunicaciones
+              {t("subtitle")}
             </p>
           </div>
         </div>
 
-        {/* Navigation Tabs - Solo mostrar si hay más de 1 tab */}
+        {/* Navigation Tabs */}
         {visibleTabs.length > 1 && (
           <div className="mb-6 flex gap-2">
             {visibleTabs.map((tab) => {

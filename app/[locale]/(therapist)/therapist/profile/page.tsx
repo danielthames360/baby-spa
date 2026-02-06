@@ -58,7 +58,7 @@ interface PasswordFormData {
   confirmPassword: string;
 }
 
-export default function ProfilePage() {
+export default function TherapistProfilePage() {
   const t = useTranslations();
   const locale = useLocale();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
@@ -127,7 +127,6 @@ export default function ProfilePage() {
       if (response.ok) {
         const updated = await response.json();
         setProfile(updated);
-        // Actualizar la sesión con el nuevo nombre
         if (session?.user?.name !== data.name) {
           await updateSession({ name: data.name });
         }
@@ -165,9 +164,7 @@ export default function ProfilePage() {
         toast.success(t("profile.passwordChanged"));
         setShowPasswordDialog(false);
         passwordForm.reset();
-        // Actualizar la sesión para reflejar mustChangePassword = false
         await updateSession();
-        // Actualizar perfil local
         fetchProfile();
       } else {
         const errorKey = result.error || "updateFailed";
@@ -227,7 +224,7 @@ export default function ProfilePage() {
         <p className="mt-1 text-gray-500">{t("profile.subtitle")}</p>
       </div>
 
-      {/* Alerta de cambio de contraseña obligatorio */}
+      {/* Forced password change alert */}
       {profile.mustChangePassword && (
         <Card className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
           <div className="flex items-center gap-3">
@@ -244,7 +241,7 @@ export default function ProfilePage() {
             </div>
             <Button
               onClick={() => setShowPasswordDialog(true)}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
+              className="bg-amber-500 text-white hover:bg-amber-600"
             >
               {t("profile.changePassword")}
             </Button>
@@ -253,10 +250,10 @@ export default function ProfilePage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Información del perfil - Editable */}
+        {/* Profile info - Editable */}
         <div className="lg:col-span-2">
           <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">
-            <div className="flex items-center gap-3 mb-6">
+            <div className="mb-6 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
                 <User className="h-5 w-5 text-teal-600" />
               </div>
@@ -265,7 +262,10 @@ export default function ProfilePage() {
               </h2>
             </div>
 
-            <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
+            <form
+              onSubmit={profileForm.handleSubmit(handleProfileSubmit)}
+              className="space-y-4"
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-gray-700">
@@ -288,13 +288,18 @@ export default function ProfilePage() {
                     disabled
                     className="h-11 rounded-xl border-2 border-gray-100 bg-gray-50"
                   />
-                  <p className="text-xs text-gray-500">{t("profile.usernameReadOnly")}</p>
+                  <p className="text-xs text-gray-500">
+                    {t("profile.usernameReadOnly")}
+                  </p>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700 flex items-center gap-2">
+                  <Label
+                    htmlFor="email"
+                    className="flex items-center gap-2 text-gray-700"
+                  >
                     <Mail className="h-4 w-4" />
                     {t("profile.email")}
                   </Label>
@@ -308,7 +313,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700 flex items-center gap-2">
+                  <Label
+                    htmlFor="phone"
+                    className="flex items-center gap-2 text-gray-700"
+                  >
                     <Phone className="h-4 w-4" />
                     {t("profile.phone")}
                   </Label>
@@ -339,11 +347,11 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        {/* Panel lateral - Info de cuenta y seguridad */}
+        {/* Sidebar - Account info & security */}
         <div className="space-y-6">
-          {/* Info de cuenta */}
+          {/* Account info */}
           <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100">
                 <Shield className="h-5 w-5 text-cyan-600" />
               </div>
@@ -365,7 +373,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500 flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm text-gray-500">
                   <Calendar className="h-3.5 w-3.5" />
                   {t("profile.memberSince")}
                 </p>
@@ -375,7 +383,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500 flex items-center gap-1">
+                <p className="flex items-center gap-1 text-sm text-gray-500">
                   <Clock className="h-3.5 w-3.5" />
                   {t("profile.lastLogin")}
                 </p>
@@ -386,9 +394,9 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          {/* Seguridad */}
+          {/* Security */}
           <Card className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-100 to-purple-100">
                 <Lock className="h-5 w-5 text-violet-600" />
               </div>
@@ -397,7 +405,7 @@ export default function ProfilePage() {
               </h2>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="mb-4 text-sm text-gray-600">
               {t("profile.securityDesc")}
             </p>
 
@@ -420,7 +428,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Dialog para cambiar contraseña */}
+      {/* Password change dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
         <DialogContent className="max-w-md rounded-2xl border border-white/50 bg-white/95 backdrop-blur-md">
           <DialogHeader>
@@ -441,7 +449,7 @@ export default function ProfilePage() {
 
           <form
             onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)}
-            className="space-y-4 mt-4"
+            className="mt-4 space-y-4"
           >
             <div className="space-y-2">
               <Label htmlFor="currentPassword" className="text-gray-700">
@@ -451,7 +459,9 @@ export default function ProfilePage() {
                 <Input
                   id="currentPassword"
                   type={showCurrentPassword ? "text" : "password"}
-                  {...passwordForm.register("currentPassword", { required: true })}
+                  {...passwordForm.register("currentPassword", {
+                    required: true,
+                  })}
                   className="h-11 rounded-xl border-2 border-violet-100 pr-10 focus:border-violet-400"
                 />
                 <button
@@ -476,7 +486,10 @@ export default function ProfilePage() {
                 <Input
                   id="newPassword"
                   type={showNewPassword ? "text" : "password"}
-                  {...passwordForm.register("newPassword", { required: true, minLength: 6 })}
+                  {...passwordForm.register("newPassword", {
+                    required: true,
+                    minLength: 6,
+                  })}
                   className="h-11 rounded-xl border-2 border-violet-100 pr-10 focus:border-violet-400"
                 />
                 <button
@@ -491,7 +504,9 @@ export default function ProfilePage() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">{t("profile.passwordMinLength")}</p>
+              <p className="text-xs text-gray-500">
+                {t("profile.passwordMinLength")}
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -501,7 +516,9 @@ export default function ProfilePage() {
               <Input
                 id="confirmPassword"
                 type="password"
-                {...passwordForm.register("confirmPassword", { required: true })}
+                {...passwordForm.register("confirmPassword", {
+                  required: true,
+                })}
                 className="h-11 rounded-xl border-2 border-violet-100 focus:border-violet-400"
               />
               {passwordForm.formState.errors.confirmPassword && (
@@ -519,14 +536,14 @@ export default function ProfilePage() {
                   setShowPasswordDialog(false);
                   passwordForm.reset();
                 }}
-                className="flex-1 h-11 rounded-xl border-2 border-gray-200"
+                className="h-11 flex-1 rounded-xl border-2 border-gray-200"
               >
                 {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={isChangingPassword}
-                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 font-semibold text-white shadow-lg shadow-violet-300/50 hover:from-violet-600 hover:to-purple-600"
+                className="h-11 flex-1 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 font-semibold text-white shadow-lg shadow-violet-300/50 hover:from-violet-600 hover:to-purple-600"
               >
                 {isChangingPassword ? (
                   <>

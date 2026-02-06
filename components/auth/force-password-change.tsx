@@ -20,20 +20,23 @@ export function ForcePasswordChange({ children }: { children: React.ReactNode })
       return;
     }
 
-    // No verificar si ya estamos en la página de perfil (permitir cambiar contraseña)
-    if (pathname.includes("/admin/profile")) {
+    // Allow access if already on any profile page
+    if (pathname.includes("/profile")) {
       return;
     }
 
-    // Verificar si debe cambiar la contraseña (desde la sesión JWT)
+    // Redirect to the appropriate profile page based on role
     if (session.user.mustChangePassword) {
-      // Extraer locale del pathname si existe (formato: /es/admin/... o /pt-BR/admin/...)
-      // Con localePrefix: "as-needed", el locale default no aparece en URL
       const pathParts = pathname.split("/").filter(Boolean);
       const hasLocalePrefix = ["es", "pt-BR"].includes(pathParts[0]);
-      const profilePath = hasLocalePrefix
-        ? `/${pathParts[0]}/admin/profile`
-        : "/admin/profile";
+      const localePrefix = hasLocalePrefix ? `/${pathParts[0]}` : "";
+
+      // Therapists go to /therapist/profile, everyone else to /admin/profile
+      const profilePath =
+        session.user.role === "THERAPIST"
+          ? `${localePrefix}/therapist/profile`
+          : `${localePrefix}/admin/profile`;
+
       router.replace(profilePath);
     }
   }, [session, status, pathname, router]);

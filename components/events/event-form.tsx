@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { translateError } from "@/lib/form-utils";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import { fromDateOnly } from "@/lib/utils/date-utils";
 import { cn } from "@/lib/utils";
 
@@ -405,7 +406,7 @@ export function EventForm({ initialData, mode }: EventFormProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs text-gray-500">
-                          {t("form.basePrice")} (Bs.)
+                          {t("form.basePrice")} ({getCurrencySymbol(locale)})
                         </FormLabel>
                         <FormControl>
                           <Input

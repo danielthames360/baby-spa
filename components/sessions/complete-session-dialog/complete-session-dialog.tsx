@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import dynamic from "next/dynamic";
 import {
@@ -113,8 +113,6 @@ export function CompleteSessionDialog({
   // Installment payment alert state
   const [showInstallmentPaymentDialog, setShowInstallmentPaymentDialog] =
     useState(false);
-  const [installmentPaymentStatus, setInstallmentPaymentStatus] =
-    useState<PaymentStatus | null>(null);
 
   // Bulk scheduling state (after completion)
   const [showSuccessView, setShowSuccessView] = useState(false);
@@ -310,11 +308,12 @@ export function CompleteSessionDialog({
     }
   }, [open, sessionId, fetchSession, fetchProducts]);
 
-  // Fetch client packages and pre-select when session data is loaded
+  // Fetch client packages and pre-select when session data is loaded (once per session.id)
+  const currentSessionId = session?.id;
   useEffect(() => {
-    const initializePackageSelection = async () => {
-      if (!session) return;
+    if (!session) return;
 
+    const initializePackageSelection = async () => {
       const isParentAppointment =
         !session.appointment.baby && !!session.appointment.parent;
       const clientId =
@@ -343,52 +342,44 @@ export function CompleteSessionDialog({
         setSelectedPackageId(singlePackage.package.id);
         setSelectedPurchaseName(singlePackage.package.name);
       }
+
+      // Fetch baby card info as part of initialization
+      if (session.appointment.baby?.id) {
+        fetchBabyCardInfo(session.appointment.baby.id);
+      }
     };
 
     initializePackageSelection();
-  }, [session, fetchPackages, fetchClientPackages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when session ID changes, not on product updates
+  }, [currentSessionId]);
 
-  // Fetch Baby Card checkout info when session is loaded
-  useEffect(() => {
-    if (session?.appointment?.baby?.id) {
-      fetchBabyCardInfo(session.appointment.baby.id);
-    }
-  }, [session, fetchBabyCardInfo]);
-
-  // Calculate installment payment status
-  useEffect(() => {
-    if (!session?.packagePurchase) {
-      setInstallmentPaymentStatus(null);
-      return;
-    }
+  // Derive installment payment status from session data (no useEffect needed)
+  const installmentPaymentStatus = useMemo<PaymentStatus | null>(() => {
+    if (!session?.packagePurchase) return null;
 
     const purchase = session.packagePurchase;
     if (
-      purchase.paymentPlan === "INSTALLMENTS" &&
-      (purchase.installments || 1) > 1
+      purchase.paymentPlan !== "INSTALLMENTS" ||
+      (purchase.installments || 1) <= 1
     ) {
-      const status = getPaymentStatus({
-        usedSessions: purchase.usedSessions,
-        totalSessions: purchase.totalSessions,
-        remainingSessions: purchase.remainingSessions,
-        paymentPlan: purchase.paymentPlan || "SINGLE",
-        installments: purchase.installments || 1,
-        installmentAmount: purchase.installmentAmount || null,
-        totalPrice: purchase.totalPrice || null,
-        finalPrice: purchase.finalPrice || 0,
-        paidAmount: purchase.paidAmount || 0,
-        installmentsPayOnSessions: purchase.installmentsPayOnSessions || null,
-      });
-
-      if (!status.isPaidInFull) {
-        setInstallmentPaymentStatus(status);
-      } else {
-        setInstallmentPaymentStatus(null);
-      }
-    } else {
-      setInstallmentPaymentStatus(null);
+      return null;
     }
-  }, [session]);
+
+    const status = getPaymentStatus({
+      usedSessions: purchase.usedSessions,
+      totalSessions: purchase.totalSessions,
+      remainingSessions: purchase.remainingSessions,
+      paymentPlan: purchase.paymentPlan || "SINGLE",
+      installments: purchase.installments || 1,
+      installmentAmount: purchase.installmentAmount || null,
+      totalPrice: purchase.totalPrice || null,
+      finalPrice: purchase.finalPrice || 0,
+      paidAmount: purchase.paidAmount || 0,
+      installmentsPayOnSessions: purchase.installmentsPayOnSessions || null,
+    });
+
+    return status.isPaidInFull ? null : status;
+  }, [session?.packagePurchase]);
 
   // Product handlers
   const handleAddProduct = async () => {
@@ -407,7 +398,34 @@ export function CompleteSessionDialog({
       });
 
       if (response.ok) {
-        await fetchSession();
+        const data = await response.json();
+        const newProduct = {
+          id: data.product.id,
+          quantity: data.product.quantity,
+          unitPrice: String(data.product.unitPrice),
+          isChargeable: data.product.isChargeable,
+          product: {
+            id: data.product.product.id,
+            name: data.product.product.name,
+            salePrice: String(data.product.product.salePrice),
+          },
+        };
+
+        // Update session products locally (handles both new and updated quantity)
+        setSession((prev) => {
+          if (!prev) return prev;
+          const existingIdx = prev.products.findIndex(
+            (p) => p.id === newProduct.id
+          );
+          const updatedProducts =
+            existingIdx >= 0
+              ? prev.products.map((p, i) =>
+                  i === existingIdx ? newProduct : p
+                )
+              : [...prev.products, newProduct];
+          return { ...prev, products: updatedProducts };
+        });
+
         setShowAddProduct(false);
         setSelectedProduct("");
         setProductQuantity(1);
@@ -427,17 +445,28 @@ export function CompleteSessionDialog({
   };
 
   const handleRemoveProduct = async (sessionProductId: string) => {
+    // Optimistic update: remove from UI immediately
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        products: prev.products.filter((p) => p.id !== sessionProductId),
+      };
+    });
+
     try {
       const response = await fetch(
         `/api/sessions/${sessionId}/products?sessionProductId=${sessionProductId}`,
         { method: "DELETE" }
       );
 
-      if (response.ok) {
+      if (!response.ok) {
+        // Revert on failure by re-fetching
         await fetchSession();
       }
     } catch (error) {
       console.error("Error removing product:", error);
+      await fetchSession();
     }
   };
 

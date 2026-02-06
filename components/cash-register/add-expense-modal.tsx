@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ const EXPENSE_CATEGORIES: CashExpenseCategory[] = [
 
 export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
   const t = useTranslations("cashRegister");
+  const locale = useLocale();
   const { addExpense } = useCashRegister();
 
   const [amount, setAmount] = useState("");
@@ -106,7 +108,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
             <Label htmlFor="expenseAmount">{t("expenseModal.amount")}</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                Bs
+                {getCurrencySymbol(locale)}
               </span>
               <Input
                 id="expenseAmount"

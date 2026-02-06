@@ -300,8 +300,9 @@ export type NavItem = {
   requiredPermissions: Permission[];
 };
 
-// Items de navegación principal
+// Items de navegación principal (operaciones diarias)
 export const MAIN_NAV_ITEMS: NavItem[] = [
+  // Daily operations
   {
     key: "dashboard",
     href: "/admin/dashboard",
@@ -315,6 +316,13 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["calendar:view"],
   },
   {
+    key: "cashRegister",
+    href: "/admin/cash-register",
+    icon: "CircleDollarSign",
+    requiredPermissions: ["cash-register:approve"],
+  },
+  // Clients
+  {
     key: "babies",
     href: "/admin/clients",
     icon: "Baby",
@@ -327,6 +335,13 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["parents:view"],
   },
   {
+    key: "babyCards",
+    href: "/admin/baby-cards",
+    icon: "IdCard",
+    requiredPermissions: ["baby-cards:view"],
+  },
+  // Services
+  {
     key: "packages",
     href: "/admin/packages",
     icon: "Package",
@@ -338,33 +353,29 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     icon: "PartyPopper",
     requiredPermissions: ["events:view"],
   },
+  // Communication
   {
     key: "messages",
     href: "/admin/messages/pending",
     icon: "MessageSquare",
     requiredPermissions: ["messages:view"],
   },
-  {
-    key: "babyCards",
-    href: "/admin/baby-cards",
-    icon: "IdCard",
-    requiredPermissions: ["baby-cards:view"],
-  },
-  {
-    key: "inventory",
-    href: "/admin/inventory",
-    icon: "Warehouse",
-    requiredPermissions: ["inventory:view"],
-  },
 ];
 
 // Items de navegación secundaria (administración)
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
+  // Finance
   {
-    key: "users",
-    href: "/admin/users",
-    icon: "Users",
-    requiredPermissions: ["users:view"],
+    key: "expenses",
+    href: "/admin/expenses",
+    icon: "Receipt",
+    requiredPermissions: ["expenses:create"],
+  },
+  {
+    key: "reports",
+    href: "/admin/reports",
+    icon: "BarChart3",
+    requiredPermissions: ["reports:view"],
   },
   {
     key: "staffPayments",
@@ -372,11 +383,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
     icon: "CreditCard",
     requiredPermissions: ["staff-payments:view"],
   },
+  // System
   {
-    key: "expenses",
-    href: "/admin/expenses",
-    icon: "Receipt",
-    requiredPermissions: ["expenses:create"], // Todos los que pueden crear pueden ver la página
+    key: "inventory",
+    href: "/admin/inventory",
+    icon: "Warehouse",
+    requiredPermissions: ["inventory:view"],
   },
   {
     key: "activity",
@@ -385,16 +397,10 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["activity:view"],
   },
   {
-    key: "cashRegister",
-    href: "/admin/cash-register",
-    icon: "CircleDollarSign",
-    requiredPermissions: ["cash-register:approve"],
-  },
-  {
-    key: "reports",
-    href: "/admin/reports",
-    icon: "BarChart3",
-    requiredPermissions: ["reports:view"],
+    key: "users",
+    href: "/admin/users",
+    icon: "Users",
+    requiredPermissions: ["users:view"],
   },
   {
     key: "settings",

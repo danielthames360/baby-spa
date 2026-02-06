@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,6 +32,7 @@ export function DateTimePackageRow({
   onEditPackage,
 }: DateTimePackageRowProps) {
   const t = useTranslations();
+  const locale = useLocale();
 
   // Format time string to HH:mm
   const formatTime = (time: string) => {
@@ -110,10 +112,9 @@ export function DateTimePackageRow({
           {appointment.status === "PENDING_PAYMENT" &&
             appointment.selectedPackage?.advancePaymentAmount && (
               <p className="mt-1 text-xs font-bold text-orange-600">
-                💰 Bs.{" "}
-                {parseFloat(
+                💰 {formatCurrency(parseFloat(
                   appointment.selectedPackage.advancePaymentAmount.toString()
-                ).toFixed(2)}
+                ), locale)}
               </p>
             )}
         </div>

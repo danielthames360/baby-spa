@@ -20,95 +20,128 @@ async function getDashboardStats(userRole: UserRole) {
 
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  // Queries básicas para todos los roles con permiso de operaciones
-  const [todayAppointments, pendingCheckouts, activeClients, registeredBabies] =
+  // Operation queries for all roles with operations permission
+  const [todayAppointments, completedToday, pendingCheckouts, pendingEvaluations] =
     await Promise.all([
-      // Citas de hoy
+      // Today's scheduled + in-progress appointments
       prisma.appointment.count({
         where: {
-          date: {
-            gte: today,
-            lt: tomorrow,
-          },
-          status: {
-            in: ["SCHEDULED", "IN_PROGRESS"],
-          },
+          date: { gte: today, lt: tomorrow },
+          status: { in: ["SCHEDULED", "IN_PROGRESS"] },
         },
       }),
-      // Sesiones pendientes de checkout
+      // Appointments completed today
+      prisma.appointment.count({
+        where: {
+          date: { gte: today, lt: tomorrow },
+          status: "COMPLETED",
+        },
+      }),
+      // Sessions pending checkout
       prisma.session.count({
         where: {
-          status: {
-            in: ["PENDING", "EVALUATED"],
+          status: { in: ["PENDING", "EVALUATED"] },
+        },
+      }),
+      // Sessions evaluated but not completed (last 7 days)
+      prisma.session.count({
+        where: {
+          status: "EVALUATED",
+          createdAt: {
+            gte: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
           },
-        },
-      }),
-      // Clientes activos (padres con bebés)
-      prisma.parent.count({
-        where: {
-          status: "ACTIVE",
-        },
-      }),
-      // Bebés registrados activos
-      prisma.baby.count({
-        where: {
-          isActive: true,
         },
       }),
     ]);
 
   const stats = {
     todayAppointments,
+    completedToday,
     pendingCheckouts,
-    activeClients,
-    registeredBabies,
+    pendingEvaluations,
     todayIncome: undefined as number | undefined,
+    todayExpenses: undefined as number | undefined,
     monthIncome: undefined as number | undefined,
+    monthExpenses: undefined as number | undefined,
     pendingPayments: undefined as number | undefined,
   };
 
-  // Solo calcular finanzas si el rol tiene permiso
+  // Only calculate finances if role has permission
   if (hasPermission(userRole, "dashboard:view-finance")) {
-    const [todayPayments, monthPayments, pendingPackages] = await Promise.all([
-      // Ingresos de hoy (de Transaction con type INCOME)
+    const [
+      todayIncomeAgg,
+      monthIncomeAgg,
+      todayExpensesAgg,
+      monthExpensesAgg,
+      todayStaffPaid,
+      monthStaffPaid,
+      pendingPackages,
+    ] = await Promise.all([
+      // Today's income (Transaction INCOME)
       prisma.transaction.aggregate({
         where: {
           type: "INCOME",
-          createdAt: {
-            gte: today,
-            lt: tomorrow,
-          },
+          createdAt: { gte: today, lt: tomorrow },
         },
-        _sum: {
-          total: true,
-        },
+        _sum: { total: true },
       }),
-      // Ingresos del mes (de Transaction con type INCOME)
+      // Month's income (Transaction INCOME)
       prisma.transaction.aggregate({
         where: {
           type: "INCOME",
-          createdAt: {
-            gte: startOfMonth,
-          },
+          createdAt: { gte: startOfMonth },
         },
-        _sum: {
-          total: true,
-        },
+        _sum: { total: true },
       }),
-      // Pagos pendientes de paquetes
+      // Today's administrative expenses
+      prisma.expense.aggregate({
+        where: {
+          expenseDate: { gte: today, lt: tomorrow },
+          deletedAt: null,
+        },
+        _sum: { amount: true },
+      }),
+      // Month's administrative expenses
+      prisma.expense.aggregate({
+        where: {
+          expenseDate: { gte: startOfMonth },
+          deletedAt: null,
+        },
+        _sum: { amount: true },
+      }),
+      // Today's staff payments
+      prisma.staffPayment.aggregate({
+        where: {
+          status: "PAID",
+          paidAt: { gte: today, lt: tomorrow },
+          deletedAt: null,
+        },
+        _sum: { netAmount: true },
+      }),
+      // Month's staff payments
+      prisma.staffPayment.aggregate({
+        where: {
+          status: "PAID",
+          paidAt: { gte: startOfMonth },
+          deletedAt: null,
+        },
+        _sum: { netAmount: true },
+      }),
+      // Pending package payments (receivables)
       prisma.packagePurchase.aggregate({
-        where: {
-          isActive: true,
-        },
-        _sum: {
-          totalPrice: true,
-          paidAmount: true,
-        },
+        where: { isActive: true },
+        _sum: { totalPrice: true, paidAmount: true },
       }),
     ]);
 
-    stats.todayIncome = Number(todayPayments._sum?.total ?? 0);
-    stats.monthIncome = Number(monthPayments._sum?.total ?? 0);
+    stats.todayIncome = Number(todayIncomeAgg._sum?.total ?? 0);
+    stats.monthIncome = Number(monthIncomeAgg._sum?.total ?? 0);
+    stats.todayExpenses =
+      Number(todayExpensesAgg._sum?.amount ?? 0) +
+      Number(todayStaffPaid._sum?.netAmount ?? 0);
+    stats.monthExpenses =
+      Number(monthExpensesAgg._sum?.amount ?? 0) +
+      Number(monthStaffPaid._sum?.netAmount ?? 0);
 
     const totalOwed = Number(pendingPackages._sum.totalPrice ?? 0);
     const totalPaid = Number(pendingPackages._sum.paidAmount ?? 0);

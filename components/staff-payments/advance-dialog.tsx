@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SplitPaymentForm } from "@/components/payments/split-payment-form";
-import { getCurrencySymbol } from "@/lib/utils/currency-utils";
+import { getCurrencySymbol, formatCurrency as formatCurrencyUtil } from "@/lib/utils/currency-utils";
 
 type PayFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 
@@ -162,14 +162,7 @@ export function AdvanceDialog({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      style: "currency",
-      currency: locale === "pt-BR" ? "BRL" : "BOB",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCurrencyUtil(amount, locale);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

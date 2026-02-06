@@ -6,6 +6,7 @@ import { Calendar, Clock, Users, ChevronRight, PartyPopper, Baby, UserRound } fr
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateForDisplay, fromDateOnly } from "@/lib/utils/date-utils";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 // Status badge styles
 const STATUS_STYLES: Record<string, string> = {
@@ -96,7 +97,7 @@ export function EventCard({ event, locale = "es" }: EventCardProps) {
                 {participantCount}/{event.maxParticipants}
               </span>
               <span className="text-xs font-medium text-teal-600">
-                Bs. {Number(event.basePrice).toFixed(0)}
+                {formatCurrency(Number(event.basePrice), locale)}
               </span>
             </div>
           </div>

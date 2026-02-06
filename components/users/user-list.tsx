@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { formatCurrency as formatCurrencyUtil } from "@/lib/utils/currency-utils";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es, ptBR } from "date-fns/locale";
@@ -121,14 +122,7 @@ export function UserList({ users, locale, pagination }: UserListProps) {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      style: "currency",
-      currency: locale === "pt-BR" ? "BRL" : "BOB",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCurrencyUtil(amount, locale);
 
   if (users.length === 0) {
     return (

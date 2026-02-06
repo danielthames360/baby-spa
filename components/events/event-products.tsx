@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Plus, Trash2, Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 interface ProductUsage {
   id: string;
@@ -55,6 +56,7 @@ export function EventProducts({
   onUpdate,
 }: EventProductsProps) {
   const t = useTranslations("events");
+  const locale = useLocale();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -247,12 +249,12 @@ export function EventProducts({
               <div>
                 <p className="font-medium text-gray-700">{usage.product.name}</p>
                 <p className="text-sm text-gray-500">
-                  {usage.quantity} {usage.product.unit} × Bs. {Number(usage.unitPrice).toFixed(2)}
+                  {usage.quantity} {usage.product.unit} × {formatCurrency(Number(usage.unitPrice), locale)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-gray-700">
-                  Bs. {(Number(usage.unitPrice) * usage.quantity).toFixed(2)}
+                  {formatCurrency(Number(usage.unitPrice) * usage.quantity, locale)}
                 </span>
                 {canEdit && (
                   <Button
@@ -277,7 +279,7 @@ export function EventProducts({
           <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
             <span className="font-medium text-gray-600">{t("products.total")}:</span>
             <span className="text-lg font-bold text-teal-600">
-              Bs. {totalCost.toFixed(2)}
+              {formatCurrency(totalCost, locale)}
             </span>
           </div>
         </div>

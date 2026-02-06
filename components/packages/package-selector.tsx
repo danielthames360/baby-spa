@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import {
   Package,
   Clock,
@@ -126,6 +127,8 @@ function PackageOption({
   showPrice = true,
   onClick,
 }: PackageOptionProps) {
+  const locale = useLocale();
+  const currencySymbol = getCurrencySymbol(locale);
   const hasSpecialPrice = specialPrice !== undefined && price !== undefined && specialPrice < price;
   return (
     <button
@@ -212,13 +215,13 @@ function PackageOption({
             {hasSpecialPrice ? (
               <div className="flex flex-col items-end gap-0.5">
                 <span className="text-xs text-gray-400 line-through">
-                  {price.toFixed(0)} Bs
+                  {price.toFixed(0)} {currencySymbol}
                 </span>
                 <span className={cn(
                   "font-bold",
                   selected ? "text-violet-700" : "text-violet-600"
                 )}>
-                  {specialPrice!.toFixed(0)} Bs
+                  {specialPrice!.toFixed(0)} {currencySymbol}
                 </span>
               </div>
             ) : (
@@ -226,7 +229,7 @@ function PackageOption({
                 "font-bold",
                 selected ? "text-teal-700" : "text-gray-700"
               )}>
-                {price.toFixed(0)} Bs
+                {price.toFixed(0)} {currencySymbol}
               </span>
             )}
           </div>
@@ -294,7 +297,15 @@ export function PackageSelector({
   // Track if we've done the initial category auto-selection (to avoid re-selecting on every render)
   const hasAutoSelectedCategory = useRef(false);
 
-  // Fetch categories
+  // Refs to access current selection state without adding dependencies to fetchCategories
+  const activeCategoryIdRef = useRef(activeCategoryId);
+  activeCategoryIdRef.current = activeCategoryId;
+  const selectedPackageIdRef = useRef(selectedPackageId);
+  selectedPackageIdRef.current = selectedPackageId;
+  const selectedPurchaseIdRef = useRef(selectedPurchaseId);
+  selectedPurchaseIdRef.current = selectedPurchaseId;
+
+  // Fetch categories - no dependencies on selection state to prevent re-fetching on user interaction
   const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch("/api/categories?type=PACKAGE");
@@ -305,15 +316,15 @@ export function PackageSelector({
         // Only auto-select first category if:
         // 1. No active category is set
         // 2. No catalog package is preselected (selectedPackageId without selectedPurchaseId)
-        const hasCatalogPackagePreselected = selectedPackageId && !selectedPurchaseId;
-        if (fetchedCategories.length > 0 && !activeCategoryId && !hasCatalogPackagePreselected) {
+        const hasCatalogPackagePreselected = selectedPackageIdRef.current && !selectedPurchaseIdRef.current;
+        if (fetchedCategories.length > 0 && !activeCategoryIdRef.current && !hasCatalogPackagePreselected) {
           setActiveCategoryId(fetchedCategories[0].id);
         }
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
-  }, [activeCategoryId, selectedPackageId, selectedPurchaseId]);
+  }, []);
 
   // Fetch packages if not provided
   const fetchPackages = useCallback(async () => {

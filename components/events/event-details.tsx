@@ -34,6 +34,7 @@ import {
 import { ParticipantList } from "./participant-list";
 import { toast } from "sonner";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 // bundle-dynamic-imports: Lazy load heavy dialog components
 const AddParticipantDialog = dynamic(
@@ -332,7 +333,7 @@ export function EventDetails({ event }: EventDetailsProps) {
               <div>
                 <p className="text-xs text-gray-500">{t("summary.totalCollected")}</p>
                 <p className="font-medium text-gray-800">
-                  Bs. {totalPaid.toFixed(0)} / {totalExpected.toFixed(0)}
+                  {formatCurrency(totalPaid, locale)} / {formatCurrency(totalExpected, locale)}
                 </p>
               </div>
             </div>

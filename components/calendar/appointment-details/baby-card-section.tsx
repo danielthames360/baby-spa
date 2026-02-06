@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
@@ -23,6 +24,7 @@ export function BabyCardSection({
   loading,
 }: BabyCardSectionProps) {
   const t = useTranslations();
+  const locale = useLocale();
 
   return (
     <div className="rounded-xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-4">
@@ -124,7 +126,7 @@ export function BabyCardSection({
                   </p>
                   <p className="text-xs text-teal-600">
                     {t("babyCard.checkout.firstSessionDiscountValue", {
-                      amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
+                      amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " " + getCurrencySymbol(locale),
                     })}
                   </p>
                 </div>

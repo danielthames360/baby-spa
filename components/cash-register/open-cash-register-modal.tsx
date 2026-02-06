@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ export function OpenCashRegisterModal({
 }: OpenCashRegisterModalProps) {
   const t = useTranslations("cashRegister");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const { openCashRegister } = useCashRegister();
 
   const [initialFund, setInitialFund] = useState("");
@@ -79,7 +81,7 @@ export function OpenCashRegisterModal({
             <Label htmlFor="initialFund">{t("openModal.initialFund")}</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                Bs
+                {getCurrencySymbol(locale)}
               </span>
               <Input
                 id="initialFund"

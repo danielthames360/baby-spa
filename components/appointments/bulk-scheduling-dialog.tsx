@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Calendar, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import {
@@ -55,9 +55,6 @@ export function BulkSchedulingDialog({
 }: BulkSchedulingDialogProps) {
   const t = useTranslations('bulkScheduling');
   const locale = useLocale();
-
-  // Track previous open state to only reset when dialog opens
-  const prevOpenRef = useRef(false);
 
   // State
   const [mode, setMode] = useState<'parent' | 'custom'>('custom');
@@ -181,22 +178,18 @@ export function BulkSchedulingDialog({
     }
   };
 
-  // Reset state when dialog opens (only when transitioning from closed to open)
+  // Reset state when dialog opens
   useEffect(() => {
-    const wasOpen = prevOpenRef.current;
-    prevOpenRef.current = open;
-
-    // Only reset state when dialog is opening (was closed, now open)
-    if (open && !wasOpen) {
-      setMode(parentPreferences.length > 0 ? 'parent' : 'custom');
-      setCustomPreferences(
-        parentPreferences.length > 0 ? [...parentPreferences] : DEFAULT_PREFERENCE
-      );
-      setSessionCount(availableSessions);
-      setError(null);
-      setConflicts(new Map());
-    }
-  }, [open, parentPreferences, availableSessions]);
+    if (!open) return;
+    setMode(parentPreferences.length > 0 ? 'parent' : 'custom');
+    setCustomPreferences(
+      parentPreferences.length > 0 ? [...parentPreferences] : DEFAULT_PREFERENCE
+    );
+    setSessionCount(availableSessions);
+    setError(null);
+    setConflicts(new Map());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only reset when dialog opens
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

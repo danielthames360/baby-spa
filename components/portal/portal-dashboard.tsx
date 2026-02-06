@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import { formatAge, calculateExactAge, isMesversario, AgeResult } from "@/lib/utils/age";
 import { getGenderGradient } from "@/lib/utils/gender-utils";
 import Link from "next/link";
@@ -751,7 +752,7 @@ export function PortalDashboard() {
               <div>
                 <p className="text-sm text-gray-500">{t("portal.dashboard.pendingLabel")}</p>
                 <p className="text-2xl font-bold text-amber-600">
-                  Bs {financialSummary.totalPending.toLocaleString(locale)}
+                  {formatCurrency(financialSummary.totalPending, locale)}
                 </p>
               </div>
             ) : (

@@ -67,6 +67,11 @@ export default function ParentLoginPage() {
     });
 
     if (result?.error) {
+      // Rate limit (429 from rate limiter)
+      if (result.status === 429 || result.error.toLowerCase().includes("too many")) {
+        setServerError(t("auth.errors.RATE_LIMITED"));
+        return;
+      }
       setServerError(t("auth.errors.INVALID_CREDENTIALS"));
       return;
     }

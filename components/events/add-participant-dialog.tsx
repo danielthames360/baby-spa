@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Search, Baby, Loader2, UserPlus, Plus, Check, CreditCard } from "lucide-react";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatCurrency, getCurrencySymbol } from "@/lib/utils/currency-utils";
 import { RegisterClientDialog } from "./register-client-dialog";
 import { RegisterPaymentDialog } from "./register-payment-dialog";
 
@@ -55,6 +56,7 @@ export function AddParticipantDialog({
 }: AddParticipantDialogProps) {
   const t = useTranslations("events");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -231,7 +233,7 @@ export function AddParticipantDialog({
                 <span className="font-medium">{addedParticipant.name}</span>
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                {t("payment.amountDue")}: <span className="font-semibold text-teal-600">Bs. {addedParticipant.amountDue}</span>
+                {t("payment.amountDue")}: <span className="font-semibold text-teal-600">{formatCurrency(Number(addedParticipant.amountDue), locale)}</span>
               </p>
             </div>
 
@@ -373,7 +375,7 @@ export function AddParticipantDialog({
               {discountType === "FIXED" && (
                 <>
                   <div className="space-y-2">
-                    <Label>{t("discount.amount")} (Bs.)</Label>
+                    <Label>{t("discount.amount")} ({getCurrencySymbol(locale)})</Label>
                     <Input
                       type="number"
                       value={discountAmount}
@@ -411,7 +413,7 @@ export function AddParticipantDialog({
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">{t("payment.amountDue")}</span>
                   <span className="text-lg font-bold text-teal-600">
-                    {calculatedPrice === 0 ? t("payment.free") : `Bs. ${calculatedPrice.toFixed(0)}`}
+                    {calculatedPrice === 0 ? t("payment.free") : formatCurrency(calculatedPrice, locale)}
                   </span>
                 </div>
               </div>

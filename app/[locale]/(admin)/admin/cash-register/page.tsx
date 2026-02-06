@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import {
   CircleDollarSign,
   Calendar,
@@ -103,22 +103,18 @@ const STATUS_CONFIG = {
   OPEN: {
     color: "bg-emerald-100 text-emerald-700 border-emerald-200",
     icon: Clock,
-    label: "Abierta",
   },
   CLOSED: {
     color: "bg-amber-100 text-amber-700 border-amber-200",
     icon: AlertTriangle,
-    label: "Pendiente",
   },
   APPROVED: {
     color: "bg-sky-100 text-sky-700 border-sky-200",
     icon: CheckCircle2,
-    label: "Aprobada",
   },
   FORCE_CLOSED: {
     color: "bg-gray-100 text-gray-700 border-gray-200",
     icon: Lock,
-    label: "Cerrada Forzada",
   },
 };
 
@@ -129,13 +125,6 @@ const PAYMENT_METHOD_ICONS: Record<string, React.ElementType> = {
   TRANSFER: Building,
 };
 
-const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
-  SUPPLIES: "Insumos",
-  FOOD: "Comida/Refrigerios",
-  TRANSPORT: "Transporte",
-  BANK_DEPOSIT: "Depósito a banco",
-  OTHER: "Otro",
-};
 
 // ============================================================
 // MAIN COMPONENT
@@ -143,6 +132,7 @@ const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
 
 export default function CashRegisterPage() {
   const t = useTranslations("cashRegister");
+  const locale = useLocale();
   const [cashRegisters, setCashRegisters] = useState<CashRegisterData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -194,7 +184,7 @@ export default function CashRegisterPage() {
       setPendingCount(data.pendingCount || 0);
     } catch (error) {
       console.error("Error fetching cash registers:", error);
-      toast.error("Error al cargar los arqueos");
+      toast.error(t("admin.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -366,7 +356,7 @@ export default function CashRegisterPage() {
             <DialogDescription>
               {cashRegisters.find(cr => cr.id === reviewingId)?.difference !== 0 && (
                 <span className="text-amber-600">
-                  Diferencia: Bs {cashRegisters.find(cr => cr.id === reviewingId)?.difference?.toFixed(2)}
+                  {t("admin.detail.difference")}: {formatCurrency(cashRegisters.find(cr => cr.id === reviewingId)?.difference || 0, locale)}
                 </span>
               )}
             </DialogDescription>
@@ -386,7 +376,7 @@ export default function CashRegisterPage() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setReviewModalOpen(false)}>
-              Cancelar
+              {t("admin.cancel")}
             </Button>
             <Button
               onClick={() => handleReview(!!reviewNotes.trim())}
@@ -427,7 +417,7 @@ export default function CashRegisterPage() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setForceCloseModalOpen(false)}>
-              Cancelar
+              {t("admin.cancel")}
             </Button>
             <Button
               onClick={handleForceClose}
@@ -465,6 +455,7 @@ function CashRegisterCard({
   onForceClose,
   t,
 }: CashRegisterCardProps) {
+  const locale = useLocale();
   const statusConfig = STATUS_CONFIG[data.status];
   const StatusIcon = statusConfig.icon;
 
@@ -492,7 +483,7 @@ function CashRegisterCard({
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-500" />
               <span className="font-semibold">
-                {format(openedDate, "dd/MM/yyyy", { locale: es })}
+                {format(openedDate, "dd/MM/yyyy")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
@@ -511,7 +502,7 @@ function CashRegisterCard({
           <div className="flex items-center gap-3">
             <Badge className={cn("gap-1", statusConfig.color)}>
               <StatusIcon className="h-3 w-3" />
-              {statusConfig.label}
+              {t(`admin.status.${data.status}`)}
             </Badge>
             {isExpanded ? (
               <ChevronUp className="h-5 w-5 text-gray-400" />
@@ -530,11 +521,11 @@ function CashRegisterCard({
                 data.difference === 0 ? "text-emerald-600" :
                 data.difference > 0 ? "text-sky-600" : "text-amber-600"
               )}>
-                Diferencia: {data.difference >= 0 ? "+" : ""}Bs {data.difference.toFixed(2)}
+                {t("admin.detail.difference")}: {data.difference >= 0 ? "+" : ""}{formatCurrency(data.difference, locale)}
               </span>
             )}
             {data.status === "APPROVED" && data.reviewNotes === "Auto-aprobado (diferencia = 0)" && (
-              <span className="text-gray-500">Auto-aprobado</span>
+              <span className="text-gray-500">{t("admin.autoApproved")}</span>
             )}
           </div>
         )}
@@ -560,20 +551,20 @@ function CashRegisterCard({
             <div className="space-y-4">
               <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
                 <Receipt className="h-5 w-5 text-teal-600" />
-                Resumen del Turno
+                {t("admin.shiftSummary")}
               </h4>
 
               {/* Payment method cards */}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {Object.entries(paymentsByMethod).map(([method, { total, count }]) => {
                   const Icon = PAYMENT_METHOD_ICONS[method] || CreditCard;
-                  const methodLabels: Record<string, { label: string; bg: string; border: string; text: string }> = {
-                    CASH: { label: "Efectivo", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
-                    CARD: { label: "Tarjeta", bg: "bg-sky-50", border: "border-sky-200", text: "text-sky-700" },
-                    QR: { label: "QR / PIX", bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" },
-                    TRANSFER: { label: "Transferencia", bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700" },
+                  const methodStyles: Record<string, { bg: string; border: string; text: string }> = {
+                    CASH: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
+                    CARD: { bg: "bg-sky-50", border: "border-sky-200", text: "text-sky-700" },
+                    QR: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" },
+                    TRANSFER: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700" },
                   };
-                  const style = methodLabels[method] || methodLabels.CASH;
+                  const style = methodStyles[method] || methodStyles.CASH;
 
                   return (
                     <div
@@ -590,15 +581,15 @@ function CashRegisterCard({
                           </div>
                           <div>
                             <p className={cn("text-sm font-medium", style.text)}>
-                              {style.label}
+                              {t(`admin.paymentMethods.${method}`)}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {count} {count === 1 ? "transacción" : "transacciones"}
+                              {count} {count === 1 ? t("admin.transaction") : t("admin.transactions")}
                             </p>
                           </div>
                         </div>
                         <p className={cn("text-lg font-bold", style.text)}>
-                          Bs {total.toFixed(2)}
+                          {formatCurrency(total, locale)}
                         </p>
                       </div>
                     </div>
@@ -610,13 +601,13 @@ function CashRegisterCard({
               <div className="rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 p-4 text-white shadow-lg shadow-teal-500/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-teal-100">Total Cobrado en el Turno</p>
+                    <p className="text-sm font-medium text-teal-100">{t("admin.totalCollected")}</p>
                     <p className="text-xs text-teal-200">
-                      {data.allPayments?.length || 0} transacciones
+                      {data.allPayments?.length || 0} {(data.allPayments?.length || 0) === 1 ? t("admin.transaction") : t("admin.transactions")}
                     </p>
                   </div>
                   <p className="text-2xl font-bold">
-                    Bs {totalAllPayments.toFixed(2)}
+                    {formatCurrency(totalAllPayments, locale)}
                   </p>
                 </div>
               </div>
@@ -630,7 +621,7 @@ function CashRegisterCard({
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 font-semibold text-gray-700">
                 <CreditCard className="h-4 w-4 text-gray-500" />
-                Detalle de Cobros ({data.allPayments.length})
+                {t("admin.paymentDetails")} ({data.allPayments.length})
               </h4>
               <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/50 p-3">
                 {data.allPayments.map((payment) => {
@@ -654,20 +645,14 @@ function CashRegisterCard({
                         </span>
                         <Badge className={cn("text-xs", colorClass)}>
                           <Icon className="mr-1 h-3 w-3" />
-                          {payment.paymentMethod === "CASH" ? "Efectivo" :
-                           payment.paymentMethod === "CARD" ? "Tarjeta" :
-                           payment.paymentMethod === "QR" ? "QR / PIX" :
-                           payment.paymentMethod === "TRANSFER" ? "Transfer" : "Efectivo"}
+                          {t(`admin.paymentMethods.${payment.paymentMethod}`)}
                         </Badge>
                         <span className="text-sm text-gray-600">
-                          {payment.parentType === "SESSION" ? "Sesión" :
-                           payment.parentType === "PACKAGE_PURCHASE" ? "Paquete" :
-                           payment.parentType === "PRODUCT_SALE" ? "Producto" :
-                           payment.parentType}
+                          {t(`admin.transactionTypes.${payment.parentType}`, { defaultValue: payment.parentType })}
                         </span>
                       </div>
                       <span className="font-semibold text-gray-900">
-                        Bs {payment.amount.toFixed(2)}
+                        {formatCurrency(payment.amount, locale)}
                       </span>
                     </div>
                   );
@@ -683,7 +668,7 @@ function CashRegisterCard({
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 font-semibold text-gray-700">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
-                Gastos del Turno ({data.expenses.length})
+                {t("admin.shiftExpenses")} ({data.expenses.length})
               </h4>
               <div className="rounded-xl border border-red-100 bg-red-50/30 p-3">
                 <div className="space-y-2">
@@ -699,22 +684,22 @@ function CashRegisterCard({
                           </span>
                         )}
                         <Badge variant="outline" className="border-red-200 bg-red-50 text-xs text-red-700">
-                          {EXPENSE_CATEGORY_LABELS[expense.category] || expense.category}
+                          {t(`admin.expenseCategories.${expense.category}`, { defaultValue: expense.category })}
                         </Badge>
                         {expense.description && (
                           <span className="text-sm text-gray-600">{expense.description}</span>
                         )}
                       </div>
                       <span className="font-semibold text-red-600">
-                        -Bs {Number(expense.amount).toFixed(2)}
+                        -{formatCurrency(Number(expense.amount), locale)}
                       </span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 flex justify-between border-t border-red-200 pt-3">
-                  <span className="font-medium text-red-700">Total Gastos</span>
+                  <span className="font-medium text-red-700">{t("admin.totalExpenses")}</span>
                   <span className="text-lg font-bold text-red-600">
-                    -Bs {data.expensesTotal.toFixed(2)}
+                    -{formatCurrency(data.expensesTotal, locale)}
                   </span>
                 </div>
               </div>
@@ -728,8 +713,8 @@ function CashRegisterCard({
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
                 <Banknote className="h-5 w-5 text-emerald-600" />
-                Arqueo de Caja
-                <Badge variant="outline" className="ml-2 text-xs font-normal">Solo Efectivo</Badge>
+                {t("admin.cashCount")}
+                <Badge variant="outline" className="ml-2 text-xs font-normal">{t("admin.cashOnly")}</Badge>
               </h4>
               <div className="rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
                 <div className="space-y-3">
@@ -737,18 +722,18 @@ function CashRegisterCard({
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between py-1">
                       <span className="text-gray-600">{t("admin.detail.initialFund")}</span>
-                      <span className="font-medium">Bs {Number(data.initialFund).toFixed(2)}</span>
+                      <span className="font-medium">{formatCurrency(Number(data.initialFund), locale)}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-gray-600">+ Ingresos en efectivo</span>
+                      <span className="text-gray-600">{t("admin.cashIncome")}</span>
                       <span className="font-medium text-emerald-600">
-                        +Bs {(data.cashIncome || 0).toFixed(2)}
+                        +{formatCurrency(data.cashIncome || 0, locale)}
                       </span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span className="text-gray-600">- Gastos de caja</span>
+                      <span className="text-gray-600">{t("admin.cashExpenses")}</span>
                       <span className="font-medium text-red-600">
-                        -Bs {data.expensesTotal.toFixed(2)}
+                        -{formatCurrency(data.expensesTotal, locale)}
                       </span>
                     </div>
                   </div>
@@ -758,13 +743,13 @@ function CashRegisterCard({
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-700">{t("admin.detail.expected")}</span>
                       <span className="text-lg font-semibold">
-                        Bs {Number(data.expectedAmount || 0).toFixed(2)}
+                        {formatCurrency(Number(data.expectedAmount || 0), locale)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-700">{t("admin.detail.declared")}</span>
                       <span className="text-lg font-semibold">
-                        Bs {Number(data.declaredAmount || 0).toFixed(2)}
+                        {formatCurrency(Number(data.declaredAmount || 0), locale)}
                       </span>
                     </div>
                   </div>
@@ -790,8 +775,7 @@ function CashRegisterCard({
                       data.difference === 0 ? "text-emerald-600" :
                       (data.difference || 0) > 0 ? "text-sky-600" : "text-amber-600"
                     )}>
-                      {(data.difference || 0) >= 0 ? "+" : ""}
-                      Bs {Number(data.difference || 0).toFixed(2)}
+                      {(data.difference || 0) >= 0 ? "+" : ""}{formatCurrency(Number(data.difference || 0), locale)}
                       {data.difference === 0 && (
                         <CheckCircle2 className="ml-2 inline h-5 w-5" />
                       )}

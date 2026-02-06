@@ -81,6 +81,11 @@ export default function StaffLoginPage() {
     });
 
     if (result?.error) {
+      // Rate limit (429 from rate limiter)
+      if (result.status === 429 || result.error.toLowerCase().includes("too many")) {
+        setServerError(t("auth.errors.RATE_LIMITED"));
+        return;
+      }
       const errorKey = result.error.includes("desactivado")
         ? "USER_INACTIVE"
         : "INVALID_CREDENTIALS";

@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import { Clock, CreditCard, Download, Loader2 } from "lucide-react";
 import type { PaymentSettings, ClientType } from "../types";
 
@@ -30,6 +31,8 @@ export function PaymentStep({
   getWhatsAppUrl,
 }: PaymentStepProps) {
   const t = useTranslations();
+  const locale = useLocale();
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
 
   if (loadingPaymentSettings) {
     return (
@@ -51,8 +54,7 @@ export function PaymentStep({
         </h3>
         <p className="mt-2 text-sm text-gray-500">{selectedPackageName}</p>
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-6 py-3 text-lg font-bold text-amber-700">
-          <span>Bs.</span>
-          <span>{advanceAmount}</span>
+          <span>{formatCurrency(advanceAmount || 0, locale)}</span>
         </div>
       </div>
 
@@ -123,7 +125,7 @@ export function PaymentStep({
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">{t("common.date")}:</span>
           <span className="font-medium text-gray-800">
-            {selectedDate?.toLocaleDateString("es-ES", {
+            {selectedDate?.toLocaleDateString(dateLocale, {
               weekday: "long",
               day: "numeric",
               month: "long",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Search, UserRound, Loader2, UserPlus, Phone, Mail, Check, CreditCard } from "lucide-react";
 import {
@@ -22,8 +22,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { RegisterPaymentDialog } from "./register-payment-dialog";
+import { formatCurrency, getCurrencySymbol } from "@/lib/utils/currency-utils";
+
+// bundle-dynamic-imports: Lazy load payment dialog
+const RegisterPaymentDialog = dynamic(
+  () => import("./register-payment-dialog").then((m) => m.RegisterPaymentDialog),
+  { ssr: false }
+);
 
 interface ParentResult {
   id: string;
@@ -50,6 +57,7 @@ export function AddParentLeadDialog({
 }: AddParentLeadDialogProps) {
   const t = useTranslations("events");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<"search" | "new">("search");
@@ -251,7 +259,7 @@ export function AddParentLeadDialog({
                 <span className="font-medium">{addedParticipant.name}</span>
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                {t("payment.amountDue")}: <span className="font-semibold text-teal-600">Bs. {addedParticipant.amountDue}</span>
+                {t("payment.amountDue")}: <span className="font-semibold text-teal-600">{formatCurrency(Number(addedParticipant.amountDue), locale)}</span>
               </p>
             </div>
 
@@ -456,7 +464,7 @@ export function AddParentLeadDialog({
             {discountType === "FIXED" && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>{t("discount.amount")} (Bs.)</Label>
+                  <Label>{t("discount.amount")} ({getCurrencySymbol(locale)})</Label>
                   <Input
                     type="number"
                     value={discountAmount}
@@ -482,7 +490,7 @@ export function AddParentLeadDialog({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">{t("payment.amountDue")}</span>
                 <span className="text-lg font-bold text-teal-600">
-                  {calculatedPrice === 0 ? t("payment.free") : `Bs. ${calculatedPrice.toFixed(0)}`}
+                  {calculatedPrice === 0 ? t("payment.free") : formatCurrency(calculatedPrice, locale)}
                 </span>
               </div>
             </div>

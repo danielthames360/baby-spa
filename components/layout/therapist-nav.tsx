@@ -67,9 +67,11 @@ export function TherapistNav() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-teal-100" />
-            <DropdownMenuItem className="cursor-pointer rounded-lg hover:bg-teal-50">
-              <User className="mr-2 h-4 w-4 text-teal-600" />
-              {t("nav.profile")}
+            <DropdownMenuItem asChild className="cursor-pointer rounded-lg hover:bg-teal-50">
+              <Link href="/therapist/profile">
+                <User className="mr-2 h-4 w-4 text-teal-600" />
+                {t("nav.profile")}
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-teal-100" />
             <DropdownMenuItem

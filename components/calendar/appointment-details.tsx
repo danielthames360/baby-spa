@@ -166,7 +166,9 @@ export function AppointmentDetails({
     fetchBabyCardInfo();
   }, [open, appointment?.baby?.id]);
 
-  // Calculate installment payment status
+  // Calculate installment payment status (narrow dependency to packagePurchase identity)
+  const packagePurchaseId = appointment?.packagePurchase?.id;
+  const packagePurchasePaidAmount = appointment?.packagePurchase?.paidAmount;
   useEffect(() => {
     if (!appointment?.packagePurchase) {
       setInstallmentPaymentStatus(null);
@@ -192,7 +194,8 @@ export function AppointmentDetails({
     } else {
       setInstallmentPaymentStatus(null);
     }
-  }, [appointment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only recalculate when purchase identity or payment amount changes
+  }, [packagePurchaseId, packagePurchasePaidAmount]);
 
   // Generate available dates for rescheduling
   const availableDates = useMemo(() => {

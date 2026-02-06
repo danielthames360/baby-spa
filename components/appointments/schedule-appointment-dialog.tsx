@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import dynamic from "next/dynamic";
 import {
   Dialog,
@@ -233,14 +234,18 @@ export function ScheduleAppointmentDialog({
     }
   }, [open, fetchCatalog, fetchBabyCardInfo]);
 
+  // Primitive dependency to prevent unnecessary effect re-runs when activePackages array reference changes
+  const singleActivePackageId = activePackages.length === 1 ? activePackages[0].id : null;
+
   // Auto-select package if baby has exactly one active package (only on initial open)
   useEffect(() => {
-    if (open && !hasAutoSelected.current && activePackages.length === 1) {
+    if (open && !hasAutoSelected.current && singleActivePackageId && activePackages.length === 1) {
       setSelectedPurchaseId(activePackages[0].id);
       setSelectedPackageId(activePackages[0].package.id);
       hasAutoSelected.current = true;
     }
-  }, [open, activePackages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, singleActivePackageId]);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -543,7 +548,7 @@ export function ScheduleAppointmentDialog({
                     </p>
                     <p className="text-xs text-amber-600">
                       {t("babyCard.checkout.firstSessionDiscountValue", {
-                        amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " Bs",
+                        amount: babyCardInfo.firstSessionDiscount.amount.toFixed(0) + " " + getCurrencySymbol(locale),
                       })}
                     </p>
                   </div>

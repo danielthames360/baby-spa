@@ -135,7 +135,8 @@
       "ACCESS_CODE_REQUIRED": "El código de acceso es requerido",
       "ACCESS_CODE_INVALID": "El código debe tener el formato BSB-XXXXX",
       "INVALID_CREDENTIALS": "Credenciales inválidas",
-      "USER_INACTIVE": "Usuario desactivado"
+      "USER_INACTIVE": "Usuario desactivado",
+      "RATE_LIMITED": "Demasiados intentos de inicio de sesión. Por favor, espera unos minutos e intenta de nuevo."
     }
   },
 
@@ -2006,6 +2007,7 @@
         "cash": "Efectivo",
         "transfer": "Transferencia",
         "card": "Tarjeta",
+        "qr": "QR",
         "other": "Otro"
       }
     },
@@ -2830,16 +2832,15 @@
     "welcomeAdmin": "Panel de Administración",
     "welcomeReception": "Panel de Operaciones",
     "todayAppointments": "Citas de Hoy",
+    "completedToday": "Completadas Hoy",
     "pendingCheckouts": "Checkouts Pendientes",
-    "activeClients": "Clientes Activos",
-    "registeredBabies": "Bebés Registrados",
+    "pendingEvaluations": "Evaluaciones Pendientes",
     "todayIncome": "Ingresos de Hoy",
+    "todayExpenses": "Gastos de Hoy",
+    "todayNetMargin": "Margen Neto Hoy",
     "monthIncome": "Ingresos del Mes",
-    "pendingPayments": "Pagos Pendientes",
-    "todaySummary": "Resumen de Hoy",
-    "completedToday": "Completadas",
-    "inProgress": "En Progreso",
-    "scheduledRemaining": "Programadas"
+    "monthExpenses": "Gastos del Mes",
+    "pendingPayments": "Pagos Pendientes Paquetes"
   },
 
   "reports": {
@@ -3408,6 +3409,46 @@
         "confirm": "Forzar Cierre",
         "success": "Caja cerrada forzadamente",
         "error": "Error al forzar el cierre"
+      },
+
+      "cancel": "Cancelar",
+      "autoApproved": "Auto-aprobado",
+      "shiftSummary": "Resumen del Turno",
+      "transaction": "transacción",
+      "transactions": "transacciones",
+      "totalCollected": "Total Cobrado en el Turno",
+      "paymentDetails": "Detalle de Cobros",
+      "shiftExpenses": "Gastos del Turno",
+      "totalExpenses": "Total Gastos",
+      "cashCount": "Arqueo de Caja",
+      "cashOnly": "Solo Efectivo",
+      "cashIncome": "+ Ingresos en efectivo",
+      "cashExpenses": "- Gastos de caja",
+      "loadError": "Error al cargar los arqueos",
+
+      "status": {
+        "OPEN": "Abierta",
+        "CLOSED": "Pendiente",
+        "APPROVED": "Aprobada",
+        "FORCE_CLOSED": "Cerrada Forzada"
+      },
+      "expenseCategories": {
+        "SUPPLIES": "Insumos",
+        "FOOD": "Comida/Refrigerios",
+        "TRANSPORT": "Transporte",
+        "BANK_DEPOSIT": "Depósito a banco",
+        "OTHER": "Otro"
+      },
+      "paymentMethods": {
+        "CASH": "Efectivo",
+        "CARD": "Tarjeta",
+        "QR": "QR / PIX",
+        "TRANSFER": "Transferencia"
+      },
+      "transactionTypes": {
+        "SESSION": "Sesión",
+        "PACKAGE_PURCHASE": "Paquete",
+        "PRODUCT_SALE": "Producto"
       }
     },
 
@@ -3420,6 +3461,95 @@
     "notification": {
       "differenceTitle": "Arqueo con diferencia",
       "differenceMessage": "{user} cerró caja con diferencia de {amount}"
+    }
+  },
+
+  "messagesModule": {
+    "title": "Mensajes",
+    "subtitle": "Gestión de comunicaciones",
+    "tabs": {
+      "pending": "Pendientes",
+      "pendingDescription": "WhatsApp por enviar",
+      "stats": "Métricas",
+      "statsDescription": "Estadísticas de email"
+    },
+    "categories": {
+      "APPOINTMENT_REMINDER": "Recordatorio de cita",
+      "PAYMENT_REMINDER": "Recordatorio de pago",
+      "MESVERSARY": "Mesversario",
+      "REENGAGEMENT": "Re-engagement"
+    },
+    "pending": {
+      "title": "WhatsApp Pendientes",
+      "messageCount": "{count, plural, one {# mensaje por enviar} other {# mensajes por enviar}}",
+      "refresh": "Actualizar",
+      "filterPlaceholder": "Filtrar por categoría",
+      "filterAll": "Todos",
+      "filterAppointment": "Recordatorios de cita",
+      "filterPayment": "Recordatorios de pago",
+      "filterMesversary": "Mesversarios",
+      "filterReengagement": "Re-engagement",
+      "emptyTitle": "No hay mensajes pendientes",
+      "emptyDescription": "Todos los mensajes han sido enviados",
+      "scheduled": "Programado:",
+      "copied": "Copiado",
+      "copy": "Copiar",
+      "whatsapp": "WhatsApp",
+      "markSent": "Enviado",
+      "skip": "Omitir",
+      "confirmSendTitle": "Confirmar envío",
+      "confirmSendDescription": "¿Confirmas que enviaste este mensaje por WhatsApp a {name}?",
+      "confirmSendWarning": "Solo marca como enviado si realmente enviaste el mensaje. Esta acción no se puede deshacer.",
+      "important": "Importante:",
+      "confirmSendButton": "Confirmar envío",
+      "skipTitle": "Omitir mensaje",
+      "skipDescription": "¿Por qué quieres omitir este mensaje para {name}?",
+      "skipPlaceholder": "Razón (opcional): Número incorrecto, cliente solicitó no contactar, etc.",
+      "skipButton": "Omitir mensaje",
+      "toastCopied": "Mensaje copiado",
+      "toastCopyError": "Error al copiar",
+      "toastSent": "Mensaje marcado como enviado",
+      "toastUpdateError": "Error al actualizar mensaje",
+      "toastSkipped": "Mensaje omitido",
+      "toastSkipError": "Error al omitir mensaje",
+      "toastLoadError": "Error al cargar mensajes"
+    },
+    "stats": {
+      "title": "Métricas de Email",
+      "lastDays": "Últimos {days} días",
+      "last7": "Últimos 7 días",
+      "last14": "Últimos 14 días",
+      "last30": "Últimos 30 días",
+      "restricted": "Acceso restringido",
+      "restrictedDescription": "Solo los owners pueden ver las métricas de email",
+      "sent": "Enviados",
+      "delivered": "Entregados",
+      "opened": "Abiertos",
+      "bounced": "Rebotados",
+      "complaints": "Quejas",
+      "byCategory": "Por Categoría",
+      "colCategory": "Categoría",
+      "colTotal": "Total",
+      "colDelivered": "Entregados",
+      "colOpened": "Abiertos",
+      "colBounced": "Rebotados",
+      "byDay": "Por Día",
+      "sentCount": "enviados",
+      "deliveredShort": "ent.",
+      "openedShort": "ab.",
+      "parentsWithIssues": "Padres con Problemas de Email",
+      "parentsWithIssuesDescription": "Estos padres tienen 2 o más rebotes de email. Considera verificar sus direcciones.",
+      "bounceCount": "{count} rebotes",
+      "recentProblems": "Emails con Problemas Recientes",
+      "statusBounced": "Rebotado",
+      "statusComplaint": "Queja",
+      "categoryLabels": {
+        "APPOINTMENT": "Citas",
+        "MESVERSARY": "Mesversarios",
+        "REENGAGEMENT": "Re-engagement",
+        "LEAD": "Leads",
+        "ADMIN": "Admin"
+      }
     }
   }
 }

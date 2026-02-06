@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   ShoppingBag,
   Loader2,
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 
 interface Purchase {
   id: string;
@@ -40,6 +41,7 @@ export function ParticipantPurchasesDialog({
   participantName,
 }: ParticipantPurchasesDialogProps) {
   const t = useTranslations("events");
+  const locale = useLocale();
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [total, setTotal] = useState(0);
@@ -106,12 +108,12 @@ export function ParticipantPurchasesDialog({
                           {purchase.productName}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {purchase.quantity} x Bs. {purchase.unitPrice.toFixed(0)}
+                          {purchase.quantity} x {formatCurrency(purchase.unitPrice, locale)}
                         </p>
                       </div>
                     </div>
                     <span className="font-semibold text-purple-600">
-                      Bs. {purchase.total.toFixed(0)}
+                      {formatCurrency(purchase.total, locale)}
                     </span>
                   </div>
                 ))}
@@ -120,7 +122,7 @@ export function ParticipantPurchasesDialog({
               <div className="flex items-center justify-between rounded-xl bg-purple-50 p-4">
                 <span className="font-medium text-gray-700">Total</span>
                 <span className="text-xl font-bold text-purple-600">
-                  Bs. {total.toFixed(0)}
+                  {formatCurrency(total, locale)}
                 </span>
               </div>
             </>

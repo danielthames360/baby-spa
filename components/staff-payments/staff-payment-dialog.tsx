@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SplitPaymentForm } from "@/components/payments/split-payment-form";
-import { getCurrencySymbol } from "@/lib/utils/currency-utils";
+import { getCurrencySymbol, formatCurrency as formatCurrencyUtil } from "@/lib/utils/currency-utils";
 
 // Movement types (records that accumulate, not actual payments)
 const MOVEMENT_TYPES = ["BONUS", "COMMISSION", "BENEFIT", "DEDUCTION"] as const;
@@ -199,6 +199,10 @@ export function StaffPaymentDialog({
     ? calculatePeriodDates(new Date(movementDate), selectedStaff.payFrequency)
     : null;
 
+  // Stable ISO strings for hook dependency arrays (avoid creating new strings on every render)
+  const periodStartISO = periodDates?.start.toISOString() ?? null;
+  const periodEndISO = periodDates?.end.toISOString() ?? null;
+
   // Calculate amounts
   const amountNum = parseFloat(amount) || 0;
   const advanceDeductedNum = deductAdvance ? parseFloat(advanceToDeduct) || 0 : 0;
@@ -242,7 +246,7 @@ export function StaffPaymentDialog({
     } finally {
       setLoadingStats(false);
     }
-  }, [staffId, periodDates?.start.toISOString(), periodDates?.end.toISOString(), isSalaryType]);
+  }, [staffId, periodStartISO, periodEndISO, isSalaryType]);
 
   useEffect(() => {
     if (open && staffId && isSalaryType) {
@@ -373,14 +377,7 @@ export function StaffPaymentDialog({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      style: "currency",
-      currency: locale === "pt-BR" ? "BRL" : "BOB",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCurrencyUtil(amount, locale);
 
   const formatPeriod = (start: Date, end: Date) => {
     return `${format(start, "d MMM", { locale: dateLocale })} - ${format(end, "d MMM yyyy", { locale: dateLocale })}`;

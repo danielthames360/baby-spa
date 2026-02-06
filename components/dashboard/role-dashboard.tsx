@@ -1,30 +1,33 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import { UserRole } from "@prisma/client";
 import {
   Calendar,
-  Users,
-  Baby,
   Clock,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
   CheckCircle,
   CreditCard,
+  ClipboardCheck,
+  Receipt,
 } from "lucide-react";
 import { StockAlertsWidget } from "@/components/dashboard";
 import { hasPermission } from "@/lib/permissions";
 
 interface DashboardStats {
   todayAppointments: number;
-  activeClients: number;
-  registeredBabies: number;
+  completedToday: number;
   pendingCheckouts: number;
+  pendingEvaluations: number;
   todayIncome?: number;
+  todayExpenses?: number;
   monthIncome?: number;
+  monthExpenses?: number;
   pendingPayments?: number;
-  lowStockProducts?: number;
 }
 
 interface RoleDashboardProps {
@@ -35,11 +38,11 @@ interface RoleDashboardProps {
 
 export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps) {
   const t = useTranslations();
+  const locale = useLocale();
 
   const canViewFinance = hasPermission(userRole, "dashboard:view-finance");
   const canViewOperations = hasPermission(userRole, "dashboard:view-operations");
 
-  // Header personalizado por rol
   const getWelcomeMessage = () => {
     switch (userRole) {
       case "OWNER":
@@ -53,8 +56,11 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
     }
   };
 
-  // Color principal del sistema - consistente con nav active
   const getRoleColor = () => "from-teal-500 to-cyan-500";
+
+  // Finance calculations
+  const todayNet = (stats.todayIncome ?? 0) - (stats.todayExpenses ?? 0);
+  const monthNet = (stats.monthIncome ?? 0) - (stats.monthExpenses ?? 0);
 
   return (
     <div className="space-y-6">
@@ -68,7 +74,7 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
         <p className="mt-1 opacity-90">{getWelcomeMessage()}</p>
       </div>
 
-      {/* Stats Cards - Operaciones (todos los que tienen permiso) */}
+      {/* Operations Cards */}
       {canViewOperations && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -79,6 +85,13 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
             iconColor="text-teal-500"
           />
           <StatCard
+            icon={CheckCircle}
+            label={t("dashboard.completedToday")}
+            value={stats.completedToday}
+            bgColor="bg-emerald-50"
+            iconColor="text-emerald-500"
+          />
+          <StatCard
             icon={Clock}
             label={t("dashboard.pendingCheckouts")}
             value={stats.pendingCheckouts}
@@ -87,23 +100,17 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
             alert={stats.pendingCheckouts > 0}
           />
           <StatCard
-            icon={Users}
-            label={t("dashboard.activeClients")}
-            value={stats.activeClients}
-            bgColor="bg-cyan-50"
-            iconColor="text-cyan-500"
-          />
-          <StatCard
-            icon={Baby}
-            label={t("dashboard.registeredBabies")}
-            value={stats.registeredBabies}
-            bgColor="bg-rose-50"
-            iconColor="text-rose-400"
+            icon={ClipboardCheck}
+            label={t("dashboard.pendingEvaluations")}
+            value={stats.pendingEvaluations}
+            bgColor="bg-violet-50"
+            iconColor="text-violet-500"
+            alert={stats.pendingEvaluations > 0}
           />
         </div>
       )}
 
-      {/* Stats Cards - Finanzas (solo OWNER/ADMIN) */}
+      {/* Finance - Today */}
       {canViewFinance && (
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
@@ -113,14 +120,49 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
             bgColor="bg-emerald-50"
             iconColor="text-emerald-500"
             isCurrency
+            locale={locale}
           />
+          <StatCard
+            icon={Receipt}
+            label={t("dashboard.todayExpenses")}
+            value={stats.todayExpenses ?? 0}
+            bgColor="bg-rose-50"
+            iconColor="text-rose-400"
+            isCurrency
+            locale={locale}
+          />
+          <StatCard
+            icon={todayNet >= 0 ? TrendingUp : TrendingDown}
+            label={t("dashboard.todayNetMargin")}
+            value={todayNet}
+            bgColor={todayNet >= 0 ? "bg-blue-50" : "bg-red-50"}
+            iconColor={todayNet >= 0 ? "text-blue-500" : "text-red-500"}
+            isCurrency
+            locale={locale}
+          />
+        </div>
+      )}
+
+      {/* Finance - Month */}
+      {canViewFinance && (
+        <div className="grid gap-4 md:grid-cols-3">
           <StatCard
             icon={TrendingUp}
             label={t("dashboard.monthIncome")}
             value={stats.monthIncome ?? 0}
-            bgColor="bg-blue-50"
-            iconColor="text-blue-500"
+            bgColor="bg-emerald-50"
+            iconColor="text-emerald-500"
             isCurrency
+            locale={locale}
+          />
+          <StatCard
+            icon={TrendingDown}
+            label={t("dashboard.monthExpenses")}
+            value={stats.monthExpenses ?? 0}
+            bgColor="bg-rose-50"
+            iconColor="text-rose-400"
+            isCurrency
+            locale={locale}
           />
           <StatCard
             icon={CreditCard}
@@ -129,55 +171,19 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
             bgColor="bg-orange-50"
             iconColor="text-orange-400"
             isCurrency
+            locale={locale}
             alert={(stats.pendingPayments ?? 0) > 0}
           />
         </div>
       )}
 
-      {/* Main content area */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Schedule Summary */}
-        {canViewOperations && (
-          <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100">
-                <Calendar className="h-5 w-5 text-teal-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-700">
-                {t("dashboard.todaySummary")}
-              </h2>
-            </div>
-            <div className="mt-6 space-y-3">
-              <SummaryItem
-                icon={CheckCircle}
-                label={t("dashboard.completedToday")}
-                value="--"
-                color="text-green-600"
-              />
-              <SummaryItem
-                icon={Clock}
-                label={t("dashboard.inProgress")}
-                value={String(stats.pendingCheckouts)}
-                color="text-amber-600"
-              />
-              <SummaryItem
-                icon={Calendar}
-                label={t("dashboard.scheduledRemaining")}
-                value={String(stats.todayAppointments)}
-                color="text-teal-600"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Stock Alerts */}
-        <StockAlertsWidget />
-      </div>
+      {/* Stock Alerts */}
+      <StockAlertsWidget />
     </div>
   );
 }
 
-// Componente de tarjeta de estadística
+// Stat card component
 interface StatCardProps {
   icon: typeof Calendar;
   label: string;
@@ -185,6 +191,7 @@ interface StatCardProps {
   bgColor: string;
   iconColor: string;
   isCurrency?: boolean;
+  locale?: string;
   alert?: boolean;
 }
 
@@ -195,15 +202,12 @@ function StatCard({
   bgColor,
   iconColor,
   isCurrency,
+  locale,
   alert,
 }: StatCardProps) {
   const formatValue = () => {
-    if (isCurrency) {
-      return new Intl.NumberFormat("es-BO", {
-        style: "currency",
-        currency: "BOB",
-        minimumFractionDigits: 0,
-      }).format(value);
+    if (isCurrency && locale) {
+      return formatCurrency(value, locale);
     }
     return value.toString();
   };
@@ -226,26 +230,6 @@ function StatCard({
       </div>
       <p className="mt-4 text-2xl font-bold text-gray-800">{formatValue()}</p>
       <p className="mt-1 text-sm font-medium text-gray-600">{label}</p>
-    </div>
-  );
-}
-
-// Componente de item de resumen
-interface SummaryItemProps {
-  icon: typeof CheckCircle;
-  label: string;
-  value: string;
-  color: string;
-}
-
-function SummaryItem({ icon: Icon, label, value, color }: SummaryItemProps) {
-  return (
-    <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-gray-50 to-white p-4">
-      <div className="flex items-center gap-3">
-        <Icon className={`h-5 w-5 ${color}`} />
-        <span className="text-sm text-gray-600">{label}</span>
-      </div>
-      <span className={`text-lg font-semibold ${color}`}>{value}</span>
     </div>
   );
 }

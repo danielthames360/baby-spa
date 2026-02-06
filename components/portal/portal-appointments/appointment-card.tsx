@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import {
   Calendar,
   CalendarClock,
@@ -46,6 +47,7 @@ export function AppointmentCard({
   onReschedule,
 }: AppointmentCardProps) {
   const t = useTranslations();
+  const locale = useLocale();
 
   // Check if appointment can be modified (more than 24h before)
   const dateOnly = appointment.date.split("T")[0];
@@ -156,7 +158,7 @@ export function AppointmentCard({
               <CreditCard className="h-4 w-4 text-orange-600" />
               <span className="text-sm font-medium text-orange-700">
                 {t("payment.advanceRequired")}:{" "}
-                <span className="font-bold">Bs. {advanceAmount}</span>
+                <span className="font-bold">{formatCurrency(advanceAmount || 0, locale)}</span>
               </span>
             </div>
             <button

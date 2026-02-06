@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useLocale } from "next-intl";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Gift, Lock, Check } from "lucide-react";
+import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 
 // ===========================================
 // COLOR THEMES - Saved options for easy switching
@@ -143,6 +145,8 @@ function PreviewCard({
   firstSessionDiscountUsed,
   className,
 }: PreviewCardProps) {
+  const locale = useLocale();
+  const currencySymbol = getCurrencySymbol(locale);
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
@@ -310,7 +314,7 @@ function PreviewCard({
                         title={
                           isFirstSession
                             ? hasFirstDiscount
-                              ? `Descuento 1ra sesión: ${firstSessionDiscount} Bs`
+                              ? `${firstSessionDiscount} ${currencySymbol}`
                               : "Primera sesión"
                             : reward?.displayName
                         }
@@ -398,6 +402,9 @@ export function BabyCardVisual({
   variant = "full",
   className,
 }: BabyCardVisualProps) {
+  const locale = useLocale();
+  const currencySymbol = getCurrencySymbol(locale);
+
   // Create a map of session number to reward
   const rewardMap = new Map(rewards.map((r) => [r.sessionNumber, r]));
 
@@ -436,7 +443,7 @@ export function BabyCardVisual({
           )}
           title={
             hasFirstDiscount
-              ? `Descuento 1ra sesión: ${firstSessionDiscount} Bs`
+              ? `${firstSessionDiscount} ${currencySymbol}`
               : "Primera sesión"
           }
         >
