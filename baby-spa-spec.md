@@ -1,8 +1,8 @@
 # 🏊 BABY SPA - ESPECIFICACIÓN TÉCNICA COMPLETA
 ## Sistema de Gestión para Spa de Bebés (Bolivia & Brasil)
 
-**Última actualización:** 5 de Febrero 2026
-**Versión:** 7.0 - Sistema de Pagos Unificado (Transaction)
+**Última actualización:** 7 de Febrero 2026
+**Versión:** 7.1 - Auditoría pre-producción (índices BD, reversals, seguridad)
 
 ---
 
@@ -326,7 +326,6 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   PENDING
-  PARTIAL
   PAID
 }
 
@@ -366,11 +365,13 @@ enum ItemType {
   OTHER        // Otros
 }
 
-enum NotificationType {
+enum StaffNotificationType {
   NEW_APPOINTMENT           // Cita agendada desde portal
   CANCELLED_APPOINTMENT     // Cita cancelada desde portal
   RESCHEDULED_APPOINTMENT   // Cita reagendada desde portal
   CASH_REGISTER_DIFFERENCE  // Arqueo cerrado con diferencia
+  REENGAGEMENT_ALERT        // Cliente inactivo requiere seguimiento
+  LEAD_DUE_DATE             // Lead que puede haber dado a luz
 }
 
 enum CashRegisterStatus {
@@ -444,6 +445,16 @@ enum ActivityType {
   BABY_CREATED
   PACKAGE_ASSIGNED
   CLIENT_UPDATED
+
+  // Evaluaciones (Terapeutas)
+  EVALUATION_SAVED
+
+  // Staff Payments y Gastos (Fase 7)
+  STAFF_PAYMENT_REGISTERED
+  EXPENSE_REGISTERED
+
+  // Anulaciones (Reversal Entry)
+  TRANSACTION_VOIDED
 }
 
 // ==========================================
@@ -999,10 +1010,32 @@ model Transaction {
 
   items           TransactionItem[]
 
+  // Reversal support (void/refund)
+  isReversal   Boolean      @default(false)
+  reversalOfId String?      @unique
+  reversalOf   Transaction? @relation("TransactionReversal", fields: [reversalOfId], references: [id])
+  reversedBy   Transaction? @relation("TransactionReversal")
+
+  // Void metadata
+  voidedAt     DateTime?
+  voidedById   String?
+  voidedBy     User?        @relation("TransactionsVoided", fields: [voidedById], references: [id])
+  voidReason   String?
+
+  // Cash register
+  cashRegisterId String?
+  cashRegister   CashRegister? @relation(fields: [cashRegisterId], references: [id])
+
   @@index([type])
   @@index([category])
   @@index([referenceType, referenceId])
   @@index([createdAt])
+  @@index([isReversal])
+  @@index([reversalOfId])
+  @@index([cashRegisterId])
+  @@index([type, voidedAt, isReversal, createdAt])
+  @@index([voidedAt])
+  @@index([category, voidedAt, isReversal, referenceType])
 }
 
 model TransactionItem {
@@ -1111,6 +1144,7 @@ model CashRegister {
 
   // Relaciones
   expenses          CashRegisterExpense[]
+  transactions      Transaction[]
 
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -1191,6 +1225,9 @@ model StaffPayment {
   @@index([paidAt])
   @@index([type])
   @@index([periodStart, periodEnd])
+  @@index([deletedAt])
+  @@index([includedInSalaryId])
+  @@index([staffId, deletedAt, type])
 }
 ```
 

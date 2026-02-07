@@ -514,7 +514,7 @@ export function ScheduleDialog({
         return;
       }
     } catch (error) {
-      console.log("Share cancelled or failed, using download fallback");
+      // Share API not available or user cancelled, fall through to download
     }
 
     const link = document.createElement("a");
