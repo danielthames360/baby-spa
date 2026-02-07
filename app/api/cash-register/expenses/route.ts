@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-utils";
 import { cashRegisterService } from "@/lib/services/cash-register-service";
 import { CashExpenseCategory } from "@prisma/client";
 import { z } from "zod";
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (!cashRegister) {
       return NextResponse.json(
-        { error: "No tienes una caja abierta" },
+        { error: "CASH_REGISTER_NOT_OPEN" },
         { status: 400 }
       );
     }
@@ -59,13 +60,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(expense, { status: 201 });
   } catch (error) {
-    console.error("Error adding cash register expense:", error);
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error, "adding cash register expense");
   }
 }

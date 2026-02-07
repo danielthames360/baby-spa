@@ -207,6 +207,9 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
 
       // Cash register errors
       CASH_REGISTER_REQUIRED: 400,
+      CASH_REGISTER_ALREADY_OPEN: 400,
+      CASH_REGISTER_NOT_OPEN: 400,
+      EXPENSE_DESCRIPTION_REQUIRED: 400,
     };
 
     const statusCode = knownErrors[error.message];

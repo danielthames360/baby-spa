@@ -121,8 +121,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only admin can deactivate
-    if (session.user.role !== "ADMIN") {
+    // Only OWNER and ADMIN can deactivate
+    if (!["OWNER", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

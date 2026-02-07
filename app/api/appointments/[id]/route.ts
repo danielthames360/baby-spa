@@ -232,8 +232,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN can delete
-    if (session.user.role !== "ADMIN") {
+    // Only OWNER and ADMIN can delete
+    if (!["OWNER", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

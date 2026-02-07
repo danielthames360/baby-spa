@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type"); // "today", "pending-evaluations"
 
     if (type === "pending-evaluations") {
-      // Only ADMIN can see pending evaluations
-      if (session.user.role !== "ADMIN") {
+      // Only OWNER and ADMIN can see pending evaluations
+      if (!["OWNER", "ADMIN"].includes(session.user.role)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 

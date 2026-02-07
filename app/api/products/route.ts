@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-utils";
 import { inventoryService } from "@/lib/services/inventory-service";
 import { productSchema } from "@/lib/validations/inventory";
 
@@ -35,13 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error fetching products:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    return NextResponse.json(
-      { error: "Internal server error", message: errorMessage, stack: process.env.NODE_ENV === "development" ? errorStack : undefined },
-      { status: 500 }
-    );
+    return handleApiError(error, "fetching products");
   }
 }
 
@@ -75,12 +70,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ product }, { status: 201 });
   } catch (error) {
-    console.error("Error creating product:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    return NextResponse.json(
-      { error: "Internal server error", message: errorMessage, stack: process.env.NODE_ENV === "development" ? errorStack : undefined },
-      { status: 500 }
-    );
+    return handleApiError(error, "creating product");
   }
 }

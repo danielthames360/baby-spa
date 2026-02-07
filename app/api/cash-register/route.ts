@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-utils";
 import { cashRegisterService } from "@/lib/services/cash-register-service";
 import { CashRegisterStatus } from "@prisma/client";
 import { z } from "zod";
@@ -57,11 +58,7 @@ export async function GET(request: NextRequest) {
       pendingCount,
     });
   } catch (error) {
-    console.error("Error listing cash registers:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error, "listing cash registers");
   }
 }
 
@@ -98,13 +95,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(cashRegister, { status: 201 });
   } catch (error) {
-    console.error("Error opening cash register:", error);
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error, "opening cash register");
   }
 }

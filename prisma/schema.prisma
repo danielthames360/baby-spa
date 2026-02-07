@@ -435,6 +435,8 @@ model Parent {
   @@index([lastSessionAt]) // Reengagement of inactive clients
   @@index([noShowCount, requiresPrepayment]) // Auto-activate prepayment
   @@index([status]) // Filter by LEAD/ACTIVE/INACTIVE
+  @@index([status, createdAt])
+  @@index([convertedAt])
   @@map("parents")
 }
 
@@ -496,6 +498,7 @@ model Baby {
   // Cron job indexes (Fase 11)
   @@index([birthDate, isActive]) // Mesversaries and deactivation of old babies
   @@index([lastMesversaryNotifiedMonth]) // Mesversary tracking
+  @@index([isActive, createdAt])
   @@map("babies")
 }
 
@@ -506,9 +509,9 @@ model Baby {
 model BabyParent {
   id           String  @id @default(cuid())
   babyId       String
-  baby         Baby    @relation(fields: [babyId], references: [id], onDelete: Cascade)
+  baby         Baby    @relation(fields: [babyId], references: [id], onDelete: Restrict)
   parentId     String
-  parent       Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parent       Parent  @relation(fields: [parentId], references: [id], onDelete: Restrict)
   relationship String  @default("MOTHER")
   isPrimary    Boolean @default(false)
 
@@ -696,6 +699,10 @@ model PackagePurchase {
   // Performance indexes
   @@index([babyId, isActive])
   @@index([parentId, isActive])
+  @@index([packageId])
+  @@index([isActive, paymentPlan])
+  @@index([babyId, remainingSessions])
+  @@index([parentId, remainingSessions])
   @@map("package_purchases")
 }
 
@@ -769,6 +776,8 @@ model Appointment {
   @@index([date, status, reminder24hSent]) // 24h email reminders
   @@index([date, status, reminderDaySent]) // Same-day WhatsApp reminders
   @@index([date, status, paymentReminderSent]) // Payment reminders
+  @@index([packagePurchaseId])
+  @@index([status, isEvaluated])
   @@map("appointments")
 }
 
@@ -942,6 +951,8 @@ model InventoryMovement {
   createdAt DateTime @default(now())
 
   @@index([productId])
+  @@index([createdAt])
+  @@index([productId, createdAt])
   @@map("inventory_movements")
 }
 
@@ -966,6 +977,7 @@ model SessionProduct {
   createdAt DateTime @default(now())
 
   @@index([productId])
+  @@index([sessionId])
   @@map("session_products")
 }
 
@@ -1035,6 +1047,9 @@ model StaffPayment {
   @@index([periodStart, periodEnd])
   @@index([type])
   @@index([deletedAt])
+  @@index([paidAt])
+  @@index([includedInSalaryId])
+  @@index([staffId, deletedAt, type])
   @@map("staff_payments")
 }
 
@@ -1445,6 +1460,8 @@ model BabyCardPurchase {
 
   @@index([babyId, status])
   @@index([babyCardId])
+  @@index([purchaseDate])
+  @@index([createdById])
   @@map("baby_card_purchases")
 }
 
@@ -1487,6 +1504,7 @@ model BabyCardRewardUsage {
 
   @@unique([babyCardPurchaseId, babyCardRewardId]) // Un premio solo se usa una vez
   @@index([usedById])
+  @@index([usedAt])
   @@map("baby_card_reward_usages")
 }
 
@@ -1548,6 +1566,9 @@ model Transaction {
   @@index([isReversal])
   @@index([reversalOfId])
   @@index([cashRegisterId])
+  @@index([type, voidedAt, isReversal, createdAt])
+  @@index([voidedAt])
+  @@index([category, voidedAt, isReversal, referenceType])
   @@map("transactions")
 }
 

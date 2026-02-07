@@ -130,7 +130,7 @@ export const cashRegisterService = {
     // Check if user already has an open cash register today
     const existing = await this.getCurrentCashRegister(userId);
     if (existing) {
-      throw new Error("Ya tienes una caja abierta");
+      throw new Error("CASH_REGISTER_ALREADY_OPEN");
     }
 
     // Get user info for activity log
@@ -358,12 +358,12 @@ export const cashRegisterService = {
     }
 
     if (cashRegister.status !== CashRegisterStatus.OPEN) {
-      throw new Error("No puedes agregar gastos a una caja cerrada");
+      throw new Error("CASH_REGISTER_NOT_OPEN");
     }
 
     // Validate description for OTHER category
     if (category === CashExpenseCategory.OTHER && !description.trim()) {
-      throw new Error("La descripción es obligatoria para categoría 'Otro'");
+      throw new Error("EXPENSE_DESCRIPTION_REQUIRED");
     }
 
     const user = await prisma.user.findUnique({

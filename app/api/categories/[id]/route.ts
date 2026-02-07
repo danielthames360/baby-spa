@@ -44,8 +44,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN can update categories
-    if (session.user.role !== "ADMIN") {
+    // Only OWNER and ADMIN can update categories
+    if (!["OWNER", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -95,8 +95,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN can toggle category status
-    if (session.user.role !== "ADMIN") {
+    // Only OWNER and ADMIN can toggle category status
+    if (!["OWNER", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -139,8 +139,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only ADMIN can delete categories
-    if (session.user.role !== "ADMIN") {
+    // Only OWNER and ADMIN can delete categories
+    if (!["OWNER", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
