@@ -27,6 +27,169 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Extracted sub-components defined OUTSIDE the main component to prevent recreation on every render
+
+function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 border-b border-teal-100 pb-2">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100">
+        <Icon className="h-4 w-4 text-teal-600" />
+      </div>
+      <h3 className="font-semibold text-gray-700">{children}</h3>
+    </div>
+  );
+}
+
+// Visual tri-state toggle for boolean values
+function TriStateToggle({
+  value,
+  onChange,
+  label,
+  yesLabel,
+  noLabel,
+}: {
+  value: boolean | undefined;
+  onChange: (val: boolean | undefined) => void;
+  label: string;
+  yesLabel: string;
+  noLabel: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-gray-50/80 p-3">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={() => onChange(value === true ? undefined : true)}
+          className={cn(
+            "flex h-8 min-w-[40px] items-center justify-center rounded-md px-2 text-xs font-semibold transition-all",
+            value === true
+              ? "bg-emerald-500 text-white shadow-md"
+              : "text-gray-400 hover:bg-emerald-50 hover:text-emerald-500"
+          )}
+        >
+          {yesLabel}
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-md transition-all",
+            value === undefined
+              ? "bg-gray-200 text-gray-600 shadow-md"
+              : "text-gray-400 hover:bg-gray-100"
+          )}
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(value === false ? undefined : false)}
+          className={cn(
+            "flex h-8 min-w-[40px] items-center justify-center rounded-md px-2 text-xs font-semibold transition-all",
+            value === false
+              ? "bg-rose-500 text-white shadow-md"
+              : "text-gray-400 hover:bg-rose-50 hover:text-rose-500"
+          )}
+        >
+          {noLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Segmented control for muscle tone
+function MuscleToneSelector({
+  value,
+  onChange,
+  label,
+  options,
+}: {
+  value: "LOW" | "NORMAL" | "TENSE" | undefined;
+  onChange: (val: "LOW" | "NORMAL" | "TENSE" | undefined) => void;
+  label: string;
+  options: Array<{ value: string; label: string; color: string }>;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-gray-50/80 p-3">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
+        {options.map(({ value: optValue, label: optLabel, color }) => (
+          <button
+            key={optValue}
+            type="button"
+            onClick={() =>
+              onChange(value === optValue ? undefined : (optValue as "LOW" | "NORMAL" | "TENSE"))
+            }
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+              value === optValue
+                ? color === "blue"
+                  ? "bg-blue-500 text-white shadow-md"
+                  : color === "emerald"
+                  ? "bg-emerald-500 text-white shadow-md"
+                  : "bg-amber-500 text-white shadow-md"
+                : "text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            {optLabel}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Mood selector with icons
+function MoodSelector({
+  value,
+  onChange,
+  calmLabel,
+  irritableLabel,
+}: {
+  value: "CALM" | "IRRITABLE" | undefined;
+  onChange: (val: "CALM" | "IRRITABLE" | undefined) => void;
+  calmLabel: string;
+  irritableLabel: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-gray-50/80 p-3">
+      <span className="text-sm font-medium text-gray-700">
+        {/* Label passed as child or use mood section label */}
+      </span>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(value === "CALM" ? undefined : "CALM")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 transition-all",
+            value === "CALM"
+              ? "bg-emerald-500 text-white shadow-md"
+              : "bg-white text-gray-500 shadow-sm hover:bg-emerald-50 hover:text-emerald-600"
+          )}
+        >
+          <Smile className="h-4 w-4" />
+          <span className="text-sm font-medium">{calmLabel}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(value === "IRRITABLE" ? undefined : "IRRITABLE")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-4 py-2 transition-all",
+            value === "IRRITABLE"
+              ? "bg-amber-500 text-white shadow-md"
+              : "bg-white text-gray-500 shadow-sm hover:bg-amber-50 hover:text-amber-600"
+          )}
+        >
+          <Frown className="h-4 w-4" />
+          <span className="text-sm font-medium">{irritableLabel}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface EvaluationFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -143,153 +306,16 @@ export function EvaluationForm({
     }
   };
 
-  const SectionTitle = ({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) => (
-    <div className="flex items-center gap-2 border-b border-teal-100 pb-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100">
-        <Icon className="h-4 w-4 text-teal-600" />
-      </div>
-      <h3 className="font-semibold text-gray-700">{children}</h3>
-    </div>
-  );
+  // Translated labels for extracted sub-components
+  const yesLabel = t("common.yes");
+  const noLabel = t("common.no");
 
-  // Visual tri-state toggle for boolean values
-  const TriStateToggle = ({
-    value,
-    onChange,
-    label,
-  }: {
-    value: boolean | undefined;
-    onChange: (val: boolean | undefined) => void;
-    label: string;
-  }) => (
-    <div className="flex items-center justify-between rounded-xl bg-gray-50/80 p-3">
-      <span className="text-sm font-medium text-gray-700">{label}</span>
-      <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
-        <button
-          type="button"
-          onClick={() => onChange(value === true ? undefined : true)}
-          className={cn(
-            "flex h-8 min-w-[40px] items-center justify-center rounded-md px-2 text-xs font-semibold transition-all",
-            value === true
-              ? "bg-emerald-500 text-white shadow-md"
-              : "text-gray-400 hover:bg-emerald-50 hover:text-emerald-500"
-          )}
-        >
-          {t("common.yes")}
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(undefined)}
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-md transition-all",
-            value === undefined
-              ? "bg-gray-200 text-gray-600 shadow-md"
-              : "text-gray-400 hover:bg-gray-100"
-          )}
-        >
-          <Minus className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(value === false ? undefined : false)}
-          className={cn(
-            "flex h-8 min-w-[40px] items-center justify-center rounded-md px-2 text-xs font-semibold transition-all",
-            value === false
-              ? "bg-rose-500 text-white shadow-md"
-              : "text-gray-400 hover:bg-rose-50 hover:text-rose-500"
-          )}
-        >
-          {t("common.no")}
-        </button>
-      </div>
-    </div>
-  );
-
-  // Segmented control for muscle tone
-  const MuscleToneSelector = () => (
-    <div className="flex items-center justify-between rounded-xl bg-gray-50/80 p-3">
-      <span className="text-sm font-medium text-gray-700">
-        {t("session.evaluation.muscleTone")}
-      </span>
-      <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
-        {[
-          { value: "LOW", label: t("session.muscleTone.low"), color: "blue" },
-          { value: "NORMAL", label: t("session.muscleTone.normal"), color: "emerald" },
-          { value: "TENSE", label: t("session.muscleTone.tense"), color: "amber" },
-        ].map(({ value, label, color }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() =>
-              setFormData({
-                ...formData,
-                muscleTone: formData.muscleTone === value ? undefined : (value as "LOW" | "NORMAL" | "TENSE"),
-              })
-            }
-            className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-medium transition-all",
-              formData.muscleTone === value
-                ? color === "blue"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : color === "emerald"
-                  ? "bg-emerald-500 text-white shadow-md"
-                  : "bg-amber-500 text-white shadow-md"
-                : "text-gray-500 hover:bg-gray-100"
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Mood selector with icons
-  const MoodSelector = () => (
-    <div className="flex items-center justify-between rounded-xl bg-gray-50/80 p-3">
-      <span className="text-sm font-medium text-gray-700">
-        {t("session.evaluation.mood")}
-      </span>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() =>
-            setFormData({
-              ...formData,
-              mood: formData.mood === "CALM" ? undefined : "CALM",
-            })
-          }
-          className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 transition-all",
-            formData.mood === "CALM"
-              ? "bg-emerald-500 text-white shadow-md"
-              : "bg-white text-gray-500 shadow-sm hover:bg-emerald-50 hover:text-emerald-600"
-          )}
-        >
-          <Smile className="h-4 w-4" />
-          <span className="text-sm font-medium">{t("session.mood.calm")}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setFormData({
-              ...formData,
-              mood: formData.mood === "IRRITABLE" ? undefined : "IRRITABLE",
-            })
-          }
-          className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 transition-all",
-            formData.mood === "IRRITABLE"
-              ? "bg-amber-500 text-white shadow-md"
-              : "bg-white text-gray-500 shadow-sm hover:bg-amber-50 hover:text-amber-600"
-          )}
-        >
-          <Frown className="h-4 w-4" />
-          <span className="text-sm font-medium">{t("session.mood.irritable")}</span>
-        </button>
-      </div>
-    </div>
-  );
+  // Muscle tone options (stable reference via useMemo to prevent MuscleToneSelector re-renders)
+  const muscleToneOptions = [
+    { value: "LOW", label: t("session.muscleTone.low"), color: "blue" },
+    { value: "NORMAL", label: t("session.muscleTone.normal"), color: "emerald" },
+    { value: "TENSE", label: t("session.muscleTone.tense"), color: "amber" },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -333,16 +359,22 @@ export function EvaluationForm({
                 value={formData.visualTracking}
                 onChange={(v) => setFormData({ ...formData, visualTracking: v })}
                 label={t("session.evaluation.visualTracking")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
               <TriStateToggle
                 value={formData.eyeContact}
                 onChange={(v) => setFormData({ ...formData, eyeContact: v })}
                 label={t("session.evaluation.eyeContact")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
               <TriStateToggle
                 value={formData.auditoryResponse}
                 onChange={(v) => setFormData({ ...formData, auditoryResponse: v })}
                 label={t("session.evaluation.auditoryResponse")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
             </div>
           </div>
@@ -353,16 +385,25 @@ export function EvaluationForm({
               {t("session.form.muscleDevelopment")}
             </SectionTitle>
             <div className="space-y-2">
-              <MuscleToneSelector />
+              <MuscleToneSelector
+                value={formData.muscleTone}
+                onChange={(v) => setFormData({ ...formData, muscleTone: v })}
+                label={t("session.evaluation.muscleTone")}
+                options={muscleToneOptions}
+              />
               <TriStateToggle
                 value={formData.cervicalControl}
                 onChange={(v) => setFormData({ ...formData, cervicalControl: v })}
                 label={t("session.evaluation.cervicalControl")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
               <TriStateToggle
                 value={formData.headUp}
                 onChange={(v) => setFormData({ ...formData, headUp: v })}
                 label={t("session.evaluation.headUp")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
             </div>
           </div>
@@ -377,16 +418,22 @@ export function EvaluationForm({
                 value={formData.sits}
                 onChange={(v) => setFormData({ ...formData, sits: v })}
                 label={t("session.milestones.sits")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
               <TriStateToggle
                 value={formData.crawls}
                 onChange={(v) => setFormData({ ...formData, crawls: v })}
                 label={t("session.milestones.crawls")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
               <TriStateToggle
                 value={formData.walks}
                 onChange={(v) => setFormData({ ...formData, walks: v })}
                 label={t("session.milestones.walks")}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
               />
             </div>
           </div>
@@ -396,7 +443,12 @@ export function EvaluationForm({
             <SectionTitle icon={Heart}>
               {t("session.form.moodSection")}
             </SectionTitle>
-            <MoodSelector />
+            <MoodSelector
+              value={formData.mood}
+              onChange={(v) => setFormData({ ...formData, mood: v })}
+              calmLabel={t("session.mood.calm")}
+              irritableLabel={t("session.mood.irritable")}
+            />
           </div>
 
           {/* Activities */}

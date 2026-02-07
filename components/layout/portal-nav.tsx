@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -30,10 +31,13 @@ export function PortalNav() {
   const { data: session, status } = useSession();
   const t = useTranslations();
 
-  const isActive = (href: string) => {
-    const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");
-    return pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`);
-  };
+  const isActive = useCallback(
+    (href: string) => {
+      const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");
+      return pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`);
+    },
+    [pathname]
+  );
 
   // Don't show nav while loading or if no session
   if (status === "loading" || !session) {

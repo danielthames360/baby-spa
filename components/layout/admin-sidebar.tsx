@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -93,21 +93,36 @@ export function AdminSidebar({
     return () => clearInterval(interval);
   }, []);
 
-  const isActive = (href: string) => {
-    // Remove locale prefix for comparison
-    const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");
-    return (
-      pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`)
-    );
-  };
-
-  // Filtrar items según permisos del rol
-  const filteredMainNav = MAIN_NAV_ITEMS.filter((item) =>
-    item.requiredPermissions.some((p: Permission) => hasPermission(userRole, p))
+  const isActive = useCallback(
+    (href: string) => {
+      // Remove locale prefix for comparison
+      const pathWithoutLocale = pathname.replace(/^\/(es|pt-BR)/, "");
+      return (
+        pathWithoutLocale === href || pathWithoutLocale.startsWith(`${href}/`)
+      );
+    },
+    [pathname]
   );
 
-  const filteredSecondaryNav = SECONDARY_NAV_ITEMS.filter((item) =>
-    item.requiredPermissions.some((p: Permission) => hasPermission(userRole, p))
+  // Filter items based on role permissions
+  const filteredMainNav = useMemo(
+    () =>
+      MAIN_NAV_ITEMS.filter((item) =>
+        item.requiredPermissions.some((p: Permission) =>
+          hasPermission(userRole, p)
+        )
+      ),
+    [userRole]
+  );
+
+  const filteredSecondaryNav = useMemo(
+    () =>
+      SECONDARY_NAV_ITEMS.filter((item) =>
+        item.requiredPermissions.some((p: Permission) =>
+          hasPermission(userRole, p)
+        )
+      ),
+    [userRole]
   );
 
   return (

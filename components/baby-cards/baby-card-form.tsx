@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
@@ -274,8 +274,11 @@ export function BabyCardForm({ babyCard, readOnly = false }: BabyCardFormProps) 
     }).format(price);
   };
 
-  // Filter packages for individual sessions (single session packages)
-  const individualPackages = packages.filter((p) => p.sessionCount === 1);
+  // Filter packages for individual sessions (memoized to prevent re-renders)
+  const individualPackages = useMemo(() =>
+    packages.filter((p) => p.sessionCount === 1),
+    [packages]
+  );
 
   if (isFetchingData) {
     return (

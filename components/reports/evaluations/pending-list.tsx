@@ -32,6 +32,21 @@ interface PendingListProps {
   locale: string;
 }
 
+// Helper functions hoisted outside component to prevent re-creation on every render
+function formatEvaluationDate(dateStr: string, locale: string) {
+  return new Date(dateStr).toLocaleDateString(
+    locale === "pt-BR" ? "pt-BR" : "es-BO",
+    { weekday: "short", day: "2-digit", month: "short" }
+  );
+}
+
+function getDaysSince(dateStr: string | null) {
+  if (!dateStr) return 0;
+  const date = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export function PendingList({ items, locale }: PendingListProps) {
   const t = useTranslations("reports.evaluations");
 
@@ -46,20 +61,6 @@ export function PendingList({ items, locale }: PendingListProps) {
       </div>
     );
   }
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(
-      locale === "pt-BR" ? "pt-BR" : "es-BO",
-      { weekday: "short", day: "2-digit", month: "short" }
-    );
-  };
-
-  const getDaysSince = (dateStr: string | null) => {
-    if (!dateStr) return 0;
-    const date = new Date(dateStr);
-    const now = new Date();
-    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  };
 
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 shadow-lg backdrop-blur-md">
@@ -95,7 +96,7 @@ export function PendingList({ items, locale }: PendingListProps) {
               >
                 <TableCell className="text-gray-600">
                   <div>
-                    <p>{formatDate(item.date)}</p>
+                    <p>{formatEvaluationDate(item.date, locale)}</p>
                     <p className="text-xs text-gray-400">{item.startTime}</p>
                   </div>
                 </TableCell>

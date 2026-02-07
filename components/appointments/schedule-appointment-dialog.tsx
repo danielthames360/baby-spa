@@ -269,12 +269,12 @@ export function ScheduleAppointmentDialog({
   }, [open]);
 
   // Handle package selection
-  const handlePackageSelect = (packageId: string | null, purchaseId: string | null) => {
+  const handlePackageSelect = useCallback((packageId: string | null, purchaseId: string | null) => {
     setSelectedPackageId(packageId);
     setSelectedPurchaseId(purchaseId);
     // Reset advance payment confirm when package changes
     setShowAdvancePaymentConfirm(false);
-  };
+  }, []);
 
   // Fetch availability when date is selected
   const fetchAvailability = useCallback(async (date: Date) => {
@@ -427,14 +427,12 @@ export function ScheduleAppointmentDialog({
     await createAppointment(true, true);
   };
 
-  // Generate calendar days
-  const generateCalendarDays = () => {
+  // Memoize calendar days computation to avoid recalculating on every render
+  const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     const days: (Date | null)[] = [];
 
@@ -450,9 +448,7 @@ export function ScheduleAppointmentDialog({
     }
 
     return days;
-  };
-
-  const calendarDays = generateCalendarDays();
+  }, [currentMonth]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

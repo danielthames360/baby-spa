@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import {
@@ -314,8 +314,8 @@ export function StartSessionDialog({
     setSelectedPurchaseId(purchaseId);
   };
 
-  // Transform packages to PackageSelector format
-  const getBabyPackagesForSelector = (): PackagePurchaseData[] => {
+  // Transform packages to PackageSelector format (memoized to prevent re-renders)
+  const babyPackagesForSelector = useMemo((): PackagePurchaseData[] => {
     return packages
       .filter(p => p.remainingSessions > 0)
       .map((pkg) => ({
@@ -330,7 +330,7 @@ export function StartSessionDialog({
           duration: pkg.package.duration,
         },
       }));
-  };
+  }, [packages]);
 
   const handleSubmit = async () => {
     if (!selectedTherapist) {
@@ -462,7 +462,7 @@ export function StartSessionDialog({
               <PackageSelector
                 babyId={clientId}
                 packages={catalogPackages}
-                babyPackages={getBabyPackagesForSelector()}
+                babyPackages={babyPackagesForSelector}
                 selectedPackageId={selectedPackageId}
                 selectedPurchaseId={selectedPurchaseId}
                 onSelectPackage={handlePackageSelect}

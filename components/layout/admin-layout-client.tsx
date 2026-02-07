@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Session } from "next-auth";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { AdminHeader } from "@/components/layout/admin-header";
@@ -19,6 +19,14 @@ export function AdminLayoutClient({ children, session }: AdminLayoutClientProps)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
+  }, []);
+
+  const handleMenuClick = useCallback(() => {
+    setMobileMenuOpen(true);
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
       {/* Decorative Background Blurs */}
@@ -36,7 +44,7 @@ export function AdminLayoutClient({ children, session }: AdminLayoutClientProps)
       <div className="relative z-10 hidden lg:flex">
         <AdminSidebar
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onToggle={handleToggleSidebar}
           userRole={session.user.role as UserRole}
         />
       </div>
@@ -51,7 +59,7 @@ export function AdminLayoutClient({ children, session }: AdminLayoutClientProps)
 
       {/* Main Content */}
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        <AdminHeader onMenuClick={() => setMobileMenuOpen(true)} />
+        <AdminHeader onMenuClick={handleMenuClick} />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <ForcePasswordChange>

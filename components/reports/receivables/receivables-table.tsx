@@ -35,6 +35,14 @@ interface ReceivablesTableProps {
   locale: string;
 }
 
+// Format date helper hoisted outside component to prevent re-creation on every render
+function formatReceivableDate(dateStr: string, locale: string) {
+  return new Date(dateStr).toLocaleDateString(
+    locale === "pt-BR" ? "pt-BR" : "es-BO",
+    { day: "2-digit", month: "short", year: "numeric" }
+  );
+}
+
 export function ReceivablesTable({ items, locale }: ReceivablesTableProps) {
   const t = useTranslations("reports.receivables");
 
@@ -45,13 +53,6 @@ export function ReceivablesTable({ items, locale }: ReceivablesTableProps) {
       </div>
     );
   }
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(
-      locale === "pt-BR" ? "pt-BR" : "es-BO",
-      { day: "2-digit", month: "short", year: "numeric" }
-    );
-  };
 
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 shadow-lg backdrop-blur-md">
@@ -114,7 +115,7 @@ export function ReceivablesTable({ items, locale }: ReceivablesTableProps) {
                 </span>
               </TableCell>
               <TableCell className="text-sm text-gray-500">
-                {formatDate(item.createdAt)}
+                {formatReceivableDate(item.createdAt, locale)}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1">

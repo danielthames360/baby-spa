@@ -123,64 +123,83 @@ export function WeekView({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Check if a date is in closedDates (using local date comparison)
-  const isDateClosed = (date: Date): { closed: boolean; reason?: string } => {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    const closed = closedDates.find((cd) => {
-      // Extract date portion from ISO string directly to avoid timezone issues
-      // API returns dates as strings (JSON serialization), cast to handle both
-      const cdDateValue = cd.date as unknown as string | Date;
-      const cdDateStr = typeof cdDateValue === "string"
-        ? cdDateValue.split("T")[0]
-        : `${cdDateValue.getFullYear()}-${String(cdDateValue.getMonth() + 1).padStart(2, "0")}-${String(cdDateValue.getDate()).padStart(2, "0")}`;
-      return cdDateStr === dateStr;
-    });
-    if (closed) {
-      return { closed: true, reason: closed.reason };
-    }
-    // Sunday is always closed
-    if (date.getDay() === 0) {
-      return { closed: true, reason: "Domingo" };
-    }
-    return { closed: false };
-  };
+  // Memoize all per-day data in a single pass to avoid recalculating on every render
+  const weekData = useMemo(() => {
+    // Helper to extract date string from various formats
+    const toDateStr = (value: unknown): string => {
+      if (typeof value === "string") return value.split("T")[0];
+      if (value instanceof Date) {
+        return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+      }
+      return "";
+    };
 
-  // Get appointments for a specific date (using local date comparison)
-  const getAppointmentsForDate = (date: Date): Appointment[] => {
-    // Use local date string to avoid timezone issues
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return appointments.filter((apt) => {
-      // Extract date portion from ISO string directly (e.g., "2026-01-23" from "2026-01-23T00:00:00.000Z")
-      // API returns dates as strings (JSON serialization), cast to handle both
-      const aptDateValue = apt.date as unknown as string | Date;
-      const aptDateStr = typeof aptDateValue === "string"
-        ? aptDateValue.split("T")[0]
-        : `${aptDateValue.getFullYear()}-${String(aptDateValue.getMonth() + 1).padStart(2, "0")}-${String(aptDateValue.getDate()).padStart(2, "0")}`;
-      return aptDateStr === dateStr;
-    });
-  };
+    return weekDays.map((date) => {
+      const dayOfWeek = date.getDay();
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-  // Get time slots for a specific day
-  const getTimeSlotsForDay = (dayOfWeek: number) => {
-    const slots = generateTimeSlots(dayOfWeek);
-    return slots.map((time) => ({
-      time,
-      available: MAX_APPOINTMENTS_PER_SLOT,
-      total: MAX_APPOINTMENTS_PER_SLOT,
-    }));
-  };
+      // Check closed status
+      let closed = false;
+      let reason: string | undefined;
+      const closedEntry = closedDates.find((cd) => toDateStr(cd.date) === dateStr);
+      if (closedEntry) {
+        closed = true;
+        reason = closedEntry.reason;
+      } else if (dayOfWeek === 0) {
+        closed = true;
+        reason = "Domingo";
+      }
 
-  // Get events for a specific date (using local date comparison)
-  const getEventsForDate = (date: Date): Event[] => {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    return events.filter((event) => {
-      const eventDateValue = event.date;
-      const eventDateStr = typeof eventDateValue === "string"
-        ? eventDateValue.split("T")[0]
-        : `${eventDateValue.getFullYear()}-${String(eventDateValue.getMonth() + 1).padStart(2, "0")}-${String(eventDateValue.getDate()).padStart(2, "0")}`;
-      return eventDateStr === dateStr;
+      // Filter appointments for this date
+      const dayAppointments = appointments.filter(
+        (apt) => toDateStr(apt.date) === dateStr
+      );
+
+      // Filter events for this date
+      const dayEvents = events.filter(
+        (event) => toDateStr(event.date) === dateStr
+      );
+
+      // Generate time slots
+      const slots = generateTimeSlots(dayOfWeek);
+      const timeSlots = slots.map((time) => ({
+        time,
+        available: MAX_APPOINTMENTS_PER_SLOT,
+        total: MAX_APPOINTMENTS_PER_SLOT,
+      }));
+
+      // Transform appointments for DayColumn
+      const transformedAppointments = dayAppointments.map((apt) => {
+        const isParentAppointment = !apt.babyId && apt.parentId && apt.parent;
+        return {
+          id: apt.id,
+          babyName: isParentAppointment
+            ? apt.parent?.name || "Unknown"
+            : apt.baby?.name || "Unknown",
+          clientType: isParentAppointment ? "PARENT" as const : "BABY" as const,
+          parentName: !isParentAppointment
+            ? apt.baby?.parents?.find((p) => p.isPrimary)?.parent.name
+            : undefined,
+          packageName: apt.packagePurchase?.package.name || apt.selectedPackage?.name,
+          startTime: formatTime(apt.startTime),
+          endTime: formatTime(apt.endTime),
+          status: apt.status,
+        };
+      });
+
+      const isToday = date.toDateString() === today.toDateString();
+
+      return {
+        date,
+        closed,
+        reason,
+        timeSlots,
+        appointments: transformedAppointments,
+        events: dayEvents,
+        isToday,
+      };
     });
-  };
+  }, [weekDays, appointments, events, closedDates, today]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-lg shadow-teal-500/10 backdrop-blur-md">
@@ -205,54 +224,22 @@ export function WeekView({
 
         {/* Days columns */}
         <div className="flex flex-1 overflow-x-auto">
-          {weekDays.map((date) => {
-            const dayOfWeek = date.getDay();
-            const { closed, reason } = isDateClosed(date);
-            const dayAppointments = getAppointmentsForDate(date);
-            const dayEvents = getEventsForDate(date);
-            const timeSlots = getTimeSlotsForDay(dayOfWeek);
-            const isToday = date.toDateString() === today.toDateString();
-
-            // Transform appointments for DayColumn
-            const transformedAppointments = dayAppointments.map((apt) => {
-              // Determine if this is a parent or baby appointment
-              const isParentAppointment = !apt.babyId && apt.parentId && apt.parent;
-
-              return {
-                id: apt.id,
-                // For parent appointments, use parent name; for baby appointments, use baby name
-                babyName: isParentAppointment
-                  ? apt.parent?.name || "Unknown"
-                  : apt.baby?.name || "Unknown",
-                clientType: isParentAppointment ? "PARENT" as const : "BABY" as const,
-                // Parent name is only relevant for baby appointments (shows the accompanying parent)
-                parentName: !isParentAppointment
-                  ? apt.baby?.parents?.find((p) => p.isPrimary)?.parent.name
-                  : undefined,
-                packageName: apt.packagePurchase?.package.name || apt.selectedPackage?.name,
-                startTime: formatTime(apt.startTime),
-                endTime: formatTime(apt.endTime),
-                status: apt.status,
-              };
-            });
-
-            return (
-              <DayColumn
-                key={date.toISOString()}
-                date={date}
-                timeSlots={timeSlots}
-                appointments={transformedAppointments}
-                events={dayEvents}
-                isClosed={closed}
-                closedReason={reason}
-                isToday={isToday}
-                onSlotClick={(time) => onSlotClick?.(date, time)}
-                onAppointmentClick={onAppointmentClick}
-                onEventClick={onEventClick}
-                onDayClick={() => onDayClick?.(date)}
-              />
-            );
-          })}
+          {weekData.map((dayData) => (
+            <DayColumn
+              key={dayData.date.toISOString()}
+              date={dayData.date}
+              timeSlots={dayData.timeSlots}
+              appointments={dayData.appointments}
+              events={dayData.events}
+              isClosed={dayData.closed}
+              closedReason={dayData.reason}
+              isToday={dayData.isToday}
+              onSlotClick={(time) => onSlotClick?.(dayData.date, time)}
+              onAppointmentClick={onAppointmentClick}
+              onEventClick={onEventClick}
+              onDayClick={() => onDayClick?.(dayData.date)}
+            />
+          ))}
         </div>
       </div>
     </div>

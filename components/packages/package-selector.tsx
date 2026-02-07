@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import {
@@ -412,9 +412,12 @@ export function PackageSelector({
     }
   }, [selectedPackageId, selectedPurchaseId, packages, categories]);
 
-  // Get categories that have packages
-  const availableCategories = categories.filter((cat) =>
-    packages.some((pkg) => pkg.categoryId === cat.id)
+  // Get categories that have packages (memoized to prevent re-renders)
+  const availableCategories = useMemo(() =>
+    categories.filter((cat) =>
+      packages.some((pkg) => pkg.categoryId === cat.id)
+    ),
+    [categories, packages]
   );
 
   // Auto-switch to a category that has packages if current category is empty
@@ -430,10 +433,13 @@ export function PackageSelector({
     }
   }, [packages, categories, activeCategoryId, availableCategories]);
 
-  // Filter packages by category
-  const filteredPackages = activeCategoryId
-    ? packages.filter((pkg) => pkg.categoryId === activeCategoryId)
-    : packages;
+  // Filter packages by category (memoized to prevent re-renders)
+  const filteredPackages = useMemo(() =>
+    activeCategoryId
+      ? packages.filter((pkg) => pkg.categoryId === activeCategoryId)
+      : packages,
+    [packages, activeCategoryId]
+  );
 
   // Helper to get special price for a package
   const getSpecialPrice = (packageId: string): number | undefined => {

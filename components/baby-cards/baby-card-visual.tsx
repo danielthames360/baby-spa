@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useLocale } from "next-intl";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -405,8 +405,11 @@ export function BabyCardVisual({
   const locale = useLocale();
   const currencySymbol = getCurrencySymbol(locale);
 
-  // Create a map of session number to reward
-  const rewardMap = new Map(rewards.map((r) => [r.sessionNumber, r]));
+  // Create a map of session number to reward (memoized to prevent recreation on every render)
+  const rewardMap = useMemo(() =>
+    new Map(rewards.map((r) => [r.sessionNumber, r])),
+    [rewards]
+  );
 
   // Calculate rows
   const rows = Math.ceil(totalSessions / SESSIONS_PER_ROW);

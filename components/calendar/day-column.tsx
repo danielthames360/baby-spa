@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { TimeSlot } from "./time-slot";
@@ -104,6 +105,160 @@ export function DayColumn({
   // Get day name based on locale (fallback to Spanish)
   const dayName = dayNames[locale]?.[dayOfWeek] || dayNames["es"][dayOfWeek];
 
+  // Memoize slot overlapping counts to avoid recalculating on every render
+  const slotOverlappingCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const slot of timeSlots) {
+      const count = appointments.filter((apt) => {
+        if (apt.status === "CANCELLED" || apt.status === "NO_SHOW") return false;
+        const aptStart = timeToMinutes(apt.startTime);
+        const aptEnd = timeToMinutes(apt.endTime);
+        const slotStart = timeToMinutes(slot.time);
+        const slotEnd = slotStart + SLOT_DURATION_MINUTES;
+        return aptStart < slotEnd && aptEnd > slotStart;
+      }).length;
+      counts.set(slot.time, count);
+    }
+    return counts;
+  }, [appointments, timeSlots]);
+
+  // Memoize lane assignment computation and positioned elements
+  const { eventElements, appointmentElements } = useMemo(() => {
+    if (timeSlots.length === 0) {
+      return { eventElements: [] as React.ReactNode[], appointmentElements: [] as React.ReactNode[] };
+    }
+
+    const firstSlotTime = timeSlots[0].time;
+    const firstSlotMinutes = timeToMinutes(firstSlotTime);
+    const maxSlots = MAX_APPOINTMENTS_FOR_STAFF;
+
+    // Sort appointments by start time
+    const sortedAppointments = [...appointments].sort((a, b) =>
+      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+    );
+
+    // Assign lanes to appointments based on overlaps
+    const appointmentLanes: Map<string, number> = new Map();
+    const laneEndTimes: number[] = Array(maxSlots).fill(0);
+
+    for (const apt of sortedAppointments) {
+      const aptStart = timeToMinutes(apt.startTime);
+      const aptEnd = timeToMinutes(apt.endTime);
+
+      // Find the first available lane
+      let assignedLane = 0;
+      for (let i = 0; i < maxSlots; i++) {
+        if (laneEndTimes[i] <= aptStart) {
+          assignedLane = i;
+          break;
+        }
+        assignedLane = i + 1;
+      }
+      if (assignedLane >= maxSlots) {
+        assignedLane = maxSlots - 1;
+      }
+
+      appointmentLanes.set(apt.id, assignedLane);
+      laneEndTimes[assignedLane] = aptEnd;
+    }
+
+    // Calculate effective lanes for width distribution
+    const maxLaneUsed = Math.max(0, ...Array.from(appointmentLanes.values())) + 1;
+    const effectiveLanes = Math.max(1, maxLaneUsed);
+
+    // Check if appointment overlaps with any event
+    const appointmentOverlapsEvent = (aptStart: number, aptEnd: number): boolean => {
+      return events.some((event) => {
+        const eventStart = timeToMinutes(event.startTime.slice(0, 5));
+        const eventEnd = timeToMinutes(event.endTime.slice(0, 5));
+        return aptStart < eventEnd && aptEnd > eventStart;
+      });
+    };
+
+    // Build appointment elements
+    const aptElements = sortedAppointments.map((apt) => {
+      const startMinutes = timeToMinutes(apt.startTime);
+      const endMinutes = timeToMinutes(apt.endTime);
+      const topPosition =
+        ((startMinutes - firstSlotMinutes) / SLOT_DURATION_MINUTES) *
+        SLOT_HEIGHT_PX;
+
+      const height = getAppointmentHeight(apt.startTime, apt.endTime);
+      const lane = appointmentLanes.get(apt.id) || 0;
+
+      const overlapsEvent = appointmentOverlapsEvent(startMinutes, endMinutes);
+      const availableWidth = overlapsEvent ? 65 : 100;
+      const baseOffset = overlapsEvent ? 35 : 0;
+
+      const width = `${availableWidth / effectiveLanes}%`;
+      const left = `${baseOffset + (availableWidth / effectiveLanes) * lane}%`;
+
+      return (
+        <div
+          key={apt.id}
+          className="pointer-events-auto absolute p-0.5"
+          style={{
+            top: `${topPosition}px`,
+            height: `${height}px`,
+            width,
+            left,
+            zIndex: 10,
+          }}
+        >
+          <AppointmentCard
+            id={apt.id}
+            clientName={apt.babyName}
+            clientType={apt.clientType}
+            parentName={apt.parentName}
+            packageName={apt.packageName}
+            time={`${apt.startTime}-${apt.endTime}`}
+            status={apt.status}
+            onClick={() => onAppointmentClick?.(apt.id)}
+            compact
+            fillHeight
+          />
+        </div>
+      );
+    });
+
+    // Build event elements
+    const evtElements = events.map((event, eventIndex) => {
+      const eventStartMinutes = timeToMinutes(event.startTime.slice(0, 5));
+      const topPosition =
+        ((eventStartMinutes - firstSlotMinutes) / SLOT_DURATION_MINUTES) *
+        SLOT_HEIGHT_PX;
+      const height = getAppointmentHeight(
+        event.startTime.slice(0, 5),
+        event.endTime.slice(0, 5)
+      );
+
+      const eventWidth = events.length > 1 ? 35 / events.length : 35;
+      const eventLeft = events.length > 1 ? eventWidth * eventIndex : 0;
+
+      return (
+        <div
+          key={`event-${event.id}`}
+          className="pointer-events-auto absolute p-0.5"
+          style={{
+            top: `${topPosition}px`,
+            height: `${height}px`,
+            width: `${eventWidth}%`,
+            left: `${eventLeft}%`,
+            zIndex: 5,
+          }}
+        >
+          <EventCalendarCard
+            event={event}
+            onClick={() => onEventClick?.(event.id)}
+            fillHeight
+          />
+        </div>
+      );
+    });
+
+    return { eventElements: evtElements, appointmentElements: aptElements };
+  }, [appointments, events, timeSlots, onAppointmentClick, onEventClick]);
+
   return (
     <div className="flex flex-1 flex-col">
       {/* Day header */}
@@ -154,176 +309,23 @@ export function DayColumn({
           <div className="relative">
             {/* Background slots grid */}
             <div className="divide-y divide-gray-100">
-              {timeSlots.map((slot) => {
-                // Count appointments that overlap with this slot
-                // Only count SCHEDULED, IN_PROGRESS, PENDING_PAYMENT - exclude CANCELLED and NO_SHOW
-                const overlappingCount = appointments.filter((apt) => {
-                  // Cancelled and no-show appointments don't block slots
-                  if (apt.status === "CANCELLED" || apt.status === "NO_SHOW") return false;
-
-                  const aptStart = timeToMinutes(apt.startTime);
-                  const aptEnd = timeToMinutes(apt.endTime);
-                  const slotStart = timeToMinutes(slot.time);
-                  const slotEnd = slotStart + SLOT_DURATION_MINUTES;
-                  // Check if appointment overlaps with slot
-                  return aptStart < slotEnd && aptEnd > slotStart;
-                }).length;
-
-                return (
-                  <TimeSlot
-                    key={slot.time}
-                    appointments={[]}
-                    maxAppointments={slot.total}
-                    occupiedCount={overlappingCount}
-                    isPast={isSlotPast(slot.time)}
-                    onSlotClick={() => onSlotClick?.(slot.time)}
-                  />
-                );
-              })}
+              {timeSlots.map((slot) => (
+                <TimeSlot
+                  key={slot.time}
+                  appointments={[]}
+                  maxAppointments={slot.total}
+                  occupiedCount={slotOverlappingCounts.get(slot.time) || 0}
+                  isPast={isSlotPast(slot.time)}
+                  onSlotClick={() => onSlotClick?.(slot.time)}
+                />
+              ))}
             </div>
 
-            {/* Absolutely positioned appointments */}
+            {/* Absolutely positioned appointments and events */}
             {timeSlots.length > 0 && (
               <div className="pointer-events-none absolute inset-0">
-                {(() => {
-                  const firstSlotTime = timeSlots[0].time;
-                  const firstSlotMinutes = timeToMinutes(firstSlotTime);
-                  const maxSlots = MAX_APPOINTMENTS_FOR_STAFF;
-
-                  // Sort appointments by start time
-                  const sortedAppointments = [...appointments].sort((a, b) =>
-                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-                  );
-
-                  // Assign lanes to appointments based on overlaps
-                  // Lane 0 = leftmost, Lane 4 = rightmost (up to 5 lanes for staff)
-                  const appointmentLanes: Map<string, number> = new Map();
-                  const laneEndTimes: number[] = Array(maxSlots).fill(0); // Track when each lane becomes free
-
-                  for (const apt of sortedAppointments) {
-                    const aptStart = timeToMinutes(apt.startTime);
-                    const aptEnd = timeToMinutes(apt.endTime);
-
-                    // Find the first available lane (one that ends before this appointment starts)
-                    let assignedLane = 0;
-                    for (let i = 0; i < maxSlots; i++) {
-                      if (laneEndTimes[i] <= aptStart) {
-                        assignedLane = i;
-                        break;
-                      }
-                      // If this lane is occupied, try the next one
-                      assignedLane = i + 1;
-                    }
-                    // If all lanes are occupied, assign to the last lane (will overlap visually)
-                    if (assignedLane >= maxSlots) {
-                      assignedLane = maxSlots - 1;
-                    }
-
-                    appointmentLanes.set(apt.id, assignedLane);
-                    laneEndTimes[assignedLane] = aptEnd;
-                  }
-
-                  // Calculate the maximum number of lanes actually used
-                  // This allows cards to expand when there are fewer concurrent appointments
-                  const maxLaneUsed = Math.max(0, ...Array.from(appointmentLanes.values())) + 1;
-                  const effectiveLanes = Math.max(1, maxLaneUsed);
-
-                  // Check if appointment overlaps with any event
-                  const appointmentOverlapsEvent = (aptStart: number, aptEnd: number): boolean => {
-                    return events.some((event) => {
-                      const eventStart = timeToMinutes(event.startTime.slice(0, 5));
-                      const eventEnd = timeToMinutes(event.endTime.slice(0, 5));
-                      return aptStart < eventEnd && aptEnd > eventStart;
-                    });
-                  };
-
-                  // Render appointments
-                  const appointmentElements = sortedAppointments.map((apt) => {
-                    const startMinutes = timeToMinutes(apt.startTime);
-                    const endMinutes = timeToMinutes(apt.endTime);
-                    const topPosition =
-                      ((startMinutes - firstSlotMinutes) / SLOT_DURATION_MINUTES) *
-                      SLOT_HEIGHT_PX;
-
-                    const height = getAppointmentHeight(apt.startTime, apt.endTime);
-                    const lane = appointmentLanes.get(apt.id) || 0;
-
-                    // If appointment overlaps with event, shift to the right (35% offset) and reduce width
-                    const overlapsEvent = appointmentOverlapsEvent(startMinutes, endMinutes);
-                    const availableWidth = overlapsEvent ? 65 : 100; // 65% if event exists, 100% otherwise
-                    const baseOffset = overlapsEvent ? 35 : 0; // Start at 35% if event exists
-
-                    // Use effectiveLanes for width calculation so cards expand when fewer appointments
-                    const width = `${availableWidth / effectiveLanes}%`;
-                    const left = `${baseOffset + (availableWidth / effectiveLanes) * lane}%`;
-
-                    return (
-                      <div
-                        key={apt.id}
-                        className="pointer-events-auto absolute p-0.5"
-                        style={{
-                          top: `${topPosition}px`,
-                          height: `${height}px`,
-                          width,
-                          left,
-                          zIndex: 10, // Appointments on top for click handling
-                        }}
-                      >
-                        <AppointmentCard
-                          id={apt.id}
-                          clientName={apt.babyName}
-                          clientType={apt.clientType}
-                          parentName={apt.parentName}
-                          packageName={apt.packageName}
-                          time={`${apt.startTime}-${apt.endTime}`}
-                          status={apt.status}
-                          onClick={() => onAppointmentClick?.(apt.id)}
-                          compact
-                          fillHeight
-                        />
-                      </div>
-                    );
-                  });
-
-                  // Render events (left portion, leaving room for appointments)
-                  // Events take 35% width on the left, appointments use remaining 65%
-                  const eventElements = events.map((event, eventIndex) => {
-                    const eventStartMinutes = timeToMinutes(event.startTime.slice(0, 5));
-                    const topPosition =
-                      ((eventStartMinutes - firstSlotMinutes) / SLOT_DURATION_MINUTES) *
-                      SLOT_HEIGHT_PX;
-                    const height = getAppointmentHeight(
-                      event.startTime.slice(0, 5),
-                      event.endTime.slice(0, 5)
-                    );
-
-                    // If multiple events overlap, stack them horizontally within the 35% area
-                    const eventWidth = events.length > 1 ? 35 / events.length : 35;
-                    const eventLeft = events.length > 1 ? eventWidth * eventIndex : 0;
-
-                    return (
-                      <div
-                        key={`event-${event.id}`}
-                        className="pointer-events-auto absolute p-0.5"
-                        style={{
-                          top: `${topPosition}px`,
-                          height: `${height}px`,
-                          width: `${eventWidth}%`,
-                          left: `${eventLeft}%`,
-                          zIndex: 5, // Below appointments for click handling
-                        }}
-                      >
-                        <EventCalendarCard
-                          event={event}
-                          onClick={() => onEventClick?.(event.id)}
-                          fillHeight
-                        />
-                      </div>
-                    );
-                  });
-
-                  return [...eventElements, ...appointmentElements];
-                })()}
+                {eventElements}
+                {appointmentElements}
               </div>
             )}
           </div>

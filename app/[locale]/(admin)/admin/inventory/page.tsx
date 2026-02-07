@@ -76,6 +76,60 @@ interface Product {
 
 type StockFilter = "all" | "low" | "out";
 
+// Category color map defined at module level to avoid recreation on every render
+const CATEGORY_COLOR_MAP: Record<string, { gradient: string; bg: string; text: string }> = {
+  blue: {
+    gradient: "from-blue-400 to-indigo-500",
+    bg: "from-blue-50 to-indigo-50",
+    text: "text-blue-600",
+  },
+  amber: {
+    gradient: "from-amber-400 to-yellow-500",
+    bg: "from-amber-50 to-yellow-50",
+    text: "text-amber-600",
+  },
+  pink: {
+    gradient: "from-pink-400 to-rose-500",
+    bg: "from-pink-50 to-rose-50",
+    text: "text-pink-600",
+  },
+  cyan: {
+    gradient: "from-cyan-400 to-teal-500",
+    bg: "from-cyan-50 to-teal-50",
+    text: "text-cyan-600",
+  },
+  violet: {
+    gradient: "from-violet-400 to-purple-500",
+    bg: "from-violet-50 to-purple-50",
+    text: "text-violet-600",
+  },
+  emerald: {
+    gradient: "from-emerald-400 to-teal-500",
+    bg: "from-emerald-50 to-teal-50",
+    text: "text-emerald-600",
+  },
+  rose: {
+    gradient: "from-rose-400 to-pink-500",
+    bg: "from-rose-50 to-pink-50",
+    text: "text-rose-600",
+  },
+  orange: {
+    gradient: "from-orange-400 to-amber-500",
+    bg: "from-orange-50 to-amber-50",
+    text: "text-orange-600",
+  },
+};
+
+const DEFAULT_CATEGORY_COLORS = {
+  gradient: "from-gray-400 to-gray-500",
+  bg: "from-gray-50 to-gray-100",
+  text: "text-gray-600",
+};
+
+function getCategoryColors(color: string | null | undefined) {
+  return CATEGORY_COLOR_MAP[color || ""] || DEFAULT_CATEGORY_COLORS;
+}
+
 export default function InventoryPage() {
   const t = useTranslations();
   const locale = useLocale();
@@ -216,58 +270,6 @@ export default function InventoryPage() {
       return { label: t("inventory.lowStock"), variant: "warning" as const };
     }
     return { label: t("inventory.inStock"), variant: "success" as const };
-  };
-
-  const getCategoryColors = (color: string | null | undefined) => {
-    // Use category color if available, otherwise default
-    const colorMap: Record<string, { gradient: string; bg: string; text: string }> = {
-      blue: {
-        gradient: "from-blue-400 to-indigo-500",
-        bg: "from-blue-50 to-indigo-50",
-        text: "text-blue-600",
-      },
-      amber: {
-        gradient: "from-amber-400 to-yellow-500",
-        bg: "from-amber-50 to-yellow-50",
-        text: "text-amber-600",
-      },
-      pink: {
-        gradient: "from-pink-400 to-rose-500",
-        bg: "from-pink-50 to-rose-50",
-        text: "text-pink-600",
-      },
-      cyan: {
-        gradient: "from-cyan-400 to-teal-500",
-        bg: "from-cyan-50 to-teal-50",
-        text: "text-cyan-600",
-      },
-      violet: {
-        gradient: "from-violet-400 to-purple-500",
-        bg: "from-violet-50 to-purple-50",
-        text: "text-violet-600",
-      },
-      emerald: {
-        gradient: "from-emerald-400 to-teal-500",
-        bg: "from-emerald-50 to-teal-50",
-        text: "text-emerald-600",
-      },
-      rose: {
-        gradient: "from-rose-400 to-pink-500",
-        bg: "from-rose-50 to-pink-50",
-        text: "text-rose-600",
-      },
-      orange: {
-        gradient: "from-orange-400 to-amber-500",
-        bg: "from-orange-50 to-amber-50",
-        text: "text-orange-600",
-      },
-    };
-
-    return colorMap[color || ""] || {
-      gradient: "from-gray-400 to-gray-500",
-      bg: "from-gray-50 to-gray-100",
-      text: "text-gray-600",
-    };
   };
 
   // Stats

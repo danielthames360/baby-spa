@@ -172,6 +172,13 @@ export function PayrollReportComponent({ data, locale }: PayrollReportProps) {
   );
 }
 
+// Style constants hoisted outside component to prevent re-creation on every render
+const BREAKDOWN_VARIANT_STYLES = {
+  default: "bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700",
+  success: "bg-gradient-to-br from-emerald-50 to-green-50 text-emerald-700",
+  danger: "bg-gradient-to-br from-rose-50 to-pink-50 text-rose-700",
+};
+
 function BreakdownCard({
   title,
   value,
@@ -181,14 +188,8 @@ function BreakdownCard({
   value: string;
   variant: "default" | "success" | "danger";
 }) {
-  const VARIANT_STYLES = {
-    default: "bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700",
-    success: "bg-gradient-to-br from-emerald-50 to-green-50 text-emerald-700",
-    danger: "bg-gradient-to-br from-rose-50 to-pink-50 text-rose-700",
-  };
-
   return (
-    <div className={cn("rounded-xl p-4 text-center", VARIANT_STYLES[variant])}>
+    <div className={cn("rounded-xl p-4 text-center", BREAKDOWN_VARIANT_STYLES[variant])}>
       <p className="text-xs font-medium text-gray-500">{title}</p>
       <p className="mt-1 text-lg font-bold">{value}</p>
     </div>

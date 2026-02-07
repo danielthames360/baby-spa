@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   generateTimeSlots,
@@ -163,17 +163,25 @@ export function DayView({
     return appointments.filter((apt) => apt.status !== "CANCELLED");
   }, [appointments]);
 
-  // Count appointments overlapping with a time slot
-  const getOverlappingCount = (slotTime: string): number => {
-    return activeAppointments.filter((apt) => {
-      const aptStart = timeToMinutes(apt.startTime);
-      const aptEnd = timeToMinutes(apt.endTime);
-      const slotStart = timeToMinutes(slotTime);
+  // Memoize per-slot data: overlapping count and appointments starting at each slot
+  const slotData = useMemo(() => {
+    const data = new Map<string, { overlappingCount: number; slotAppointments: Appointment[] }>();
+    for (const { time } of timeSlots) {
+      const slotStart = timeToMinutes(time);
       const slotEnd = slotStart + SLOT_DURATION_MINUTES;
-      // Check if appointment overlaps with slot
-      return aptStart < slotEnd && aptEnd > slotStart;
-    }).length;
-  };
+      const overlappingCount = activeAppointments.filter((apt) => {
+        const aptStart = timeToMinutes(apt.startTime);
+        const aptEnd = timeToMinutes(apt.endTime);
+        return aptStart < slotEnd && aptEnd > slotStart;
+      }).length;
+      // Appointments that START at this slot (show ALL including cancelled)
+      const slotAppointments = appointments.filter(
+        (apt) => formatTime(apt.startTime) === time
+      );
+      data.set(time, { overlappingCount, slotAppointments });
+    }
+    return data;
+  }, [timeSlots, activeAppointments, appointments]);
 
   // Format date for header
   const formattedDate = date.toLocaleDateString(dateLocale, {
@@ -264,13 +272,7 @@ export function DayView({
       {/* Time slots */}
       <div className="flex-1 overflow-y-auto">
         {timeSlots.map(({ time }) => {
-          // Get appointments that START at this slot time
-          // Show ALL appointments (including cancelled) at this time slot
-          const slotAppointments = appointments.filter(
-            (apt) => formatTime(apt.startTime) === time
-          );
-          // Count overlapping appointments for availability
-          const overlappingCount = getOverlappingCount(time);
+          const { overlappingCount, slotAppointments } = slotData.get(time) || { overlappingCount: 0, slotAppointments: [] };
           const availableSlots = MAX_APPOINTMENTS_PER_SLOT - overlappingCount;
           const isFull = availableSlots <= 0;
 

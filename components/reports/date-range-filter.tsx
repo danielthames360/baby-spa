@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Calendar } from "lucide-react";
@@ -32,14 +33,14 @@ export function DateRangeFilter({
   const from = searchParams.get("from") || defaultFrom || formatLocalDateString(monthStart);
   const to = searchParams.get("to") || defaultTo || formatLocalDateString(monthEnd);
 
-  const handleFilter = (newFrom: string, newTo: string) => {
+  const handleFilter = useCallback((newFrom: string, newTo: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("from", newFrom);
     params.set("to", newTo);
     router.push(`/${locale}${basePath}?${params.toString()}`);
-  };
+  }, [searchParams, router, locale, basePath]);
 
-  const handleQuickFilter = (days: number | "today" | "month" | "year") => {
+  const handleQuickFilter = useCallback((days: number | "today" | "month" | "year") => {
     const today = new Date();
     let newFrom: Date;
     let newTo: Date = today;
@@ -58,7 +59,7 @@ export function DateRangeFilter({
     }
 
     handleFilter(formatLocalDateString(newFrom), formatLocalDateString(newTo));
-  };
+  }, [handleFilter]);
 
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 p-4 shadow-lg backdrop-blur-md">

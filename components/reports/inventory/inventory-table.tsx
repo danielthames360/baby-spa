@@ -50,6 +50,15 @@ const STATUS_STYLES = {
   },
 };
 
+// Format date helper hoisted outside component to prevent re-creation on every render
+function formatInventoryDate(dateStr: string | null, locale: string) {
+  if (!dateStr) return "-";
+  return new Date(dateStr).toLocaleDateString(
+    locale === "pt-BR" ? "pt-BR" : "es-BO",
+    { day: "2-digit", month: "short" }
+  );
+}
+
 export function InventoryTable({ items, locale }: InventoryTableProps) {
   const t = useTranslations("reports.inventory");
 
@@ -60,14 +69,6 @@ export function InventoryTable({ items, locale }: InventoryTableProps) {
       </div>
     );
   }
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString(
-      locale === "pt-BR" ? "pt-BR" : "es-BO",
-      { day: "2-digit", month: "short" }
-    );
-  };
 
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 shadow-lg backdrop-blur-md">
@@ -135,7 +136,7 @@ export function InventoryTable({ items, locale }: InventoryTableProps) {
                   </span>
                 </TableCell>
                 <TableCell className="text-sm text-gray-500">
-                  {formatDate(item.lastMovementDate)}
+                  {formatInventoryDate(item.lastMovementDate, locale)}
                 </TableCell>
                 <TableCell>
                   <Button

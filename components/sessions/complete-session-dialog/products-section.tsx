@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   Check,
@@ -67,15 +68,17 @@ export function ProductsSection({
 }: ProductsSectionProps) {
   const t = useTranslations();
 
-  // Filter products by search and category
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = productSearchQuery
-      ? product.name.toLowerCase().includes(productSearchQuery.toLowerCase())
-      : true;
-    const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Filter products by search and category (memoized to prevent re-renders)
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch = productSearchQuery
+        ? product.name.toLowerCase().includes(productSearchQuery.toLowerCase())
+        : true;
+      const matchesCategory =
+        selectedCategory === "all" || product.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, productSearchQuery, selectedCategory]);
 
   return (
     <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-5">

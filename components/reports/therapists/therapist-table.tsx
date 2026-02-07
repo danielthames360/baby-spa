@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { formatPercent, formatNumber } from "@/lib/utils/currency-utils";
@@ -29,7 +30,11 @@ export function TherapistTable({ data, locale }: TherapistTableProps) {
     );
   }
 
-  const totalSessions = data.reduce((sum, t) => sum + t.completedSessions, 0);
+  // Memoize derived total to avoid recomputation on every render
+  const totalSessions = useMemo(
+    () => data.reduce((sum, t) => sum + t.completedSessions, 0),
+    [data]
+  );
 
   return (
     <div className="space-y-6">
@@ -149,6 +154,31 @@ export function TherapistTable({ data, locale }: TherapistTableProps) {
   );
 }
 
+// Style constants hoisted outside component to prevent re-creation on every render
+const SUMMARY_VARIANT_STYLES = {
+  default: {
+    cardBg: "bg-gradient-to-br from-teal-100/70 via-cyan-50/60 to-white",
+    border: "border-l-teal-400",
+    iconBg: "bg-gradient-to-br from-teal-200/80 to-cyan-200/80",
+    iconColor: "text-teal-700",
+    valueColor: "text-teal-700",
+  },
+  success: {
+    cardBg: "bg-gradient-to-br from-emerald-100/70 via-green-50/60 to-white",
+    border: "border-l-emerald-400",
+    iconBg: "bg-gradient-to-br from-emerald-200/80 to-green-200/80",
+    iconColor: "text-emerald-700",
+    valueColor: "text-emerald-700",
+  },
+  warning: {
+    cardBg: "bg-gradient-to-br from-amber-100/70 via-orange-50/60 to-white",
+    border: "border-l-amber-500",
+    iconBg: "bg-gradient-to-br from-amber-200/80 to-orange-200/80",
+    iconColor: "text-amber-700",
+    valueColor: "text-amber-700",
+  },
+};
+
 function SummaryCard({
   title,
   value,
@@ -160,31 +190,7 @@ function SummaryCard({
   icon: React.ReactNode;
   variant: "default" | "success" | "warning";
 }) {
-  const VARIANT_STYLES = {
-    default: {
-      cardBg: "bg-gradient-to-br from-teal-100/70 via-cyan-50/60 to-white",
-      border: "border-l-teal-400",
-      iconBg: "bg-gradient-to-br from-teal-200/80 to-cyan-200/80",
-      iconColor: "text-teal-700",
-      valueColor: "text-teal-700",
-    },
-    success: {
-      cardBg: "bg-gradient-to-br from-emerald-100/70 via-green-50/60 to-white",
-      border: "border-l-emerald-400",
-      iconBg: "bg-gradient-to-br from-emerald-200/80 to-green-200/80",
-      iconColor: "text-emerald-700",
-      valueColor: "text-emerald-700",
-    },
-    warning: {
-      cardBg: "bg-gradient-to-br from-amber-100/70 via-orange-50/60 to-white",
-      border: "border-l-amber-500",
-      iconBg: "bg-gradient-to-br from-amber-200/80 to-orange-200/80",
-      iconColor: "text-amber-700",
-      valueColor: "text-amber-700",
-    },
-  };
-
-  const styles = VARIANT_STYLES[variant];
+  const styles = SUMMARY_VARIANT_STYLES[variant];
 
   return (
     <div className={cn(

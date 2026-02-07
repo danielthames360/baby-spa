@@ -296,47 +296,55 @@ export function CalendarView() {
     // If not found, keep pendingAppointmentId and wait for correct data to load
   }, [pendingAppointmentId, appointments, isLoading, router]);
 
-  // Week navigation
-  const goToPreviousWeek = () => {
-    const newStart = new Date(currentWeekStart);
-    newStart.setDate(newStart.getDate() - 7);
-    setCurrentWeekStart(newStart);
-  };
+  // Week navigation - wrapped in useCallback to prevent unnecessary re-renders
+  const goToPreviousWeek = useCallback(() => {
+    setCurrentWeekStart((prev) => {
+      const newStart = new Date(prev);
+      newStart.setDate(newStart.getDate() - 7);
+      return newStart;
+    });
+  }, []);
 
-  const goToNextWeek = () => {
-    const newStart = new Date(currentWeekStart);
-    newStart.setDate(newStart.getDate() + 7);
-    setCurrentWeekStart(newStart);
-  };
+  const goToNextWeek = useCallback(() => {
+    setCurrentWeekStart((prev) => {
+      const newStart = new Date(prev);
+      newStart.setDate(newStart.getDate() + 7);
+      return newStart;
+    });
+  }, []);
 
-  // Day navigation
-  const goToPreviousDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() - 1);
-    setSelectedDate(newDate);
-    // Update week if needed
-    const newWeekStart = getWeekStart(newDate);
-    if (newWeekStart.getTime() !== currentWeekStart.getTime()) {
-      setCurrentWeekStart(newWeekStart);
-    }
-  };
+  // Day navigation - wrapped in useCallback to prevent unnecessary re-renders
+  const goToPreviousDay = useCallback(() => {
+    setSelectedDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setDate(newDate.getDate() - 1);
+      // Update week if needed
+      const newWeekStart = getWeekStart(newDate);
+      setCurrentWeekStart((currentStart) =>
+        newWeekStart.getTime() !== currentStart.getTime() ? newWeekStart : currentStart
+      );
+      return newDate;
+    });
+  }, []);
 
-  const goToNextDay = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + 1);
-    setSelectedDate(newDate);
-    // Update week if needed
-    const newWeekStart = getWeekStart(newDate);
-    if (newWeekStart.getTime() !== currentWeekStart.getTime()) {
-      setCurrentWeekStart(newWeekStart);
-    }
-  };
+  const goToNextDay = useCallback(() => {
+    setSelectedDate((prev) => {
+      const newDate = new Date(prev);
+      newDate.setDate(newDate.getDate() + 1);
+      // Update week if needed
+      const newWeekStart = getWeekStart(newDate);
+      setCurrentWeekStart((currentStart) =>
+        newWeekStart.getTime() !== currentStart.getTime() ? newWeekStart : currentStart
+      );
+      return newDate;
+    });
+  }, []);
 
-  const goToToday = () => {
+  const goToToday = useCallback(() => {
     const today = new Date();
     setSelectedDate(today);
     setCurrentWeekStart(getWeekStart(today));
-  };
+  }, []);
 
   // Handle slot click (open new appointment dialog)
   const handleSlotClick = (date: Date, time: string) => {

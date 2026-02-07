@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -70,9 +70,15 @@ export function PurchaseDialog({
   const watchQuantity = form.watch("quantity");
   const watchUnitCost = form.watch("unitCost");
 
-  const selectedProduct = products.find((p) => p.id === watchProductId);
-  const totalCost = (watchQuantity || 0) * (watchUnitCost || 0);
-  const stockAfter = (selectedProduct?.currentStock || 0) + (watchQuantity || 0);
+  // Memoize derived values to avoid recalculation on every render
+  const { selectedProduct, totalCost, stockAfter } = useMemo(() => {
+    const product = products.find((p) => p.id === watchProductId);
+    return {
+      selectedProduct: product,
+      totalCost: (watchQuantity || 0) * (watchUnitCost || 0),
+      stockAfter: (product?.currentStock || 0) + (watchQuantity || 0),
+    };
+  }, [watchProductId, watchQuantity, watchUnitCost, products]);
 
   useEffect(() => {
     if (open) {

@@ -540,12 +540,12 @@ export function CompleteSessionDialog({
 
   const grandTotal = Math.max(0, subtotal - discountAmount - firstSessionDiscountValue - advancePaidAmount);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
       style: "currency",
       currency: locale === "pt-BR" ? "BRL" : "BOB",
     }).format(price);
-  };
+  }, [locale]);
 
   const handlePaymentDetailsChange = useCallback(
     (details: PaymentDetailInput[]) => {
@@ -556,6 +556,25 @@ export function CompleteSessionDialog({
     },
     []
   );
+
+  // Memoized callbacks to prevent re-renders in child components
+  const handleSelectPackage = useCallback((pkgId: string | null, purchaseId: string | null, purchaseName?: string) => {
+    setSelectedPackageId(pkgId);
+    setSelectedPurchaseId(purchaseId);
+    setSelectedPurchaseName(purchaseName || "");
+  }, []);
+
+  const handleToggleAddProduct = useCallback(() => {
+    setShowAddProduct(prev => !prev);
+  }, []);
+
+  const handleToggleDiscount = useCallback(() => {
+    setShowDiscount(prev => !prev);
+  }, []);
+
+  const handleToggleFirstSessionDiscount = useCallback(() => {
+    setUseFirstSessionDiscount(prev => !prev);
+  }, []);
 
   // Get unique categories from products
   const categories = Array.from(
@@ -707,9 +726,7 @@ export function CompleteSessionDialog({
                 selectedPurchaseId={selectedPurchaseId}
                 subtotal={subtotal}
                 useFirstSessionDiscount={useFirstSessionDiscount}
-                onToggleFirstSessionDiscount={() =>
-                  setUseFirstSessionDiscount(!useFirstSessionDiscount)
-                }
+                onToggleFirstSessionDiscount={handleToggleFirstSessionDiscount}
                 usedRewardIds={usedRewardIds}
                 isUsingReward={isUsingReward}
                 onUseReward={handleUseReward}
@@ -729,18 +746,14 @@ export function CompleteSessionDialog({
                   selectedPackageId={selectedPackageId}
                   selectedPurchaseId={selectedPurchaseId}
                   isLoadingBabyPackages={isLoadingBabyPackages}
-                  onSelectPackage={(pkgId, purchaseId, purchaseName) => {
-                    setSelectedPackageId(pkgId);
-                    setSelectedPurchaseId(purchaseId);
-                    setSelectedPurchaseName(purchaseName || "");
-                  }}
+                  onSelectPackage={handleSelectPackage}
                 />
 
                 <ProductsSection
                   sessionProducts={session.products}
                   products={products}
                   showAddProduct={showAddProduct}
-                  onToggleAddProduct={() => setShowAddProduct(!showAddProduct)}
+                  onToggleAddProduct={handleToggleAddProduct}
                   selectedProduct={selectedProduct}
                   onSelectProduct={setSelectedProduct}
                   productQuantity={productQuantity}
@@ -772,14 +785,12 @@ export function CompleteSessionDialog({
                 advancePaidAmount={advancePaidAmount}
                 grandTotal={grandTotal}
                 showDiscount={showDiscount}
-                onToggleDiscount={() => setShowDiscount(!showDiscount)}
+                onToggleDiscount={handleToggleDiscount}
                 onDiscountAmountChange={setDiscountAmount}
                 discountReason={discountReason}
                 onDiscountReasonChange={setDiscountReason}
                 useFirstSessionDiscount={useFirstSessionDiscount}
-                onToggleFirstSessionDiscount={() =>
-                  setUseFirstSessionDiscount(!useFirstSessionDiscount)
-                }
+                onToggleFirstSessionDiscount={handleToggleFirstSessionDiscount}
                 babyCardInfo={babyCardInfo}
                 selectedPackageId={selectedPackageId}
                 onPaymentDetailsChange={handlePaymentDetailsChange}

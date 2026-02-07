@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import dynamic from "next/dynamic";
@@ -279,8 +279,8 @@ export function AppointmentDetails({
   const canReschedule = appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT";
   const canRegisterPayment = appointment.status === "PENDING_PAYMENT" || appointment.status === "SCHEDULED";
 
-  // Action handlers
-  const handleAction = async (action: string, reason?: string) => {
+  // Action handlers - wrapped in useCallback since passed to child components
+  const handleAction = useCallback(async (action: string, reason?: string) => {
     setIsUpdating(true);
     try {
       const response = await fetch(`/api/appointments/${appointment.id}`, {
@@ -301,7 +301,7 @@ export function AppointmentDetails({
       setShowNoShowDialog(false);
       setCancelReason("");
     }
-  };
+  }, [appointment.id, onUpdate, onOpenChange]);
 
   const handleReschedule = async () => {
     if (!rescheduleDate || !rescheduleTime) return;

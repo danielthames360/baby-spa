@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { formatCurrency, formatPercent } from "@/lib/utils/currency-utils";
 import { PaymentMethod, TransactionCategory } from "@prisma/client";
@@ -90,19 +91,25 @@ const SOURCE_ORDER: IncomeCategory[] = [
   "APPOINTMENT_ADVANCE",
 ];
 
+// Payment methods array hoisted to module level to prevent re-creation on every render
+const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "QR", "CARD", "TRANSFER"];
+
 export function IncomeSummary({ total, grossTotal, totalDiscounts, discountsByCategory, byMethod, bySource, locale }: IncomeSummaryProps) {
   const t = useTranslations("reports.income");
   const tPayment = useTranslations("payment");
 
   const hasDiscounts = totalDiscounts && totalDiscounts > 0;
 
-  // Create a map of discounts by category for easy lookup
-  const discountsMap = new Map<string, number>();
-  if (discountsByCategory) {
-    for (const d of discountsByCategory) {
-      discountsMap.set(d.category, d.amount);
+  // Memoize discounts map to avoid recomputation on every render
+  const discountsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (discountsByCategory) {
+      for (const d of discountsByCategory) {
+        map.set(d.category, d.amount);
+      }
     }
-  }
+    return map;
+  }, [discountsByCategory]);
 
   return (
     <div className="space-y-6">
@@ -195,7 +202,7 @@ export function IncomeSummary({ total, grossTotal, totalDiscounts, discountsByCa
 
       {/* By Method */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {(["CASH", "QR", "CARD", "TRANSFER"] as PaymentMethod[]).map((method) => {
+        {PAYMENT_METHODS.map((method) => {
           const data = byMethod.find((m) => m.method === method) || {
             amount: 0,
             count: 0,

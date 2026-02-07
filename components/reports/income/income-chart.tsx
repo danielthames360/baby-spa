@@ -14,6 +14,15 @@ interface IncomeChartProps {
   locale: string;
 }
 
+// Format date helper hoisted outside component to prevent re-creation on every render
+function formatIncomeDate(dateStr: string, locale: string) {
+  const date = new Date(dateStr + "T12:00:00");
+  return date.toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "es-BO", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
 export function IncomeChart({ data, locale }: IncomeChartProps) {
   const t = useTranslations("reports.income");
 
@@ -28,15 +37,6 @@ export function IncomeChart({ data, locale }: IncomeChartProps) {
   // Find max value for scaling
   const maxValue = Math.max(...data.map((d) => d.total), 1);
 
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + "T12:00:00");
-    return date.toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      day: "2-digit",
-      month: "short",
-    });
-  };
-
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">
       <h3 className="mb-4 font-semibold text-gray-900">{t("dailyIncome")}</h3>
@@ -48,7 +48,7 @@ export function IncomeChart({ data, locale }: IncomeChartProps) {
           return (
             <div key={day.date} className="flex items-center gap-3">
               <span className="w-16 text-xs text-gray-500">
-                {formatDate(day.date)}
+                {formatIncomeDate(day.date, locale)}
               </span>
               <div className="flex-1">
                 <div className="h-6 w-full rounded-lg bg-gray-50">

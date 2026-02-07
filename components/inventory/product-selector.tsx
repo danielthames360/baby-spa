@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Package, Plus, Minus, X, AlertTriangle, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,9 +105,13 @@ export function ProductSelector({
     );
   };
 
-  const totalChargeable = selectedProducts
-    .filter((p) => p.isChargeable)
-    .reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
+  // Memoized to prevent recalculation on every render
+  const totalChargeable = useMemo(() =>
+    selectedProducts
+      .filter((p) => p.isChargeable)
+      .reduce((sum, p) => sum + p.quantity * p.unitPrice, 0),
+    [selectedProducts]
+  );
 
   return (
     <div className="space-y-4">

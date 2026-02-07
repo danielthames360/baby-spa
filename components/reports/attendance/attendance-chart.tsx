@@ -16,6 +16,15 @@ interface AttendanceChartProps {
   locale: string;
 }
 
+// Format date helper hoisted outside component to prevent re-creation on every render
+function formatAttendanceDate(dateStr: string, locale: string) {
+  const date = new Date(dateStr + "T12:00:00");
+  return date.toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "es-BO", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
 export function AttendanceChart({ data, locale }: AttendanceChartProps) {
   const t = useTranslations("reports.attendance");
 
@@ -29,15 +38,6 @@ export function AttendanceChart({ data, locale }: AttendanceChartProps) {
 
   // Find max value for scaling
   const maxValue = Math.max(...data.map((d) => d.total), 1);
-
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + "T12:00:00");
-    return date.toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      day: "2-digit",
-      month: "short",
-    });
-  };
 
   return (
     <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg backdrop-blur-md">
@@ -68,7 +68,7 @@ export function AttendanceChart({ data, locale }: AttendanceChartProps) {
           return (
             <div key={day.date} className="flex items-center gap-3">
               <span className="w-16 text-xs text-gray-500">
-                {formatDate(day.date)}
+                {formatAttendanceDate(day.date, locale)}
               </span>
               <div className="flex flex-1 items-center gap-0.5">
                 {/* Completed */}

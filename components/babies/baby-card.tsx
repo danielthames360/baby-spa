@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Baby, Phone, Calendar, Package, ChevronRight, CreditCard } from "lucide-react";
@@ -53,15 +54,22 @@ export function BabyCard({ baby, locale = "es" }: BabyCardProps) {
   const primaryParent = baby.parents.find((p) => p.isPrimary)?.parent ||
     baby.parents[0]?.parent;
 
-  // Calculate total remaining sessions from ALL packages with sessions
-  const totalRemainingSessions = baby.packagePurchases.reduce(
-    (sum, pkg) => sum + (pkg.remainingSessions > 0 ? pkg.remainingSessions : 0),
-    0
+  // Memoize derived session count to avoid recalculation on every render
+  const totalRemainingSessions = useMemo(
+    () =>
+      baby.packagePurchases.reduce(
+        (sum, pkg) => sum + (pkg.remainingSessions > 0 ? pkg.remainingSessions : 0),
+        0
+      ),
+    [baby.packagePurchases]
   );
   const hasActiveSessions = totalRemainingSessions > 0;
 
-  const ageResult = calculateExactAge(baby.birthDate);
-  const age = formatAgeShort(ageResult, t);
+  // Memoize age calculation
+  const age = useMemo(() => {
+    const ageResult = calculateExactAge(baby.birthDate);
+    return formatAgeShort(ageResult, t);
+  }, [baby.birthDate, t]);
 
   return (
     <Link href={`/${locale}/admin/clients/${baby.id}`}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 import dynamic from "next/dynamic";
@@ -206,8 +206,8 @@ export function AppointmentDialog({
     setSelectedPurchaseId(purchaseId);
   };
 
-  // Transform client packages to PackageSelector format
-  const getClientPackagesForSelector = (): PackagePurchaseData[] => {
+  // Memoize client packages transformation for PackageSelector
+  const clientPackagesForSelector = useMemo((): PackagePurchaseData[] => {
     // For baby appointments, use baby's packages
     if (selectedClient?.type === "BABY" && selectedClient.baby) {
       return selectedClient.baby.packagePurchases
@@ -243,7 +243,7 @@ export function AppointmentDialog({
         }));
     }
     return [];
-  };
+  }, [selectedClient]);
 
   // Auto-select package when client is selected (use primitive dep to avoid re-runs on object identity changes)
   const selectedClientId = selectedClient?.baby?.id || selectedClient?.parent?.id;
@@ -555,7 +555,7 @@ export function AppointmentDialog({
                   <PackageSelector
                     babyId={selectedClient.type === "BABY" ? selectedClient.baby?.id : undefined}
                     packages={catalogPackages}
-                    babyPackages={getClientPackagesForSelector()}
+                    babyPackages={clientPackagesForSelector}
                     specialPrices={babyCardInfo?.specialPrices}
                     selectedPackageId={selectedPackageId}
                     selectedPurchaseId={selectedPurchaseId}

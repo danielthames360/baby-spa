@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Calendar, TrendingUp, Clock, Lightbulb } from "lucide-react";
@@ -30,17 +31,23 @@ const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:30", "15:30", "16:30
 export function OccupancyHeatmap({ data }: OccupancyHeatmapProps) {
   const t = useTranslations("reports");
 
-  // Group heatmap data by time slot
-  const heatmapByTime = new Map<string, Map<number, typeof data.heatmap[0]>>();
-  for (const slot of data.heatmap) {
-    if (!heatmapByTime.has(slot.time)) {
-      heatmapByTime.set(slot.time, new Map());
+  // Group heatmap data by time slot - memoized to avoid recomputation on re-render
+  const heatmapByTime = useMemo(() => {
+    const map = new Map<string, Map<number, typeof data.heatmap[0]>>();
+    for (const slot of data.heatmap) {
+      if (!map.has(slot.time)) {
+        map.set(slot.time, new Map());
+      }
+      map.get(slot.time)!.set(slot.dayOfWeek, slot);
     }
-    heatmapByTime.get(slot.time)!.set(slot.dayOfWeek, slot);
-  }
+    return map;
+  }, [data.heatmap]);
 
-  // Find low occupancy slots for suggestions
-  const lowOccupancySlots = data.heatmap.filter((s) => s.level === "low" && s.occupancyRate < 40);
+  // Find low occupancy slots for suggestions - memoized to avoid recomputation on re-render
+  const lowOccupancySlots = useMemo(
+    () => data.heatmap.filter((s) => s.level === "low" && s.occupancyRate < 40),
+    [data.heatmap]
+  );
 
   return (
     <div className="space-y-6">
@@ -245,6 +252,38 @@ export function OccupancyHeatmap({ data }: OccupancyHeatmapProps) {
   );
 }
 
+// Style constants hoisted outside component to prevent re-creation on every render
+const SUMMARY_VARIANT_STYLES = {
+  default: {
+    cardBg: "bg-gradient-to-br from-teal-100/70 via-cyan-50/60 to-white",
+    border: "border-l-teal-400",
+    iconBg: "bg-gradient-to-br from-teal-200/80 to-cyan-200/80",
+    iconColor: "text-teal-700",
+    valueColor: "text-teal-700",
+  },
+  success: {
+    cardBg: "bg-gradient-to-br from-emerald-100/70 via-green-50/60 to-white",
+    border: "border-l-emerald-400",
+    iconBg: "bg-gradient-to-br from-emerald-200/80 to-green-200/80",
+    iconColor: "text-emerald-700",
+    valueColor: "text-emerald-700",
+  },
+  warning: {
+    cardBg: "bg-gradient-to-br from-amber-100/70 via-orange-50/60 to-white",
+    border: "border-l-amber-500",
+    iconBg: "bg-gradient-to-br from-amber-200/80 to-orange-200/80",
+    iconColor: "text-amber-700",
+    valueColor: "text-amber-700",
+  },
+  danger: {
+    cardBg: "bg-gradient-to-br from-rose-100/70 via-pink-50/60 to-white",
+    border: "border-l-rose-400",
+    iconBg: "bg-gradient-to-br from-rose-200/80 to-pink-200/80",
+    iconColor: "text-rose-700",
+    valueColor: "text-rose-700",
+  },
+};
+
 function SummaryCard({
   title,
   value,
@@ -256,38 +295,7 @@ function SummaryCard({
   icon: React.ReactNode;
   variant: "default" | "success" | "warning" | "danger";
 }) {
-  const VARIANT_STYLES = {
-    default: {
-      cardBg: "bg-gradient-to-br from-teal-100/70 via-cyan-50/60 to-white",
-      border: "border-l-teal-400",
-      iconBg: "bg-gradient-to-br from-teal-200/80 to-cyan-200/80",
-      iconColor: "text-teal-700",
-      valueColor: "text-teal-700",
-    },
-    success: {
-      cardBg: "bg-gradient-to-br from-emerald-100/70 via-green-50/60 to-white",
-      border: "border-l-emerald-400",
-      iconBg: "bg-gradient-to-br from-emerald-200/80 to-green-200/80",
-      iconColor: "text-emerald-700",
-      valueColor: "text-emerald-700",
-    },
-    warning: {
-      cardBg: "bg-gradient-to-br from-amber-100/70 via-orange-50/60 to-white",
-      border: "border-l-amber-500",
-      iconBg: "bg-gradient-to-br from-amber-200/80 to-orange-200/80",
-      iconColor: "text-amber-700",
-      valueColor: "text-amber-700",
-    },
-    danger: {
-      cardBg: "bg-gradient-to-br from-rose-100/70 via-pink-50/60 to-white",
-      border: "border-l-rose-400",
-      iconBg: "bg-gradient-to-br from-rose-200/80 to-pink-200/80",
-      iconColor: "text-rose-700",
-      valueColor: "text-rose-700",
-    },
-  };
-
-  const styles = VARIANT_STYLES[variant];
+  const styles = SUMMARY_VARIANT_STYLES[variant];
 
   return (
     <div className={cn(
