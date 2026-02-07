@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import { formatCurrency, getCurrencySymbol } from "@/lib/utils/currency-utils";
@@ -18,6 +18,14 @@ import {
   SplitPaymentForm,
   type PaymentDetailInput,
 } from "@/components/payments/split-payment-form";
+import dynamic from "next/dynamic";
+import { useCashRegisterGuard } from "@/hooks/use-cash-register-guard";
+
+// Dynamic import for cash register required modal
+const CashRegisterRequiredModal = dynamic(
+  () => import("@/components/cash-register/cash-register-required-modal").then(mod => mod.CashRegisterRequiredModal),
+  { ssr: false }
+);
 
 interface RegisterPaymentDialogProps {
   open: boolean;
@@ -26,6 +34,7 @@ interface RegisterPaymentDialogProps {
     id: string;
     date: Date;
     startTime: string;
+    status: string;
     baby?: {
       id: string;
       name: string;
@@ -66,6 +75,35 @@ export function RegisterPaymentDialog({
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingAdvances, setExistingAdvances] = useState(0);
+
+  // Cash register guard
+  const { showCashRegisterModal, setShowCashRegisterModal, handleCashRegisterError, onCashRegisterSuccess } = useCashRegisterGuard();
+
+  // Fetch existing payments when dialog opens
+  useEffect(() => {
+    if (!open) {
+      setExistingAdvances(0);
+      return;
+    }
+
+    const fetchExistingPayments = async () => {
+      try {
+        const response = await fetch(`/api/appointments/${appointment.id}/payments`);
+        if (response.ok) {
+          const data = await response.json();
+          const total = data
+            .filter((p: { isReversal: boolean; voidedAt: string | null }) => !p.isReversal && !p.voidedAt)
+            .reduce((sum: number, p: { total: number }) => sum + Number(p.total), 0);
+          setExistingAdvances(total);
+        }
+      } catch {
+        // Silently fail
+      }
+    };
+
+    fetchExistingPayments();
+  }, [open, appointment.id]);
 
   // Get package info
   const pkg = appointment.packagePurchase?.package || appointment.selectedPackage;
@@ -74,8 +112,14 @@ export function RegisterPaymentDialog({
     ? parseFloat(pkg.advancePaymentAmount.toString())
     : 0;
 
-  // Use advance amount as default, fall back to package price
-  const totalAmount = advanceAmount > 0 ? advanceAmount : packagePrice;
+  // Calculate remaining amount after existing advances
+  const remainingAmount = packagePrice > 0 ? Math.max(0, packagePrice - existingAdvances) : 0;
+
+  // Use advance amount as default, fall back to package price (minus existing advances)
+  const isFirstPayment = appointment.status === "PENDING_PAYMENT" && existingAdvances === 0;
+  const totalAmount = isFirstPayment && advanceAmount > 0
+    ? advanceAmount
+    : remainingAmount > 0 ? remainingAmount : (advanceAmount > 0 ? advanceAmount : packagePrice);
 
   // Format date using utility to avoid timezone issues
   const formatDate = () => {
@@ -100,7 +144,8 @@ export function RegisterPaymentDialog({
     }
 
     const totalPaid = paymentDetails.reduce((sum, d) => sum + d.amount, 0);
-    if (advanceAmount > 0 && totalPaid < advanceAmount) {
+    // Only enforce minimum advance for first payment (PENDING_PAYMENT status)
+    if (appointment.status === "PENDING_PAYMENT" && advanceAmount > 0 && totalPaid < advanceAmount) {
       setError(t("payment.errors.belowMinimum", { amount: advanceAmount }));
       return;
     }
@@ -129,6 +174,11 @@ export function RegisterPaymentDialog({
         setNotes("");
       } else {
         const data = await response.json();
+        // Check if cash register is required
+        if (handleCashRegisterError(data.error, handleSubmit)) {
+          setIsSubmitting(false);
+          return;
+        }
         if (data.error === "AMOUNT_BELOW_MINIMUM") {
           setError(t("payment.errors.belowMinimum", { amount: data.minimum }));
         } else {
@@ -189,7 +239,27 @@ export function RegisterPaymentDialog({
                 </span>
               </div>
             )}
-            {advanceAmount > 0 && (
+            {existingAdvances > 0 && (
+              <div className="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
+                <span className="text-emerald-600 font-medium">
+                  {t("payment.alreadyPaid")}:
+                </span>
+                <span className="font-bold text-emerald-700">
+                  {formatCurrency(existingAdvances, locale)}
+                </span>
+              </div>
+            )}
+            {existingAdvances > 0 && remainingAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-600 font-medium">
+                  {t("payment.remaining")}:
+                </span>
+                <span className="font-bold text-amber-700">
+                  {formatCurrency(remainingAmount, locale)}
+                </span>
+              </div>
+            )}
+            {advanceAmount > 0 && existingAdvances === 0 && (
               <div className="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
                 <span className="text-amber-600 font-medium">
                   {t("payment.advanceRequired")}:
@@ -207,6 +277,7 @@ export function RegisterPaymentDialog({
             onPaymentDetailsChange={handlePaymentDetailsChange}
             disabled={isSubmitting}
             showReference={true}
+            allowPartialPayment={true}
           />
 
           {/* Notes */}
@@ -262,6 +333,13 @@ export function RegisterPaymentDialog({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Cash Register Required Modal */}
+      <CashRegisterRequiredModal
+        open={showCashRegisterModal}
+        onOpenChange={setShowCashRegisterModal}
+        onSuccess={onCashRegisterSuccess}
+      />
     </Dialog>
   );
 }

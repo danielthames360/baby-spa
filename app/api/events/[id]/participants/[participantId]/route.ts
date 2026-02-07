@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { withAuth, validateRequest, handleApiError, successResponse } from "@/lib/api-utils";
+import { NextRequest, NextResponse } from "next/server";
+import { withAuth, validateRequest, handleApiError, successResponse, requireOpenCashRegister } from "@/lib/api-utils";
 import { eventParticipantService } from "@/lib/services/event-participant-service";
 import { updateParticipantSchema, registerPaymentSchema, markAttendanceSchema } from "@/lib/validations/event";
 
@@ -33,6 +33,15 @@ export async function PUT(
 
     // Check if this is a payment registration (supports both legacy single method and split payments)
     if (body.amount !== undefined && (body.paymentMethod !== undefined || body.paymentDetails !== undefined)) {
+      // Enforce cash register for RECEPTION when processing payments
+      const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+      if (session.user.role === "RECEPTION" && !cashRegisterId) {
+        return NextResponse.json(
+          { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to process payments" },
+          { status: 400 }
+        );
+      }
+
       const data = validateRequest(body, registerPaymentSchema);
       const participant = await eventParticipantService.registerPayment({
         participantId,

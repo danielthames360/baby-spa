@@ -86,6 +86,7 @@ export interface AppointmentData {
   pendingSchedulePreferences?: string | null;
   session?: {
     id: string;
+    therapist?: { name: string };
   } | null;
   baby?: {
     id: string;
@@ -124,6 +125,7 @@ export interface AppointmentData {
       name: string;
       basePrice?: number | string | null;
       advancePaymentAmount?: number | string | null;
+      categoryId?: string | null;
     };
   } | null;
   selectedPackage?: {
@@ -131,5 +133,6 @@ export interface AppointmentData {
     name: string;
     basePrice?: number | string | null;
     advancePaymentAmount?: number | string | null;
+    categoryId?: string | null;
   } | null;
 }

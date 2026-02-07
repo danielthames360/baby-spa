@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth, validateRequest, handleApiError } from "@/lib/api-utils";
+import { withAuth, validateRequest, handleApiError, requireOpenCashRegister } from "@/lib/api-utils";
 import { sessionService } from "@/lib/services/session-service";
 import { z } from "zod";
 
@@ -30,6 +30,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
     const { id: sessionId } = await params;
 
+    // Enforce cash register for RECEPTION
+    const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+    if (session.user.role === "RECEPTION" && !cashRegisterId) {
+      return NextResponse.json(
+        { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to complete sessions" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { packageId, packagePurchaseId, paymentMethod, paymentDetails, paymentNotes, discountAmount, discountReason, useFirstSessionDiscount } = validateRequest(body, completeSessionSchema);
 
@@ -45,6 +54,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       useFirstSessionDiscount,
       userId: session.user.id,
       userName: session.user.name || "Unknown",
+      cashRegisterId: cashRegisterId ?? undefined,
     });
 
     return NextResponse.json(result);

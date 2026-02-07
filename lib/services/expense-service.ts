@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ExpenseCategory, PaymentMethod, Prisma } from "@prisma/client";
-import { transactionService, PaymentMethodEntry } from "./transaction-service";
+import { transactionService, PaymentMethodEntry, voidTransaction } from "./transaction-service";
 import { activityService } from "./activity-service";
 import { toDateOnly } from "@/lib/utils/date-utils";
 
@@ -366,13 +366,32 @@ export const expenseService = {
       throw new Error("EXPENSE_ALREADY_DELETED");
     }
 
-    return prisma.expense.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-        deletedById,
-      },
-      include: expenseInclude,
+    return prisma.$transaction(async (tx) => {
+      // Soft delete the expense
+      const deleted = await tx.expense.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(),
+          deletedById,
+        },
+        include: expenseInclude,
+      });
+
+      // Create reversal for the associated Transaction
+      const associatedTx = await tx.transaction.findFirst({
+        where: {
+          referenceType: "Expense",
+          referenceId: id,
+          voidedAt: null,
+          isReversal: false,
+        },
+      });
+
+      if (associatedTx) {
+        await voidTransaction(associatedTx.id, "Expense deleted", deletedById, tx);
+      }
+
+      return deleted;
     });
   },
 };

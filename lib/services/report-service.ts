@@ -768,6 +768,7 @@ export const reportService = {
         babyCards: incomeFromBabyCards,
         events: incomeFromEvents,
         installments: incomeFromInstallments,
+        advances: incomeFromAdvances,
         total: totalIncome,
       },
       directCosts: {
@@ -1609,6 +1610,7 @@ interface PnLReport {
     babyCards: number;
     events: number;
     installments: number;
+    advances: number;
     total: number;
   };
   directCosts: {

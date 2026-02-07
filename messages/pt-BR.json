@@ -155,6 +155,7 @@
     "settings": "Configurações",
     "users": "Usuários",
     "staffPayments": "Pagamentos Funcionários",
+    "voidHistory": "Anulações",
     "expenses": "Despesas",
     "events": "Eventos",
     "messages": "Mensagens",
@@ -744,6 +745,8 @@
     "appointmentConfirmed": "A consulta foi confirmada",
     "totalPrice": "Preço total",
     "advanceRequired": "Adiantamento obrigatório",
+    "alreadyPaid": "Já pago",
+    "remaining": "Restante",
     "confirmationWarning": "Ao registrar o pagamento, a consulta será confirmada e bloqueará o horário.",
     "methods": {
       "cash": "Dinheiro",
@@ -773,6 +776,7 @@
       "amountLabel": "Valor",
       "errors": {
         "summismatch": "A soma dos pagamentos deve ser igual ao total",
+        "sumexceeds": "O valor não pode exceder o total",
         "atleastone": "Deve registrar pelo menos um pagamento",
         "methodrequired": "Selecione uma forma de pagamento",
         "amountpositive": "O valor deve ser maior que zero"
@@ -1991,6 +1995,7 @@
 
     "payment": {
       "registerPayment": "Registrar Pagamento",
+      "voidPayment": "Anular Pagamento",
       "amount": "Valor",
       "amountDue": "A pagar",
       "amountPaid": "Pago",
@@ -2486,7 +2491,8 @@
       "cash_register_closed": "Caixa fechada",
       "cash_register_expense_added": "Despesa adicionada ao caixa",
       "cash_register_reviewed": "Caixa revisada",
-      "cash_register_force_closed": "Caixa fechada forçosamente"
+      "cash_register_force_closed": "Caixa fechada forçosamente",
+      "transaction_voided": "Transação anulada"
     }
   },
 
@@ -3088,6 +3094,7 @@
       "babyCards": "Baby Cards",
       "events": "Eventos",
       "installments": "Parcelas de pacotes",
+      "advances": "Adiantamentos",
       "totalIncome": "Total Receitas",
       "directCosts": "CUSTOS DIRETOS",
       "sessionProducts": "Produtos em sessões",
@@ -3326,6 +3333,15 @@
       "errorNegative": "O fundo inicial não pode ser negativo"
     },
 
+    "requiredModal": {
+      "title": "Caixa não aberto",
+      "description": "Para registrar pagamentos, você precisa abrir seu caixa primeiro.",
+      "openNow": "Abrir Caixa",
+      "cancel": "Cancelar",
+      "initialFund": "Fundo inicial",
+      "success": "Caixa aberto com sucesso"
+    },
+
     "closeModal": {
       "title": "Fechar Caixa",
       "instruction": "Conte todo o dinheiro no caixa e registre o valor total.",
@@ -3557,6 +3573,65 @@
         "LEAD": "Leads",
         "ADMIN": "Admin"
       }
+    }
+  },
+  "transactions": {
+    "void": {
+      "title": "Anular transação",
+      "confirm": "Tem certeza que deseja anular esta transação?",
+      "reason": "Motivo da anulação",
+      "reasonPlaceholder": "Explique por que esta transação está sendo anulada...",
+      "reasonRequired": "O motivo é obrigatório (mínimo 10 caracteres)",
+      "warning": "Esta ação não pode ser desfeita. Será criado um lançamento de reversão contábil.",
+      "button": "Anular transação",
+      "cancel": "Cancelar",
+      "success": "Transação anulada com sucesso",
+      "alreadyVoided": "Esta transação já foi anulada",
+      "cannotVoidReversal": "Não é possível anular um lançamento de reversão",
+      "notFound": "Transação não encontrada",
+      "noPermission": "Você não tem permissão para anular esta transação"
+    },
+    "voided": "ANULADA",
+    "voidedBy": "Anulada por {name}",
+    "voidedAt": "Anulada em {date}",
+    "voidReason": "Motivo: {reason}",
+    "reversal": "REVERSÃO",
+    "paymentsRegistered": "Pagamentos Registrados",
+    "noPayments": "Sem pagamentos registrados",
+    "voidPayment": "Anular pagamento",
+    "advance": "Adiantamento",
+    "sessionPayment": "Pagamento de sessão",
+    "history": {
+      "title": "Histórico de Anulações",
+      "subtitle": "Registro de todas as transações anuladas",
+      "summary": "Resumo do período",
+      "totalVoids": "Total anulações",
+      "totalAmount": "Valor total anulado",
+      "byType": "Por tipo",
+      "dateVoided": "Data anulação",
+      "type": "Tipo",
+      "reference": "Referência",
+      "amount": "Valor",
+      "reason": "Motivo",
+      "voidedBy": "Anulada por",
+      "originalDate": "Data original",
+      "noVoids": "Não há anulações no período selecionado",
+      "filterByType": "Filtrar por tipo",
+      "filterByUser": "Filtrar por usuário",
+      "allTypes": "Todos os tipos",
+      "allUsers": "Todos os usuários"
+    },
+    "categories": {
+      "APPOINTMENT_ADVANCE": "Adiantamento de consulta",
+      "SESSION": "Sessão",
+      "SESSION_PRODUCTS": "Produtos de sessão",
+      "PACKAGE_SALE": "Venda de pacote",
+      "PACKAGE_INSTALLMENT": "Parcela de pacote",
+      "BABY_CARD": "Baby Card",
+      "EVENT_REGISTRATION": "Inscrição em evento",
+      "EVENT_PRODUCTS": "Produtos de evento",
+      "ADMIN_EXPENSE": "Despesa administrativa",
+      "STAFF_PAYMENT": "Pagamento de pessoal"
     }
   }
 }

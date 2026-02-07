@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import {
   ShoppingCart,
   Search,
@@ -11,6 +12,13 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
+import { useCashRegisterGuard } from "@/hooks/use-cash-register-guard";
+
+// Dynamic import for cash register required modal
+const CashRegisterRequiredModal = dynamic(
+  () => import("@/components/cash-register/cash-register-required-modal").then(mod => mod.CashRegisterRequiredModal),
+  { ssr: false }
+);
 import {
   Dialog,
   DialogContent,
@@ -76,6 +84,9 @@ export function ProductSaleDialog({
   const tInventory = useTranslations("inventory");
   const locale = useLocale();
   const currency = getCurrencySymbol(locale);
+
+  // Cash register guard
+  const { showCashRegisterModal, setShowCashRegisterModal, handleCashRegisterError, onCashRegisterSuccess } = useCashRegisterGuard();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -206,8 +217,13 @@ export function ProductSaleDialog({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error processing sale");
+        const errorData = await response.json();
+        // Check if cash register is required
+        if (handleCashRegisterError(errorData.error, handleSubmit)) {
+          setIsSubmitting(false);
+          return;
+        }
+        throw new Error(errorData.error || "Error processing sale");
       }
 
       toast.success(t("sales.saleCompleted"));
@@ -403,6 +419,13 @@ export function ProductSaleDialog({
           )}
         </div>
       </DialogContent>
+
+      {/* Cash Register Required Modal */}
+      <CashRegisterRequiredModal
+        open={showCashRegisterModal}
+        onOpenChange={setShowCashRegisterModal}
+        onSuccess={onCashRegisterSuccess}
+      />
     </Dialog>
   );
 }

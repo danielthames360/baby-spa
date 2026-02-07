@@ -7,6 +7,7 @@ export { ClientHeader } from "./client-header";
 export { DateTimePackageRow } from "./date-time-package-row";
 export { BabyCardSection } from "./baby-card-section";
 export { AppointmentActions } from "./appointment-actions";
+export { PaymentsSection } from "./payments-section";
 export { PackageEditor } from "./package-editor";
 export { RescheduleDialog } from "./reschedule-dialog";
 export { CancelDialog, NoShowDialog } from "./confirmation-dialogs";

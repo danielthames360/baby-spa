@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { withAuth, validateRequest, handleApiError, createdResponse, ApiError } from "@/lib/api-utils";
+import { NextRequest, NextResponse } from "next/server";
+import { withAuth, validateRequest, handleApiError, createdResponse, ApiError, requireOpenCashRegister } from "@/lib/api-utils";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { transactionService, PaymentMethodEntry } from "@/lib/services/transaction-service";
@@ -28,7 +28,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
-    await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
+    const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
+
+    // Enforce cash register for RECEPTION
+    const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+    if (session.user.role === "RECEPTION" && !cashRegisterId) {
+      return NextResponse.json(
+        { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to process sales" },
+        { status: 400 }
+      );
+    }
 
     const { id: eventId, participantId } = await params;
     const body = await request.json();

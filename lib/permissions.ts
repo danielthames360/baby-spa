@@ -78,7 +78,9 @@ export type Permission =
   | "reports:view-operational"
   | "reports:export"
   // Mensajería
-  | "messages:view";
+  | "messages:view"
+  // Anulaciones
+  | "transactions:void";
 
 // Permisos por rol
 const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
@@ -139,6 +141,7 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     "reports:view-operational",
     "reports:export",
     "messages:view",
+    "transactions:void",
   ],
 
   ADMIN: [
@@ -192,6 +195,7 @@ const ROLE_PERMISSIONS: Record<UserRole | "PARENT", Permission[]> = {
     "reports:view-operational",
     "reports:export",
     "messages:view",
+    "transactions:void",
   ],
 
   RECEPTION: [
@@ -364,12 +368,12 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
 
 // Items de navegación secundaria (administración)
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
-  // Finance
+  // Finance - Only visible for ADMIN/OWNER (RECEPTION handles cash register expenses instead)
   {
     key: "expenses",
     href: "/admin/expenses",
     icon: "Receipt",
-    requiredPermissions: ["expenses:create"],
+    requiredPermissions: ["expenses:view-all"],
   },
   {
     key: "reports",
@@ -382,6 +386,12 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
     href: "/admin/staff-payments",
     icon: "CreditCard",
     requiredPermissions: ["staff-payments:view"],
+  },
+  {
+    key: "voidHistory",
+    href: "/admin/transactions/voids",
+    icon: "Ban",
+    requiredPermissions: ["transactions:void"],
   },
   // System
   {

@@ -51,6 +51,8 @@ interface SplitPaymentFormProps {
   currency?: string;
   /** Initial payment details to populate */
   initialDetails?: PaymentDetailInput[];
+  /** Allow sum to be less than totalAmount (for partial/advance payments) */
+  allowPartialPayment?: boolean;
 }
 
 // Generate unique ID for payment lines
@@ -65,6 +67,7 @@ export function SplitPaymentForm({
   showReference = true,
   currency: currencyProp,
   initialDetails,
+  allowPartialPayment = false,
 }: SplitPaymentFormProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -94,11 +97,22 @@ export function SplitPaymentForm({
   const validateLines = useCallback(
     (currentLines: PaymentLine[]) => {
       const sum = currentLines.reduce((acc, line) => acc + (line.amount || 0), 0);
-      const diff = Math.abs(sum - totalAmount);
       const tolerance = 0.01;
 
-      if (diff > tolerance) {
-        return { valid: false, error: "SUM_MISMATCH", sum };
+      if (allowPartialPayment) {
+        // Partial: sum must be > 0 and <= totalAmount
+        if (sum < tolerance) {
+          return { valid: false, error: "AMOUNT_POSITIVE", sum };
+        }
+        if (sum > totalAmount + tolerance) {
+          return { valid: false, error: "SUM_EXCEEDS", sum };
+        }
+      } else {
+        // Exact: sum must equal totalAmount
+        const diff = Math.abs(sum - totalAmount);
+        if (diff > tolerance) {
+          return { valid: false, error: "SUM_MISMATCH", sum };
+        }
       }
 
       // Check all lines have a payment method
@@ -115,7 +129,7 @@ export function SplitPaymentForm({
 
       return { valid: true, sum };
     },
-    [totalAmount]
+    [totalAmount, allowPartialPayment]
   );
 
   // Derived state: compute validation during render instead of via useEffect

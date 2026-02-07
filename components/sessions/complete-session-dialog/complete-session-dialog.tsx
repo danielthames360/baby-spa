@@ -22,6 +22,7 @@ import {
   formatPreferencesText,
 } from "@/lib/utils/bulk-scheduling";
 
+import { useCashRegisterGuard } from "@/hooks/use-cash-register-guard";
 import { SuccessView } from "./success-view";
 import { AlertsSection } from "./alerts-section";
 import { BabyCardSection } from "./baby-card-section";
@@ -64,6 +65,15 @@ const SellBabyCardDialog = dynamic(
   () =>
     import("@/components/baby-cards/sell-baby-card-dialog").then(
       (mod) => mod.SellBabyCardDialog
+    ),
+  { ssr: false }
+);
+
+// Dynamic import for cash register required modal
+const CashRegisterRequiredModal = dynamic(
+  () =>
+    import("@/components/cash-register/cash-register-required-modal").then(
+      (mod) => mod.CashRegisterRequiredModal
     ),
   { ssr: false }
 );
@@ -140,6 +150,9 @@ export function CompleteSessionDialog({
 
   // Sell Baby Card dialog state
   const [showSellBabyCardDialog, setShowSellBabyCardDialog] = useState(false);
+
+  // Cash register guard
+  const { showCashRegisterModal, setShowCashRegisterModal, handleCashRegisterError, onCashRegisterSuccess } = useCashRegisterGuard();
 
   // Fetch functions
   const fetchProducts = useCallback(async () => {
@@ -361,11 +374,11 @@ export function CompleteSessionDialog({
       promises.push(
         fetch(`/api/appointments/${session.appointmentId}/payments`)
           .then((res) => res.json())
-          .then((data) => {
-            if (data.payments) {
-              const advanceTotal = data.payments
-                .filter((p: { paymentType: string }) => p.paymentType === "ADVANCE")
-                .reduce((sum: number, p: { amount: number }) => sum + p.amount, 0);
+          .then((transactions: { category: string; total: number; isReversal: boolean; voidedAt: string | null }[]) => {
+            if (Array.isArray(transactions)) {
+              const advanceTotal = transactions
+                .filter((t) => t.category === "APPOINTMENT_ADVANCE" && !t.isReversal && !t.voidedAt)
+                .reduce((sum, t) => sum + Number(t.total), 0);
               setAdvancePaidAmount(advanceTotal);
             }
           })
@@ -584,6 +597,11 @@ export function CompleteSessionDialog({
 
       if (!response.ok) {
         const errorKey = data.error || "UNKNOWN_ERROR";
+        // Check if cash register is required
+        if (handleCashRegisterError(errorKey, handleComplete)) {
+          setIsSubmitting(false);
+          return;
+        }
         setError(t(`session.errors.${errorKey}`));
         return;
       }
@@ -879,6 +897,13 @@ export function CompleteSessionDialog({
           }}
         />
       )}
+
+      {/* Cash Register Required Modal */}
+      <CashRegisterRequiredModal
+        open={showCashRegisterModal}
+        onOpenChange={setShowCashRegisterModal}
+        onSuccess={onCashRegisterSuccess}
+      />
     </Dialog>
   );
 }

@@ -5,6 +5,7 @@ import {
   ItemType,
   PaymentMethod,
   Prisma,
+  type PrismaClient,
 } from "@prisma/client";
 
 // Use Prisma.Decimal for proper typing
@@ -39,6 +40,7 @@ export interface CreateTransactionInput {
   paymentMethods: PaymentMethodEntry[];
   notes?: string;
   createdById?: string;
+  cashRegisterId?: string;
 }
 
 export interface TransactionWithItems {
@@ -54,6 +56,8 @@ export interface TransactionWithItems {
   notes: string | null;
   createdById: string | null;
   createdAt: Date;
+  isReversal: boolean;
+  voidedAt: Date | null;
   items: {
     id: string;
     itemType: ItemType;
@@ -164,6 +168,9 @@ export async function create(
       paymentMethods: input.paymentMethods as unknown as object,
       notes: input.notes,
       createdById: input.createdById,
+      ...(input.cashRegisterId
+        ? { cashRegister: { connect: { id: input.cashRegisterId } } }
+        : {}),
       items: {
         create: itemsWithFinalPrice,
       },
@@ -175,6 +182,7 @@ export async function create(
 
   return {
     ...transaction,
+    items: transaction.items,
     paymentMethods: transaction.paymentMethods as unknown as PaymentMethodEntry[],
   };
 }
@@ -418,6 +426,100 @@ export async function getTotalDiscounts(
 }
 
 // ============================================================
+// VOID / REVERSAL
+// ============================================================
+
+/**
+ * Voids a transaction by creating a reversal entry with negative amounts.
+ * Marks the original with void metadata (for UI display only).
+ * Does NOT apply side effects - those are handled by the caller.
+ *
+ * @param id - Transaction ID to void
+ * @param reason - Required reason for voiding
+ * @param voidedById - User ID performing the void
+ * @param tx - Optional Prisma transaction client for atomicity
+ */
+export async function voidTransaction(
+  id: string,
+  reason: string,
+  voidedById: string,
+  tx?: Prisma.TransactionClient
+): Promise<{ original: TransactionWithItems; reversal: TransactionWithItems }> {
+  const db = tx || prisma;
+
+  // 1. Load the original transaction
+  const original = await db.transaction.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+
+  if (!original) throw new Error("TRANSACTION_NOT_FOUND");
+  if (original.voidedAt) throw new Error("TRANSACTION_ALREADY_VOIDED");
+  if (original.isReversal) throw new Error("CANNOT_VOID_REVERSAL");
+
+  // 2. Create reversal Transaction (mirror with negative amounts)
+  const originalPaymentMethods =
+    original.paymentMethods as unknown as PaymentMethodEntry[];
+  const reversedPaymentMethods = originalPaymentMethods.map((pm) => ({
+    ...pm,
+    amount: -pm.amount,
+  }));
+
+  const reversal = await db.transaction.create({
+    data: {
+      type: original.type,
+      category: original.category,
+      referenceType: original.referenceType,
+      referenceId: original.referenceId,
+      subtotal: -Number(original.subtotal),
+      discountTotal: -Number(original.discountTotal),
+      total: -Number(original.total),
+      paymentMethods: reversedPaymentMethods as unknown as object,
+      notes: `REVERSAL: ${reason}`,
+      createdById: voidedById,
+      isReversal: true,
+      reversalOfId: original.id,
+      items: {
+        create: original.items.map((item) => ({
+          itemType: item.itemType,
+          referenceId: item.referenceId,
+          description: `[REVERSAL] ${item.description}`,
+          quantity: item.quantity,
+          unitPrice: -Number(item.unitPrice),
+          discountAmount: -Number(item.discountAmount),
+          finalPrice: -Number(item.finalPrice),
+        })),
+      },
+    },
+    include: { items: true },
+  });
+
+  // 3. Mark void metadata on the original (UI-only)
+  const updated = await db.transaction.update({
+    where: { id },
+    data: {
+      voidedAt: new Date(),
+      voidedById,
+      voidReason: reason,
+    },
+    include: { items: true },
+  });
+
+  return {
+    original: {
+      ...updated,
+      paymentMethods:
+        updated.paymentMethods as unknown as PaymentMethodEntry[],
+    },
+    reversal: {
+      ...reversal,
+      paymentMethods:
+        reversal.paymentMethods as unknown as PaymentMethodEntry[],
+    },
+  };
+}
+
+// ============================================================
 // EXPORTS
 // ============================================================
 
@@ -434,4 +536,5 @@ export const transactionService = {
   getTotalDiscounts,
   validatePaymentMethods,
   normalizePaymentMethods,
+  voidTransaction,
 };

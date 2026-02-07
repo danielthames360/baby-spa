@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { z, ZodSchema } from "zod";
 
 // Custom API Error class for consistent error handling
@@ -46,6 +47,29 @@ export async function withAuth(
   }
 
   return session as AuthSession;
+}
+
+/**
+ * Check if a RECEPTION user has an open cash register.
+ * Returns the cash register ID if found, or null if not found.
+ * Only enforced for RECEPTION role - returns null (skip) for other roles.
+ */
+export async function requireOpenCashRegister(
+  userId: string,
+  userRole: string
+): Promise<string | null> {
+  // Only enforce for RECEPTION role
+  if (userRole !== "RECEPTION") return null;
+
+  const openRegister = await prisma.cashRegister.findFirst({
+    where: {
+      openedById: userId,
+      status: "OPEN",
+    },
+    select: { id: true },
+  });
+
+  return openRegister?.id ?? null;
 }
 
 /**
@@ -175,6 +199,14 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
       EXPENSE_NOT_FOUND: 404,
       EXPENSE_ALREADY_DELETED: 400,
       CANNOT_UPDATE_DELETED_EXPENSE: 400,
+
+      // Transaction void errors
+      TRANSACTION_NOT_FOUND: 404,
+      TRANSACTION_ALREADY_VOIDED: 400,
+      CANNOT_VOID_REVERSAL: 400,
+
+      // Cash register errors
+      CASH_REGISTER_REQUIRED: 400,
     };
 
     const statusCode = knownErrors[error.message];

@@ -25,6 +25,7 @@ import {
   ClientHeader,
   DateTimePackageRow,
   BabyCardSection,
+  PaymentsSection,
   AppointmentActions,
   PackageEditor,
   RescheduleDialog,
@@ -276,7 +277,7 @@ export function AppointmentDetails({
   const canCancel = ["SCHEDULED", "IN_PROGRESS", "PENDING_PAYMENT"].includes(appointment.status);
   const canMarkNoShow = appointment.status === "SCHEDULED";
   const canReschedule = appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT";
-  const canRegisterPayment = appointment.status === "PENDING_PAYMENT";
+  const canRegisterPayment = appointment.status === "PENDING_PAYMENT" || appointment.status === "SCHEDULED";
 
   // Action handlers
   const handleAction = async (action: string, reason?: string) => {
@@ -464,6 +465,17 @@ export function AppointmentDetails({
               onEditPackage={handleEditPackage}
             />
 
+            {/* Therapist info - shown when session is active */}
+            {appointment.session?.therapist?.name && (
+              <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+                  {appointment.session.therapist.name.charAt(0)}
+                </div>
+                <span className="text-gray-500">{t("session.therapist")}:</span>
+                <span className="font-medium text-blue-700">{appointment.session.therapist.name}</span>
+              </div>
+            )}
+
             {/* Package editor */}
             {isEditingPackage && (
               <PackageEditor
@@ -538,6 +550,15 @@ export function AppointmentDetails({
               />
             )}
 
+            {/* Registered Payments */}
+            <PaymentsSection
+              appointmentId={appointment.id}
+              onPaymentVoided={onUpdate}
+              canRegisterPayment={canRegisterPayment}
+              onRegisterPayment={() => setShowRegisterPaymentDialog(true)}
+              packagePrice={Number(appointment.packagePurchase?.package?.basePrice || appointment.selectedPackage?.basePrice || 0)}
+            />
+
             {/* Notes */}
             {appointment.notes && (
               <div className="rounded-xl bg-gray-50 p-4">
@@ -561,7 +582,6 @@ export function AppointmentDetails({
               canCancel={canCancel}
               canMarkNoShow={canMarkNoShow}
               canReschedule={canReschedule}
-              canRegisterPayment={canRegisterPayment}
               hasSessionId={!!appointment.session?.id}
               isUpdating={isUpdating}
               onStart={() => setShowStartSessionDialog(true)}
@@ -569,7 +589,6 @@ export function AppointmentDetails({
               onCancel={() => setShowCancelDialog(true)}
               onNoShow={() => setShowNoShowDialog(true)}
               onReschedule={() => setShowRescheduleDialog(true)}
-              onRegisterPayment={() => setShowRegisterPaymentDialog(true)}
             />
           </div>
         </DialogContent>
@@ -629,6 +648,11 @@ export function AppointmentDetails({
             !appointment.packagePurchaseId && appointment.selectedPackage?.id
               ? appointment.selectedPackage.id
               : undefined
+          }
+          preselectedCategoryId={
+            appointment.packagePurchase?.package?.categoryId ||
+            appointment.selectedPackage?.categoryId ||
+            undefined
           }
           onSuccess={() => {
             onUpdate?.();

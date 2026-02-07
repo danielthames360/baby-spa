@@ -36,10 +36,16 @@ import {
   type PackagePurchaseData,
 } from "@/components/packages/package-selector";
 import { canUseNextSession, type PaymentStatus } from "@/lib/utils/installments";
+import { useCashRegisterGuard } from "@/hooks/use-cash-register-guard";
 
-// Dynamic import for payment dialog
+// Dynamic imports for dialogs
 const RegisterInstallmentPaymentDialog = dynamic(
   () => import("@/components/packages/register-installment-payment-dialog").then(mod => mod.RegisterInstallmentPaymentDialog),
+  { ssr: false }
+);
+
+const CashRegisterRequiredModal = dynamic(
+  () => import("@/components/cash-register/cash-register-required-modal").then(mod => mod.CashRegisterRequiredModal),
   { ssr: false }
 );
 
@@ -56,6 +62,7 @@ interface StartSessionDialogProps {
   startTime: string;
   preselectedPurchaseId?: string; // Existing package purchase pre-selected
   preselectedCatalogPackageId?: string; // Catalog package pre-selected (new purchase)
+  preselectedCategoryId?: string; // Category to auto-select in PackageSelector
   onSuccess?: () => void;
 }
 
@@ -96,6 +103,7 @@ export function StartSessionDialog({
   startTime,
   preselectedPurchaseId,
   preselectedCatalogPackageId,
+  preselectedCategoryId,
   onSuccess,
 }: StartSessionDialogProps) {
   const t = useTranslations();
@@ -121,6 +129,9 @@ export function StartSessionDialog({
   const [paymentWarning, setPaymentWarning] = useState<PaymentStatus | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedPurchaseForPayment, setSelectedPurchaseForPayment] = useState<PackagePurchase | null>(null);
+
+  // Cash register guard
+  const { showCashRegisterModal, setShowCashRegisterModal, handleCashRegisterError, onCashRegisterSuccess } = useCashRegisterGuard();
 
   // Ref for scrollable content
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -355,6 +366,11 @@ export function StartSessionDialog({
 
       if (!response.ok) {
         const errorKey = data.error || "UNKNOWN_ERROR";
+        // Check if cash register is required
+        if (handleCashRegisterError(errorKey, handleSubmit)) {
+          setIsSubmitting(false);
+          return;
+        }
         setError(t(`session.errors.${errorKey}`));
         return;
       }
@@ -450,6 +466,7 @@ export function StartSessionDialog({
                 selectedPackageId={selectedPackageId}
                 selectedPurchaseId={selectedPurchaseId}
                 onSelectPackage={handlePackageSelect}
+                defaultCategoryId={preselectedCategoryId}
                 showCategories={true}
                 showPrices={false}
                 showExistingFirst={true}
@@ -540,6 +557,13 @@ export function StartSessionDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Cash Register Required Modal */}
+      <CashRegisterRequiredModal
+        open={showCashRegisterModal}
+        onOpenChange={setShowCashRegisterModal}
+        onSuccess={onCashRegisterSuccess}
+      />
 
       {/* Payment Dialog */}
       {selectedPurchaseForPayment && (

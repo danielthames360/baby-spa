@@ -24,6 +24,7 @@ import {
   BarChart3,
   CircleDollarSign,
   MessageSquare,
+  Ban,
   LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   BarChart3,
   CircleDollarSign,
   MessageSquare,
+  Ban,
 };
 
 interface AdminSidebarProps {

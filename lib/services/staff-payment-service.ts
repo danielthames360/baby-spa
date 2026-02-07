@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { StaffPaymentType, PaymentMethod, PaymentStatus, PayFrequency, Prisma } from "@prisma/client";
-import { transactionService, PaymentMethodEntry } from "./transaction-service";
+import { transactionService, PaymentMethodEntry, voidTransaction } from "./transaction-service";
 import { activityService } from "./activity-service";
 
 // ============================================================
@@ -1101,6 +1101,25 @@ export const staffPaymentService = {
             includedInSalaryId: null,
           },
         });
+      }
+
+      // Create reversal for the associated Transaction
+      const associatedTx = await tx.transaction.findFirst({
+        where: {
+          referenceType: "StaffPayment",
+          referenceId: id,
+          voidedAt: null,
+          isReversal: false,
+        },
+      });
+
+      if (associatedTx) {
+        await voidTransaction(
+          associatedTx.id,
+          `Staff payment deleted: ${payment.type}`,
+          deletedById,
+          tx
+        );
       }
 
       return deleted;

@@ -17,7 +17,9 @@ import {
   Banknote,
   ShoppingCart,
   ShoppingBag,
+  Ban,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -51,6 +53,10 @@ const ProductSaleDialog = dynamic(
 );
 const ParticipantPurchasesDialog = dynamic(
   () => import("./participant-purchases-dialog").then((m) => m.ParticipantPurchasesDialog),
+  { ssr: false }
+);
+const VoidTransactionDialog = dynamic(
+  () => import("@/components/transactions/void-transaction-dialog").then((m) => m.VoidTransactionDialog),
   { ssr: false }
 );
 
@@ -112,6 +118,8 @@ interface ParticipantRowProps {
   onOpenPurchasesDialog: (participantId: string, name: string) => void;
   onDeleteParticipant: (id: string) => void;
   onMarkAttendance: (participantId: string, attended: boolean) => void;
+  canVoidPayment: boolean;
+  onVoidPayment: (participantId: string, name: string) => void;
 }
 
 // Memoized row to prevent re-renders when dialog state changes in parent
@@ -131,6 +139,8 @@ const ParticipantRow = React.memo(function ParticipantRow({
   onOpenPurchasesDialog,
   onDeleteParticipant,
   onMarkAttendance,
+  canVoidPayment,
+  onVoidPayment,
 }: ParticipantRowProps) {
   const name = participant.baby?.name || participant.parent?.name || "—";
   const primaryParent = participant.baby?.parents.find((p) => p.isPrimary)?.parent;
@@ -213,6 +223,18 @@ const ParticipantRow = React.memo(function ParticipantRow({
                 >
                   <Banknote className="mr-2 h-4 w-4 text-emerald-500" />
                   {t("payment.registerPayment")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {canVoidPayment && amountPaid > 0 && (
+              <>
+                <DropdownMenuItem
+                  onClick={() => onVoidPayment(participant.id, name)}
+                  className="text-rose-600"
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  {t("payment.voidPayment")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
@@ -308,6 +330,17 @@ export function ParticipantList({
     participantName: string;
   } | null>(null);
   const [participantsWithPurchases, setParticipantsWithPurchases] = useState<Set<string>>(new Set());
+  const [voidDialog, setVoidDialog] = useState<{
+    open: boolean;
+    participantId: string;
+    participantName: string;
+    transactionId: string;
+    amount: number;
+  } | null>(null);
+
+  const { data: sessionData } = useSession();
+  const canVoidPayment =
+    sessionData?.user?.role === "OWNER" || sessionData?.user?.role === "ADMIN";
 
   const canModify = ["DRAFT", "PUBLISHED"].includes(eventStatus);
   const canSellProducts = eventStatus === "IN_PROGRESS";
@@ -415,6 +448,39 @@ export function ParticipantList({
     []
   );
 
+  const handleVoidPayment = useCallback(
+    async (participantId: string, name: string) => {
+      // Find the transaction for this participant's registration payment
+      try {
+        const response = await fetch(
+          `/api/events/${eventId}/participants/${participantId}/transactions`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          // Get first non-voided, non-reversal transaction
+          const transaction = data.find(
+            (t: { isReversal: boolean; voidedAt: string | null }) =>
+              !t.isReversal && !t.voidedAt
+          );
+          if (transaction) {
+            setVoidDialog({
+              open: true,
+              participantId,
+              participantName: name,
+              transactionId: transaction.id,
+              amount: Number(transaction.total),
+            });
+          } else {
+            toast.error("No active payment found");
+          }
+        }
+      } catch {
+        toast.error("Error fetching payment");
+      }
+    },
+    [eventId]
+  );
+
   if (participants.length === 0) {
     return (
       <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
@@ -451,6 +517,8 @@ export function ParticipantList({
             onOpenPurchasesDialog={handleOpenPurchasesDialog}
             onDeleteParticipant={handleDeleteParticipant}
             onMarkAttendance={handleMarkAttendance}
+            canVoidPayment={canVoidPayment}
+            onVoidPayment={handleVoidPayment}
           />
         ))}
       </div>
@@ -519,6 +587,23 @@ export function ParticipantList({
           eventId={eventId}
           participantId={purchasesDialog.participantId}
           participantName={purchasesDialog.participantName}
+        />
+      )}
+
+      {/* Void payment dialog */}
+      {voidDialog && (
+        <VoidTransactionDialog
+          transactionId={voidDialog.transactionId}
+          transactionSummary={`${voidDialog.participantName} - Event Registration`}
+          amount={voidDialog.amount}
+          locale={locale}
+          open={voidDialog.open}
+          onOpenChange={(open) => !open && setVoidDialog(null)}
+          onVoided={() => {
+            setVoidDialog(null);
+            onRefresh?.();
+            router.refresh();
+          }}
         />
       )}
     </>

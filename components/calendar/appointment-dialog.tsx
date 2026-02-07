@@ -117,6 +117,7 @@ export function AppointmentDialog({
     id: string;
     date: Date;
     startTime: string;
+    status: string;
     baby: { id: string; name: string };
     selectedPackage?: { id: string; name: string; basePrice?: number | string | null; advancePaymentAmount?: number | string | null } | null;
   } | null>(null);
@@ -380,6 +381,7 @@ export function AppointmentDialog({
           id: data.appointment.id,
           date: new Date(data.appointment.date),
           startTime: data.appointment.startTime,
+          status: data.appointment.status || "PENDING_PAYMENT",
           baby: { id: selectedClient.baby.id, name: selectedClient.baby.name },
           selectedPackage: pkg ? {
             id: pkg.id,

@@ -323,6 +323,9 @@ enum ActivityType {
   // Staff Payments y Gastos (Fase 7)
   STAFF_PAYMENT_REGISTERED
   EXPENSE_REGISTERED
+
+  // Anulaciones (Reversal Entry)
+  TRANSACTION_VOIDED
 }
 
 // ============================================================
@@ -366,6 +369,7 @@ model User {
   babyCardPurchasesCreated BabyCardPurchase[]    @relation("BabyCardPurchasesCreated")
   babyCardRewardsApplied   BabyCardRewardUsage[] @relation("BabyCardRewardsApplied")
   transactionsCreated      Transaction[]         @relation("TransactionsCreated")
+  transactionsVoided       Transaction[]         @relation("TransactionsVoided")
   notificationsRead        Notification[]        @relation("NotificationReadBy")
   activitiesPerformed      Activity[]            @relation("ActivitiesPerformed")
   expensesCreated          Expense[]             @relation("ExpensesCreated")
@@ -1512,6 +1516,10 @@ model Transaction {
   // JSON Array: [{ method: "CASH", amount: 200 }, { method: "QR", amount: 150, reference: "TXN-123" }]
   paymentMethods Json
 
+  // Cash register link (for RECEPTION users)
+  cashRegisterId String?
+  cashRegister   CashRegister? @relation(fields: [cashRegisterId], references: [id])
+
   // Metadatos
   notes       String?
   createdById String?
@@ -1521,10 +1529,25 @@ model Transaction {
   // Line items
   items TransactionItem[]
 
+  // Reversal support
+  isReversal   Boolean      @default(false) // true = reversal entry
+  reversalOfId String?      @unique           // Points to original Transaction
+  reversalOf   Transaction? @relation("TransactionReversal", fields: [reversalOfId], references: [id])
+  reversedBy   Transaction? @relation("TransactionReversal") // Inverse: the reversal that voided this
+
+  // Void metadata (set on ORIGINAL after creating reversal, UI-only)
+  voidedAt     DateTime?
+  voidedById   String?
+  voidedBy     User?        @relation("TransactionsVoided", fields: [voidedById], references: [id])
+  voidReason   String?
+
   @@index([type])
   @@index([category])
   @@index([referenceType, referenceId])
   @@index([createdAt])
+  @@index([isReversal])
+  @@index([reversalOfId])
+  @@index([cashRegisterId])
   @@map("transactions")
 }
 
@@ -1622,7 +1645,8 @@ model CashRegister {
   forcedCloseNotes String? @db.Text
 
   // Relaciones
-  expenses CashRegisterExpense[]
+  expenses     CashRegisterExpense[]
+  transactions Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

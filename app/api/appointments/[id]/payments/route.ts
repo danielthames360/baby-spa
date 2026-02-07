@@ -1,55 +1,63 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { transactionService } from "@/lib/services/transaction-service";
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
+import { withAuth, handleApiError, successResponse } from "@/lib/api-utils";
 
-// GET - List payments for an appointment
+// GET - List payments/transactions for an appointment (including session)
 export async function GET(
-  request: Request,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !["OWNER", "ADMIN", "RECEPTION", "THERAPIST"].includes(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    await withAuth(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
     const { id } = await params;
 
-    // Get all transactions for this appointment
-    const transactions = await transactionService.getByReference(
-      "Appointment",
-      id
-    );
+    // Find session ID linked to this appointment (if any)
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      select: { id: true, session: { select: { id: true } } },
+    });
 
-    // Map transactions to the expected payment format
-    const payments = transactions.map((t) => ({
-      id: t.id,
-      appointmentId: id,
-      amount: Number(t.total),
-      paymentType: t.category === "APPOINTMENT_ADVANCE" ? "ADVANCE" : "OTHER",
-      paymentMethods: t.paymentMethods,
-      notes: t.notes,
-      createdAt: t.createdAt,
-      createdById: t.createdById,
+    if (!appointment) throw new Error("APPOINTMENT_NOT_FOUND");
+
+    // Build list of reference IDs to search for
+    const referenceIds = [id];
+    if (appointment.session?.id) {
+      referenceIds.push(appointment.session.id);
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        referenceId: { in: referenceIds },
+        category: {
+          in: [
+            "APPOINTMENT_ADVANCE",
+            "SESSION",
+            "SESSION_PRODUCTS",
+            "PACKAGE_SALE",
+            "PACKAGE_INSTALLMENT",
+          ],
+        },
+      },
+      select: {
+        id: true,
+        category: true,
+        total: true,
+        paymentMethods: true,
+        createdAt: true,
+        isReversal: true,
+        voidedAt: true,
+        voidReason: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const serialized = transactions.map((t) => ({
+      ...t,
+      total: Number(t.total),
     }));
 
-    // Calculate totals
-    const totalPaid = payments.reduce(
-      (sum, p) => sum + p.amount,
-      0
-    );
-
-    return NextResponse.json({
-      payments,
-      totalPaid,
-    });
+    return successResponse(serialized);
   } catch (error) {
-    console.error("Get appointment payments error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error, "fetching appointment payments");
   }
 }

@@ -1,10 +1,11 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   withAuth,
   validateRequest,
   handleApiError,
   successResponse,
   createdResponse,
+  requireOpenCashRegister,
 } from "@/lib/api-utils";
 import { babyCardService } from "@/lib/services/baby-card-service";
 import { purchaseBabyCardSchema } from "@/lib/validations/baby-card";
@@ -60,6 +61,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
+
+    // Enforce cash register for RECEPTION
+    const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+    if (session.user.role === "RECEPTION" && !cashRegisterId) {
+      return NextResponse.json(
+        { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to sell baby cards" },
+        { status: 400 }
+      );
+    }
 
     const body = await request.json();
     const data = validateRequest(body, purchaseBabyCardSchema);

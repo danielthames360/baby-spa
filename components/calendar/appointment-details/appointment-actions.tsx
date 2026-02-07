@@ -9,7 +9,6 @@ import {
   X,
   AlertCircle,
   CalendarClock,
-  CreditCard,
 } from "lucide-react";
 
 interface AppointmentActionsProps {
@@ -18,7 +17,6 @@ interface AppointmentActionsProps {
   canCancel: boolean;
   canMarkNoShow: boolean;
   canReschedule: boolean;
-  canRegisterPayment: boolean;
   hasSessionId: boolean;
   isUpdating: boolean;
   onStart: () => void;
@@ -26,7 +24,6 @@ interface AppointmentActionsProps {
   onCancel: () => void;
   onNoShow: () => void;
   onReschedule: () => void;
-  onRegisterPayment: () => void;
 }
 
 export function AppointmentActions({
@@ -35,7 +32,6 @@ export function AppointmentActions({
   canCancel,
   canMarkNoShow,
   canReschedule,
-  canRegisterPayment,
   hasSessionId,
   isUpdating,
   onStart,
@@ -43,7 +39,6 @@ export function AppointmentActions({
   onCancel,
   onNoShow,
   onReschedule,
-  onRegisterPayment,
 }: AppointmentActionsProps) {
   const t = useTranslations();
 
@@ -52,25 +47,12 @@ export function AppointmentActions({
     canComplete ||
     canCancel ||
     canMarkNoShow ||
-    canReschedule ||
-    canRegisterPayment;
+    canReschedule;
 
   if (!hasActions) return null;
 
   return (
     <div className="space-y-3">
-      {/* Register Payment - for PENDING_PAYMENT appointments */}
-      {canRegisterPayment && (
-        <Button
-          onClick={onRegisterPayment}
-          disabled={isUpdating}
-          className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-6 text-base font-semibold text-white shadow-lg shadow-amber-200 hover:from-amber-600 hover:to-orange-600"
-        >
-          <CreditCard className="mr-2 h-5 w-5" />
-          {t("payment.registerPayment")}
-        </Button>
-      )}
-
       {/* Primary workflow action - Start or Complete */}
       {(canStart || canComplete) && (
         <div className="flex gap-2">

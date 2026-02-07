@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withAuth, validateRequest, handleApiError } from "@/lib/api-utils";
+import { withAuth, validateRequest, handleApiError, requireOpenCashRegister } from "@/lib/api-utils";
 import { prisma } from "@/lib/db";
 import {
   transactionService,
@@ -30,6 +30,15 @@ const appointmentPaymentSchema = z.object({
 export async function POST(request: Request) {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
+
+    // Enforce cash register for RECEPTION
+    const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+    if (session.user.role === "RECEPTION" && !cashRegisterId) {
+      return NextResponse.json(
+        { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to process payments" },
+        { status: 400 }
+      );
+    }
 
     const body = await request.json();
     const { appointmentId, amount, paymentMethod, paymentType, reference, notes, paymentDetails } = validateRequest(body, appointmentPaymentSchema);
@@ -75,8 +84,13 @@ export async function POST(request: Request) {
       ? parseFloat(pkg.advancePaymentAmount.toString())
       : 0;
 
-    // Validate minimum amount for advance payments
-    if (paymentType === "ADVANCE" && requiredAdvance > 0 && amount < requiredAdvance) {
+    // Validate minimum amount for advance payments (only enforce for PENDING_PAYMENT → first payment)
+    if (
+      paymentType === "ADVANCE" &&
+      requiredAdvance > 0 &&
+      amount < requiredAdvance &&
+      appointment.status === "PENDING_PAYMENT"
+    ) {
       return NextResponse.json(
         { error: "AMOUNT_BELOW_MINIMUM", minimum: requiredAdvance },
         { status: 400 }
@@ -135,6 +149,28 @@ export async function POST(request: Request) {
         });
       }
 
+      // Log history for advance payments on already-scheduled appointments
+      if (
+        paymentType === "ADVANCE" &&
+        appointment.status === "SCHEDULED"
+      ) {
+        await tx.appointmentHistory.create({
+          data: {
+            appointmentId,
+            action: "ADVANCE_PAYMENT",
+            performedBy: session.user.id,
+            performerType: "USER",
+            performerName: session.user.name || "Staff",
+            oldValue: { status: "SCHEDULED" },
+            newValue: {
+              status: "SCHEDULED",
+              paymentAmount: amount,
+              paymentMethod,
+            },
+          },
+        });
+      }
+
       // Fetch updated appointment within transaction (avoids extra query outside)
       const updatedAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
@@ -174,6 +210,7 @@ export async function POST(request: Request) {
       paymentMethods,
       notes: notes || undefined,
       createdById: session.user.id,
+      cashRegisterId: cashRegisterId ?? undefined,
     });
 
     // Get all transactions for this appointment to return the payments list

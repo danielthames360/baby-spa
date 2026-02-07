@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireOpenCashRegister } from "@/lib/api-utils";
 import { sessionService } from "@/lib/services/session-service";
 import { z } from "zod";
 
@@ -23,6 +24,15 @@ export async function POST(request: NextRequest) {
     // Only ADMIN and RECEPTION can start sessions
     if (!["OWNER", "ADMIN", "RECEPTION"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Enforce cash register for RECEPTION
+    const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+    if (session.user.role === "RECEPTION" && !cashRegisterId) {
+      return NextResponse.json(
+        { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to start sessions" },
+        { status: 400 }
+      );
     }
 
     const body = await request.json();

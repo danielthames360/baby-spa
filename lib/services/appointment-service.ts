@@ -43,6 +43,7 @@ const PARENT_SELECT = {
 const SESSION_SELECT = {
   id: true,
   status: true,
+  therapist: { select: { name: true } },
 } as const;
 
 /**
@@ -112,6 +113,7 @@ const PACKAGE_PURCHASE_SELECT = {
       name: true,
       basePrice: true,
       advancePaymentAmount: true,
+      categoryId: true,
     },
   },
 } as const;
@@ -124,6 +126,7 @@ const SELECTED_PACKAGE_SELECT = {
   name: true,
   basePrice: true,
   advancePaymentAmount: true,
+  categoryId: true,
 } as const;
 
 /**

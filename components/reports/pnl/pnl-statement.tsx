@@ -20,6 +20,7 @@ interface PnLStatementProps {
       babyCards: number;
       events: number;
       installments: number;
+      advances?: number;
       total: number;
     };
     directCosts: {
@@ -89,6 +90,9 @@ export function PnLStatement({ data, locale }: PnLStatementProps) {
             <LineItem label={t("pnl.babyCards")} value={formatAmount(data.income.babyCards)} />
             <LineItem label={t("pnl.events")} value={formatAmount(data.income.events)} />
             <LineItem label={t("pnl.installments")} value={formatAmount(data.income.installments)} />
+            {(data.income.advances ?? 0) > 0 && (
+              <LineItem label={t("pnl.advances")} value={formatAmount(data.income.advances ?? 0)} />
+            )}
             <TotalLine label={t("pnl.totalIncome")} value={formatAmount(data.income.total)} variant="income" />
           </Section>
 

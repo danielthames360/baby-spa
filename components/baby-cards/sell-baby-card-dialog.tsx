@@ -29,10 +29,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BabyCardVisual } from "./baby-card-visual";
+import dynamic from "next/dynamic";
 import {
   SplitPaymentForm,
   type PaymentDetailInput,
 } from "@/components/payments/split-payment-form";
+import { useCashRegisterGuard } from "@/hooks/use-cash-register-guard";
+
+// Dynamic import for cash register required modal
+const CashRegisterRequiredModal = dynamic(
+  () => import("@/components/cash-register/cash-register-required-modal").then(mod => mod.CashRegisterRequiredModal),
+  { ssr: false }
+);
 
 interface Reward {
   id: string;
@@ -88,6 +96,9 @@ export function SellBabyCardDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
+
+  // Cash register guard
+  const { showCashRegisterModal, setShowCashRegisterModal, handleCashRegisterError, onCashRegisterSuccess } = useCashRegisterGuard();
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -172,6 +183,11 @@ export function SellBabyCardDialog({
 
       if (!response.ok) {
         const errorData = await response.json();
+        // Check if cash register is required
+        if (handleCashRegisterError(errorData.error, () => form.handleSubmit(onSubmit)())) {
+          setIsSubmitting(false);
+          return;
+        }
         throw new Error(errorData.error || "Failed to sell baby card");
       }
 
@@ -426,6 +442,13 @@ export function SellBabyCardDialog({
           </form>
         </Form>
       </DialogContent>
+
+      {/* Cash Register Required Modal */}
+      <CashRegisterRequiredModal
+        open={showCashRegisterModal}
+        onOpenChange={setShowCashRegisterModal}
+        onSuccess={onCashRegisterSuccess}
+      />
     </Dialog>
   );
 }

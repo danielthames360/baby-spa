@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@prisma/client";
 import {
@@ -7,6 +7,7 @@ import {
   handleApiError,
   ApiError,
   createdResponse,
+  requireOpenCashRegister,
 } from "@/lib/api-utils";
 import { registerInstallmentPaymentSchema } from "@/lib/validations/package";
 import { getNextInstallmentToPay, getPaidInstallmentsCount } from "@/lib/utils/installments";
@@ -26,6 +27,15 @@ interface PaymentDetailInput {
 export async function POST(request: NextRequest) {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
+
+    // Enforce cash register for RECEPTION
+    const cashRegisterId = await requireOpenCashRegister(session.user.id, session.user.role);
+    if (session.user.role === "RECEPTION" && !cashRegisterId) {
+      return NextResponse.json(
+        { error: "CASH_REGISTER_REQUIRED", message: "Cash register must be open to process payments" },
+        { status: 400 }
+      );
+    }
 
     const body = await request.json();
     const data = validateRequest(body, registerInstallmentPaymentSchema);
@@ -148,6 +158,7 @@ export async function POST(request: NextRequest) {
       paymentMethods,
       notes: data.notes || undefined,
       createdById: session.user.id,
+      cashRegisterId: cashRegisterId ?? undefined,
     });
 
     // Calculate updated status

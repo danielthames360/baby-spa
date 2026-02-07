@@ -3,7 +3,15 @@
 import { useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Loader2, CreditCard } from "lucide-react";
+import { useCashRegisterGuard } from "@/hooks/use-cash-register-guard";
+
+// Dynamic import for cash register required modal
+const CashRegisterRequiredModal = dynamic(
+  () => import("@/components/cash-register/cash-register-required-modal").then(mod => mod.CashRegisterRequiredModal),
+  { ssr: false }
+);
 import {
   Dialog,
   DialogContent,
@@ -45,6 +53,9 @@ export function RegisterPaymentDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetailInput[]>([]);
 
+  // Cash register guard
+  const { showCashRegisterModal, setShowCashRegisterModal, handleCashRegisterError, onCashRegisterSuccess } = useCashRegisterGuard();
+
   const pendingAmount = amountDue - amountPaid;
 
   const handlePaymentDetailsChange = useCallback(
@@ -77,8 +88,13 @@ export function RegisterPaymentDialog({
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error registering payment");
+        const errorData = await response.json();
+        // Check if cash register is required
+        if (handleCashRegisterError(errorData.error, handleSubmit)) {
+          setIsSubmitting(false);
+          return;
+        }
+        throw new Error(errorData.error || "Error registering payment");
       }
 
       toast.success(t("events.messages.paymentRegistered"));
@@ -156,6 +172,13 @@ export function RegisterPaymentDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Cash Register Required Modal */}
+      <CashRegisterRequiredModal
+        open={showCashRegisterModal}
+        onOpenChange={setShowCashRegisterModal}
+        onSuccess={onCashRegisterSuccess}
+      />
     </Dialog>
   );
 }

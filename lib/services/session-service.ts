@@ -43,6 +43,7 @@ interface CompleteSessionInput {
   useFirstSessionDiscount?: boolean; // Apply Baby Card first session discount
   userId: string;
   userName: string;
+  cashRegisterId?: string; // Cash register ID for RECEPTION users
 }
 
 interface MarkNoShowInput {
@@ -333,7 +334,7 @@ export const sessionService = {
    * - Mark as COMPLETED
    */
   async completeSession(input: CompleteSessionInput) {
-    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, paymentDetails, discountAmount = 0, discountReason, useFirstSessionDiscount, userId, userName } = input;
+    const { sessionId, packageId, packagePurchaseId, paymentMethod, paymentNotes, paymentDetails, discountAmount = 0, discountReason, useFirstSessionDiscount, userId, userName, cashRegisterId } = input;
 
     // Get session with all relations
     const session = await prisma.session.findUnique({
@@ -462,11 +463,11 @@ export const sessionService = {
       ? subtotalAmount.sub(totalDiscounts)
       : new Prisma.Decimal(0);
 
-    // Query advance payments already made for this appointment
+    // Query advance payments already made for this appointment (exclude voided and reversals)
     const advanceTransactions = await transactionService.getByReference("Appointment", session.appointmentId);
     let advancePaidAmount = new Prisma.Decimal(0);
     for (const t of advanceTransactions) {
-      if (t.category === "APPOINTMENT_ADVANCE") {
+      if (t.category === "APPOINTMENT_ADVANCE" && !t.isReversal && !t.voidedAt) {
         advancePaidAmount = advancePaidAmount.add(t.total);
       }
     }
@@ -718,6 +719,17 @@ export const sessionService = {
         }
       }
 
+      // Add advance payments as negative item so total matches payment methods sum
+      if (advancePaidAmount.greaterThan(0)) {
+        transactionItems.push({
+          itemType: "ADVANCE",
+          description: "Anticipos pagados",
+          quantity: 1,
+          unitPrice: -Number(advancePaidAmount),
+          discountAmount: 0,
+        });
+      }
+
       // Normalize payment methods - convert from legacy format if needed
       const paymentMethodsArray: PaymentMethodEntry[] = paymentDetails
         ? paymentDetails.map((d) => ({
@@ -741,6 +753,7 @@ export const sessionService = {
             paymentMethods: paymentMethodsArray,
             notes: paymentNotes,
             createdById: userId,
+            cashRegisterId,
           });
         } catch (error) {
           // Log error but don't fail session completion
