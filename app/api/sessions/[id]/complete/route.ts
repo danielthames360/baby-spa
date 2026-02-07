@@ -8,7 +8,7 @@ interface RouteParams {
 }
 
 const paymentDetailSchema = z.object({
-  amount: z.number().min(0.01),
+  amount: z.number().min(0.01).max(99999.99),
   paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
   reference: z.string().optional(),
 });
@@ -19,7 +19,7 @@ const completeSessionSchema = z.object({
   paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]).optional(),
   paymentDetails: z.array(paymentDetailSchema).optional(),
   paymentNotes: z.string().optional(),
-  discountAmount: z.number().min(0).optional(),
+  discountAmount: z.number().min(0).max(99999.99).optional(),
   discountReason: z.string().optional(),
   useFirstSessionDiscount: z.boolean().optional(),
 });

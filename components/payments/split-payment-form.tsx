@@ -372,7 +372,7 @@ export function SplitPaymentForm({
 
       {/* Validation error message */}
       {!validation.valid && validation.error && (
-        <p className="text-xs text-rose-500">
+        <p className="text-xs text-rose-500" role="alert" aria-live="polite">
           {t(`payment.split.errors.${validation.error.toLowerCase().replace("_", "")}`)}
         </p>
       )}

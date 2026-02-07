@@ -133,7 +133,7 @@ export type SellPackageFormData = z.infer<typeof sellPackageSchema>;
 
 // Payment detail for split payments
 const paymentDetailSchema = z.object({
-  amount: z.number().min(0.01, "AMOUNT_MIN"),
+  amount: z.number().min(0.01, "AMOUNT_MIN").max(99999.99),
   paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"], {
     message: "PAYMENT_METHOD_REQUIRED",
   }),
@@ -149,7 +149,8 @@ export const registerInstallmentPaymentSchema = z.object({
     .min(1, "INSTALLMENT_NUMBER_MIN"),
   amount: z
     .number()
-    .min(0.01, "AMOUNT_MIN"),
+    .min(0.01, "AMOUNT_MIN")
+    .max(99999.99),
   // Legacy single method (optional if paymentDetails is provided)
   paymentMethod: z.enum(["CASH", "CARD", "QR", "TRANSFER"], {
     message: "PAYMENT_METHOD_REQUIRED",

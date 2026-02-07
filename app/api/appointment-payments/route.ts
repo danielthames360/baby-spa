@@ -8,14 +8,14 @@ import {
 import { z } from "zod";
 
 const paymentDetailSchema = z.object({
-  amount: z.number().min(0.01),
+  amount: z.number().min(0.01).max(99999.99),
   paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]),
   reference: z.string().nullable().optional(),
 });
 
 const appointmentPaymentSchema = z.object({
   appointmentId: z.string().min(1),
-  amount: z.number().min(0.01),
+  amount: z.number().min(0.01).max(99999.99),
   paymentMethod: z.enum(["CASH", "QR", "CARD", "TRANSFER"]).optional(),
   paymentType: z.enum(["ADVANCE", "COMPLETION", "PARTIAL"]),
   reference: z.string().optional(),
@@ -43,60 +43,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { appointmentId, amount, paymentMethod, paymentType, reference, notes, paymentDetails } = validateRequest(body, appointmentPaymentSchema);
 
-    // Get appointment with package info
-    const appointment = await prisma.appointment.findUnique({
-      where: { id: appointmentId },
-      include: {
-        selectedPackage: {
-          select: {
-            id: true,
-            name: true,
-            advancePaymentAmount: true,
-            requiresAdvancePayment: true,
-          },
-        },
-        packagePurchase: {
-          select: {
-            id: true,
-            package: {
-              select: {
-                id: true,
-                name: true,
-                advancePaymentAmount: true,
-                requiresAdvancePayment: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!appointment) {
-      return NextResponse.json(
-        { error: "APPOINTMENT_NOT_FOUND" },
-        { status: 404 }
-      );
-    }
-
-    // Get advance payment amount from the package
-    const pkg = appointment.packagePurchase?.package || appointment.selectedPackage;
-    const requiredAdvance = pkg?.advancePaymentAmount
-      ? parseFloat(pkg.advancePaymentAmount.toString())
-      : 0;
-
-    // Validate minimum amount for advance payments (only enforce for PENDING_PAYMENT → first payment)
-    if (
-      paymentType === "ADVANCE" &&
-      requiredAdvance > 0 &&
-      amount < requiredAdvance &&
-      appointment.status === "PENDING_PAYMENT"
-    ) {
-      return NextResponse.json(
-        { error: "AMOUNT_BELOW_MINIMUM", minimum: requiredAdvance },
-        { status: 400 }
-      );
-    }
-
     // Normalize payment input: use paymentDetails array if provided, otherwise fall back to single paymentMethod
     let paymentMethods: PaymentMethodEntry[] = [];
     if (paymentDetails && paymentDetails.length > 0) {
@@ -115,9 +61,57 @@ export async function POST(request: Request) {
       ];
     }
 
-    // Create transaction and update appointment in a transaction
-    // Return both transaction and updated appointment from transaction to avoid redundant fetch
+    // Validate and update appointment atomically inside a single transaction
+    // to prevent race conditions between status check and status update
     const result = await prisma.$transaction(async (tx) => {
+      // Fetch appointment inside transaction to ensure consistent read
+      const appointment = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        include: {
+          selectedPackage: {
+            select: {
+              id: true,
+              name: true,
+              advancePaymentAmount: true,
+              requiresAdvancePayment: true,
+            },
+          },
+          packagePurchase: {
+            select: {
+              id: true,
+              package: {
+                select: {
+                  id: true,
+                  name: true,
+                  advancePaymentAmount: true,
+                  requiresAdvancePayment: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!appointment) {
+        throw new Error("APPOINTMENT_NOT_FOUND");
+      }
+
+      // Get advance payment amount from the package
+      const pkg = appointment.packagePurchase?.package || appointment.selectedPackage;
+      const requiredAdvance = pkg?.advancePaymentAmount
+        ? parseFloat(pkg.advancePaymentAmount.toString())
+        : 0;
+
+      // Validate minimum amount for advance payments (only enforce for PENDING_PAYMENT -> first payment)
+      if (
+        paymentType === "ADVANCE" &&
+        requiredAdvance > 0 &&
+        amount < requiredAdvance &&
+        appointment.status === "PENDING_PAYMENT"
+      ) {
+        throw new Error("AMOUNT_BELOW_MINIMUM");
+      }
+
       // If this is an advance payment and appointment was pending, confirm it
       if (
         paymentType === "ADVANCE" &&
@@ -190,7 +184,7 @@ export async function POST(request: Request) {
         },
       });
 
-      return { updatedAppointment };
+      return { updatedAppointment, pkg };
     });
 
     // Create transaction record for the payment (outside prisma transaction)
@@ -203,7 +197,7 @@ export async function POST(request: Request) {
         {
           itemType: "ADVANCE",
           referenceId: appointmentId,
-          description: `Anticipo cita - ${pkg?.name || "Servicio"}`,
+          description: `Anticipo cita - ${result.pkg?.name || "Servicio"}`,
           unitPrice: amount,
         },
       ],

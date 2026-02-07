@@ -113,11 +113,18 @@ export function normalizePaymentMethods(
 // ============================================================
 
 /**
- * Creates a transaction with its line items
+ * Creates a transaction with its line items.
+ * Accepts an optional Prisma transaction client for atomicity.
+ *
+ * @param input - Transaction data including items and payment methods
+ * @param tx - Optional Prisma transaction client to run within an existing transaction
  */
 export async function create(
-  input: CreateTransactionInput
+  input: CreateTransactionInput,
+  tx?: Prisma.TransactionClient
 ): Promise<TransactionWithItems> {
+  const db = tx || prisma;
+
   // Calculate totals from items
   let subtotal = 0;
   let discountTotal = 0;
@@ -156,7 +163,7 @@ export async function create(
     );
   }
 
-  const transaction = await prisma.transaction.create({
+  const transaction = await db.transaction.create({
     data: {
       type: input.type,
       category: input.category,
@@ -294,6 +301,9 @@ export async function getTotalByCategory(
     where: {
       type: "INCOME",
       createdAt: { gte: from, lte: to },
+      // Exclude voided transactions and reversals from aggregations
+      voidedAt: null,
+      isReversal: false,
     },
     _sum: { total: true },
   });
@@ -324,6 +334,9 @@ export async function getTotals(
     by: ["type"],
     where: {
       createdAt: { gte: from, lte: to },
+      // Exclude voided transactions and reversals from aggregations
+      voidedAt: null,
+      isReversal: false,
     },
     _sum: { total: true },
   });
@@ -353,6 +366,9 @@ export async function getTotalsByPaymentMethod(
     where: {
       type: "INCOME",
       createdAt: { gte: from, lte: to },
+      // Exclude voided transactions and reversals from aggregations
+      voidedAt: null,
+      isReversal: false,
     },
     select: { paymentMethods: true },
   });
@@ -387,6 +403,9 @@ export async function getIncomeByItemType(
       transaction: {
         type: "INCOME",
         createdAt: { gte: from, lte: to },
+        // Exclude voided transactions and reversals from aggregations
+        voidedAt: null,
+        isReversal: false,
       },
     },
     _sum: { finalPrice: true },
@@ -418,6 +437,9 @@ export async function getTotalDiscounts(
     where: {
       type: "INCOME",
       createdAt: { gte: from, lte: to },
+      // Exclude voided transactions and reversals from aggregations
+      voidedAt: null,
+      isReversal: false,
     },
     _sum: { discountTotal: true },
   });

@@ -183,7 +183,7 @@ export const purchaseBabyCardSchema = z.object({
   babyId: z.string().min(1, "BABY_REQUIRED"),
 
   // Payment
-  pricePaid: z.coerce.number().min(0),
+  pricePaid: z.coerce.number().min(0).max(99999.99),
   paymentMethod: paymentMethodEnum.optional().nullable(),
   paymentReference: z.string().max(100).optional().nullable(),
 

@@ -463,34 +463,69 @@ export const sessionService = {
       ? subtotalAmount.sub(totalDiscounts)
       : new Prisma.Decimal(0);
 
-    // Query advance payments already made for this appointment (exclude voided and reversals)
-    const advanceTransactions = await transactionService.getByReference("Appointment", session.appointmentId);
-    let advancePaidAmount = new Prisma.Decimal(0);
-    for (const t of advanceTransactions) {
-      if (t.category === "APPOINTMENT_ADVANCE" && !t.isReversal && !t.voidedAt) {
+    const result = await prisma.$transaction(async (tx) => {
+      // Query advance payments inside transaction to prevent race conditions
+      const advanceTransactions = await tx.transaction.findMany({
+        where: {
+          referenceType: "Appointment",
+          referenceId: session.appointmentId,
+          category: "APPOINTMENT_ADVANCE",
+          isReversal: false,
+          voidedAt: null,
+        },
+        select: { total: true },
+      });
+      let advancePaidAmount = new Prisma.Decimal(0);
+      for (const t of advanceTransactions) {
         advancePaidAmount = advancePaidAmount.add(t.total);
       }
-    }
 
-    // Deduct advance from total amount to charge
-    const totalAmount = advancePaidAmount.greaterThan(0)
-      ? (totalBeforeAdvance.sub(advancePaidAmount).greaterThan(0)
-          ? totalBeforeAdvance.sub(advancePaidAmount)
-          : new Prisma.Decimal(0))
-      : totalBeforeAdvance;
+      // Handle overpayment edge case: advance exceeds session cost
+      let overpaymentAmount = new Prisma.Decimal(0);
+      if (advancePaidAmount.greaterThan(totalBeforeAdvance)) {
+        overpaymentAmount = advancePaidAmount.sub(totalBeforeAdvance);
+        console.warn(
+          `Overpayment detected: advance (${advancePaidAmount}) exceeds session cost (${totalBeforeAdvance}), overpayment: ${overpaymentAmount}`
+        );
+      }
 
-    // Deduct products from inventory in parallel (outside transaction to avoid nested transactions)
-    await Promise.all(
-      session.products.map((sp) =>
-        inventoryService.useProduct({
-          productId: sp.productId,
-          quantity: sp.quantity,
-          sessionId: session.id,
-        })
-      )
-    );
+      // Actual deduction from advance is capped at totalBeforeAdvance
+      const advanceDeduction = Prisma.Decimal.min(advancePaidAmount, totalBeforeAdvance);
 
-    const result = await prisma.$transaction(async (tx) => {
+      // Deduct advance from total amount to charge
+      const totalAmount = advanceDeduction.greaterThan(0)
+        ? totalBeforeAdvance.sub(advanceDeduction)
+        : totalBeforeAdvance;
+
+      // Deduct products from inventory inside transaction for atomicity
+      for (const sp of session.products) {
+        const product = await tx.product.findUnique({
+          where: { id: sp.productId },
+        });
+        if (!product) {
+          throw new Error(`Product not found: ${sp.productId}`);
+        }
+        if (product.currentStock < sp.quantity) {
+          throw new Error(`Insufficient stock for product: ${product.name}`);
+        }
+        const stockAfter = product.currentStock - sp.quantity;
+        const movementTotal = sp.quantity * Number(product.salePrice);
+        await tx.product.update({
+          where: { id: sp.productId },
+          data: { currentStock: stockAfter },
+        });
+        await tx.inventoryMovement.create({
+          data: {
+            productId: sp.productId,
+            type: "USAGE",
+            quantity: -sp.quantity,
+            unitPrice: product.salePrice,
+            totalAmount: movementTotal,
+            notes: `Session: ${session.id}`,
+            stockAfter,
+          },
+        });
+      }
       // Re-verify session status inside transaction to prevent race conditions
       const freshSession = await tx.session.findUnique({
         where: { id: sessionId },
@@ -535,6 +570,7 @@ export const sessionService = {
           ? packageAmount.sub(packageDiscount)
           : new Prisma.Decimal(0);
 
+        // Include package relation to avoid N+1 re-query later
         newPackagePurchase = await tx.packagePurchase.create({
           data: {
             babyId,
@@ -550,6 +586,7 @@ export const sessionService = {
             // Transfer schedule preferences from appointment (set by parent in portal)
             schedulePreferences: appointmentWithPreferences?.pendingSchedulePreferences || null,
           },
+          include: { package: true },
         });
 
         packagePurchaseToDeduct = null; // Don't deduct from old package
@@ -635,115 +672,97 @@ export const sessionService = {
         },
       });
 
-      // Include the package purchase with its package info for bulk scheduling
-      const finalPackagePurchase = newPackagePurchase
-        ? await tx.packagePurchase.findUnique({
-            where: { id: newPackagePurchase.id },
-            include: { package: true }
-          })
-        : packagePurchaseToDeduct;
+      // newPackagePurchase already includes { package: true } from the create call
+      const finalPackagePurchase = newPackagePurchase || packagePurchaseToDeduct;
 
-      return {
-        session: updatedSession,
-        packagePurchase: finalPackagePurchase,
-        newPackagePurchase, // Track if new package was sold
-        productsAmount,
-        packageAmount,
-        totalAmount,
-        advancePaidAmount,
-      };
-    });
+      // Build and create financial transaction INSIDE the db transaction for atomicity
+      if (totalAmount.greaterThan(0)) {
+        // Build transaction items
+        const transactionItems: TransactionItemInput[] = [];
 
-    // Create Transaction for session checkout (outside Prisma transaction since transactionService has its own logic)
-    if (totalAmount.greaterThan(0)) {
-      // Build transaction items
-      const transactionItems: TransactionItemInput[] = [];
-
-      // Add package item if selling a new package
-      if (packageToSell && !packagePurchaseId) {
-        const subtotalNum = Number(subtotalAmount);
-        // Calculate package discount (proportional if there are products)
-        const packageDiscount = subtotalNum > 0 && productsAmount.greaterThan(0)
-          ? discountAmount * (Number(packageAmount) / subtotalNum)
-          : discountAmount;
-        // Add Baby Card first session discount to package discount if applicable
-        const packageFirstSessionDiscount = firstSessionDiscountAmount.greaterThan(0) && subtotalNum > 0
-          ? (productsAmount.greaterThan(0)
-              ? Number(firstSessionDiscountAmount) * (Number(packageAmount) / subtotalNum)
-              : Number(firstSessionDiscountAmount))
-          : 0;
-
-        transactionItems.push({
-          itemType: "PACKAGE",
-          referenceId: result.newPackagePurchase?.id || packageId,
-          description: packageToSell.name,
-          quantity: 1,
-          unitPrice: Number(packageAmount),
-          discountAmount: packageDiscount + packageFirstSessionDiscount,
-          discountReason: [discountReason, packageFirstSessionDiscount > 0 ? "Baby Card first session" : null]
-            .filter(Boolean)
-            .join(", ") || undefined,
-        });
-      }
-
-      // Add product items
-      for (const sp of session.products) {
-        if (sp.isChargeable) {
-          // Calculate proportional discount for this product
-          const productSubtotal = Number(sp.unitPrice) * sp.quantity;
-          const subtotalNum = Number(subtotalAmount);
-          let productDiscountProportion = 0;
-          let productFirstSessionDiscount = 0;
-
-          if (subtotalNum > 0) {
-            // Proportional discount based on product's share of subtotal
-            productDiscountProportion = discountAmount * (productSubtotal / subtotalNum);
-            if (firstSessionDiscountAmount.greaterThan(0)) {
-              productFirstSessionDiscount = Number(firstSessionDiscountAmount) * (productSubtotal / subtotalNum);
-            }
-          }
+        // Add package item if selling a new package
+        if (packageToSell && !packagePurchaseId) {
+          // Use Decimal methods for proportional discount calculation
+          const packageDiscountDecimal = productsAmount.greaterThan(0) && subtotalAmount.greaterThan(0)
+            ? discountDecimal.mul(packageAmount).div(subtotalAmount)
+            : discountDecimal;
+          // Add Baby Card first session discount to package discount if applicable
+          const packageFirstSessionDiscountDecimal = firstSessionDiscountAmount.greaterThan(0) && subtotalAmount.greaterThan(0)
+            ? (productsAmount.greaterThan(0)
+                ? firstSessionDiscountAmount.mul(packageAmount).div(subtotalAmount)
+                : firstSessionDiscountAmount)
+            : new Prisma.Decimal(0);
 
           transactionItems.push({
-            itemType: "PRODUCT",
-            referenceId: sp.productId,
-            description: sp.product.name,
-            quantity: sp.quantity,
-            unitPrice: Number(sp.unitPrice),
-            discountAmount: productDiscountProportion + productFirstSessionDiscount,
-            discountReason: productDiscountProportion > 0 || productFirstSessionDiscount > 0
-              ? [discountReason, productFirstSessionDiscount > 0 ? "Baby Card first session" : null]
-                  .filter(Boolean)
-                  .join(", ")
-              : undefined,
+            itemType: "PACKAGE",
+            referenceId: newPackagePurchase?.id || packageId,
+            description: packageToSell.name,
+            quantity: 1,
+            unitPrice: Number(packageAmount),
+            discountAmount: Number(packageDiscountDecimal.add(packageFirstSessionDiscountDecimal)),
+            discountReason: [discountReason, packageFirstSessionDiscountDecimal.greaterThan(0) ? "Baby Card first session" : null]
+              .filter(Boolean)
+              .join(", ") || undefined,
           });
         }
-      }
 
-      // Add advance payments as negative item so total matches payment methods sum
-      if (advancePaidAmount.greaterThan(0)) {
-        transactionItems.push({
-          itemType: "ADVANCE",
-          description: "Anticipos pagados",
-          quantity: 1,
-          unitPrice: -Number(advancePaidAmount),
-          discountAmount: 0,
-        });
-      }
+        // Add product items
+        for (const sp of session.products) {
+          if (sp.isChargeable) {
+            // Use Decimal methods for proportional discount calculation
+            const productSubtotalDecimal = new Prisma.Decimal(sp.unitPrice.toString()).mul(sp.quantity);
+            let productDiscountDecimal = new Prisma.Decimal(0);
+            let productFirstSessionDiscountDecimal = new Prisma.Decimal(0);
 
-      // Normalize payment methods - convert from legacy format if needed
-      const paymentMethodsArray: PaymentMethodEntry[] = paymentDetails
-        ? paymentDetails.map((d) => ({
-            method: d.paymentMethod,
-            amount: d.amount,
-            reference: d.reference || undefined,
-          }))
-        : paymentMethod
-          ? [{ method: paymentMethod, amount: Number(totalAmount) }]
-          : [];
+            if (subtotalAmount.greaterThan(0)) {
+              // Proportional discount based on product's share of subtotal
+              productDiscountDecimal = discountDecimal.mul(productSubtotalDecimal).div(subtotalAmount);
+              if (firstSessionDiscountAmount.greaterThan(0)) {
+                productFirstSessionDiscountDecimal = firstSessionDiscountAmount.mul(productSubtotalDecimal).div(subtotalAmount);
+              }
+            }
 
-      // Create transaction if we have items and payment methods
-      if (transactionItems.length > 0 && paymentMethodsArray.length > 0) {
-        try {
+            const totalProductDiscount = productDiscountDecimal.add(productFirstSessionDiscountDecimal);
+            transactionItems.push({
+              itemType: "PRODUCT",
+              referenceId: sp.productId,
+              description: sp.product.name,
+              quantity: sp.quantity,
+              unitPrice: Number(sp.unitPrice),
+              discountAmount: Number(totalProductDiscount),
+              discountReason: totalProductDiscount.greaterThan(0)
+                ? [discountReason, productFirstSessionDiscountDecimal.greaterThan(0) ? "Baby Card first session" : null]
+                    .filter(Boolean)
+                    .join(", ")
+                : undefined,
+            });
+          }
+        }
+
+        // Add advance deduction as negative item (use actual deduction, not full advance amount)
+        if (advanceDeduction.greaterThan(0)) {
+          transactionItems.push({
+            itemType: "ADVANCE",
+            description: "Anticipos pagados",
+            quantity: 1,
+            unitPrice: -Number(advanceDeduction),
+            discountAmount: 0,
+          });
+        }
+
+        // Normalize payment methods - convert from legacy format if needed
+        const paymentMethodsArray: PaymentMethodEntry[] = paymentDetails
+          ? paymentDetails.map((d) => ({
+              method: d.paymentMethod,
+              amount: d.amount,
+              reference: d.reference || undefined,
+            }))
+          : paymentMethod
+            ? [{ method: paymentMethod, amount: Number(totalAmount) }]
+            : [];
+
+        // Create transaction inside db transaction - let errors propagate
+        if (transactionItems.length > 0 && paymentMethodsArray.length > 0) {
           await transactionService.create({
             type: "INCOME",
             category: "SESSION",
@@ -754,15 +773,23 @@ export const sessionService = {
             notes: paymentNotes,
             createdById: userId,
             cashRegisterId,
-          });
-        } catch (error) {
-          // Log error but don't fail session completion
-          console.error("Error creating transaction for session:", error);
+          }, tx);
         }
       }
-    }
 
-    // Apply Baby Card first session discount if used
+      return {
+        session: updatedSession,
+        packagePurchase: finalPackagePurchase,
+        newPackagePurchase, // Track if new package was sold
+        productsAmount,
+        packageAmount,
+        totalAmount,
+        advancePaidAmount,
+        overpaymentAmount,
+      };
+    });
+
+    // Apply Baby Card first session discount if used (less critical, keep try-catch)
     let firstSessionDiscountApplied = null;
     if (babyCardPurchaseIdForDiscount && firstSessionDiscountAmount.greaterThan(0)) {
       try {
@@ -776,7 +803,8 @@ export const sessionService = {
           purchaseId: babyCardPurchaseIdForDiscount,
         };
       } catch (error) {
-        console.error("Error applying Baby Card first session discount:", error);
+        // Non-critical: Baby Card discount tracking can fail without rolling back the session
+        console.warn("Failed to apply Baby Card first session discount:", error);
       }
     }
 
@@ -810,8 +838,8 @@ export const sessionService = {
           };
         }
       } catch (error) {
-        // Don't fail the session completion if Baby Card tracking fails
-        console.error("Error updating Baby Card progress:", error);
+        // Non-critical: Baby Card progress tracking can fail without rolling back the session
+        console.warn("Failed to update Baby Card progress:", error);
       }
     }
 
@@ -845,8 +873,8 @@ export const sessionService = {
         }, userId);
       }
     } catch (error) {
-      // Don't fail session completion if activity logging fails
-      console.error("Error logging session activity:", error);
+      // Non-critical: Activity logging can fail without rolling back the session
+      console.warn("Failed to log session activity:", error);
     }
 
     // Count already-scheduled appointments for the package to calculate truly available sessions
@@ -860,7 +888,14 @@ export const sessionService = {
       });
     }
 
-    return { ...result, babyCardInfo, firstSessionDiscountApplied, advancePaidAmount: Number(advancePaidAmount), scheduledForPackage };
+    return {
+      ...result,
+      babyCardInfo,
+      firstSessionDiscountApplied,
+      advancePaidAmount: Number(result.advancePaidAmount),
+      overpaymentAmount: Number(result.overpaymentAmount),
+      scheduledForPackage,
+    };
   },
 
   /**

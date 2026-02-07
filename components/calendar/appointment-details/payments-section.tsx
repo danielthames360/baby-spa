@@ -160,7 +160,7 @@ export function PaymentsSection({
                     <p className="text-xs text-gray-400">
                       {formatDateForDisplay(
                         payment.createdAt,
-                        locale === "pt-BR" ? "pt-BR" : "es-ES",
+                        locale === "pt-BR" ? "pt-BR" : "es-BO",
                         { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }
                       )}
                     </p>

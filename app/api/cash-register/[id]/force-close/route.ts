@@ -43,6 +43,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       cashRegisterId: id,
       adminId: session.user.id,
       forcedCloseNotes: validation.data.forcedCloseNotes,
+      closedByRole: session.user.role,
     });
 
     return NextResponse.json(cashRegister);

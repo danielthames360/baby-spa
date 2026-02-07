@@ -378,7 +378,7 @@ export function ParticipantList({
       onRefresh?.();
       router.refresh();
     } catch (error) {
-      toast.error("Error removing participant");
+      toast.error(t("participants.errors.removeError"));
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
@@ -400,7 +400,7 @@ export function ParticipantList({
       onRefresh?.();
       router.refresh();
     } catch (error) {
-      toast.error("Error updating attendance");
+      toast.error(t("participants.errors.attendanceError"));
     }
   }, [eventId, t, onRefresh, router]);
 
@@ -471,11 +471,11 @@ export function ParticipantList({
               amount: Number(transaction.total),
             });
           } else {
-            toast.error("No active payment found");
+            toast.error(t("participants.errors.noActivePayment"));
           }
         }
       } catch {
-        toast.error("Error fetching payment");
+        toast.error(t("participants.errors.fetchPaymentError"));
       }
     },
     [eventId]

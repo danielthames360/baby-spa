@@ -141,6 +141,9 @@ export const reportService = {
           type: "INCOME",
           category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         select: { total: true, paymentMethods: true },
       }),
@@ -296,6 +299,9 @@ export const reportService = {
           type: "INCOME",
           category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         _sum: { total: true },
         _count: true,
@@ -306,6 +312,9 @@ export const reportService = {
           type: "INCOME",
           category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         select: {
           total: true,
@@ -325,6 +334,9 @@ export const reportService = {
           category: { in: INCOME_CATEGORIES },
           createdAt: { gte: from, lte: to },
           discountTotal: { gt: 0 },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         _sum: { discountTotal: true },
         _count: true,
@@ -442,6 +454,9 @@ export const reportService = {
         category: "PACKAGE_INSTALLMENT",
         referenceType: "PackagePurchase",
         referenceId: { in: purchaseIds },
+        // Exclude voided transactions and reversals from aggregations
+        voidedAt: null,
+        isReversal: false,
       },
       _count: true,
     });
@@ -675,6 +690,9 @@ export const reportService = {
         where: {
           type: "INCOME",
           createdAt: { gte: from, lte: to },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         _sum: { total: true },
       }),
@@ -1478,6 +1496,9 @@ export const reportService = {
         where: {
           type: "INCOME",
           createdAt: { gte: from, lte: to },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         _sum: { total: true },
       }),
@@ -1485,6 +1506,9 @@ export const reportService = {
       prisma.transaction.findMany({
         where: {
           createdAt: { gte: from, lte: to },
+          // Exclude voided transactions and reversals from aggregations
+          voidedAt: null,
+          isReversal: false,
         },
         select: { type: true, paymentMethods: true },
       }),

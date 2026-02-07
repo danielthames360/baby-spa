@@ -83,7 +83,7 @@ export function VoidTransactionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-2xl border border-white/50 bg-white/95 shadow-lg backdrop-blur-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-rose-600">
             <Ban className="h-5 w-5" />

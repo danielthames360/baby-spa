@@ -42,12 +42,16 @@ interface ReviewCashRegisterInput {
   cashRegisterId: string;
   reviewerId: string;
   reviewNotes?: string;
+  /** Caller's role for defense-in-depth authorization check */
+  reviewedByRole?: string;
 }
 
 interface ForceCloseCashRegisterInput {
   cashRegisterId: string;
   adminId: string;
   forcedCloseNotes: string;
+  /** Caller's role for defense-in-depth authorization check */
+  closedByRole?: string;
 }
 
 interface ListCashRegistersParams {
@@ -68,8 +72,9 @@ export const cashRegisterService = {
   // GET CURRENT OPEN CASH REGISTER
   // ============================================================
   async getCurrentCashRegister(userId: string) {
+    // Use UTC midnight to avoid timezone bugs in negative offsets (e.g. Bolivia UTC-4)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     const cashRegister = await prisma.cashRegister.findFirst({
       where: {
@@ -401,7 +406,16 @@ export const cashRegisterService = {
   // REVIEW CASH REGISTER (ADMIN)
   // ============================================================
   async reviewCashRegister(input: ReviewCashRegisterInput) {
-    const { cashRegisterId, reviewerId, reviewNotes } = input;
+    const { cashRegisterId, reviewerId, reviewNotes, reviewedByRole } = input;
+
+    // Defense-in-depth: only ADMIN or OWNER can review cash registers
+    if (
+      reviewedByRole &&
+      reviewedByRole !== UserRole.ADMIN &&
+      reviewedByRole !== UserRole.OWNER
+    ) {
+      throw new Error("NOT_AUTHORIZED_TO_REVIEW");
+    }
 
     const cashRegister = await prisma.cashRegister.findUnique({
       where: { id: cashRegisterId },
@@ -464,7 +478,16 @@ export const cashRegisterService = {
   // FORCE CLOSE CASH REGISTER (ADMIN)
   // ============================================================
   async forceCloseCashRegister(input: ForceCloseCashRegisterInput) {
-    const { cashRegisterId, adminId, forcedCloseNotes } = input;
+    const { cashRegisterId, adminId, forcedCloseNotes, closedByRole } = input;
+
+    // Defense-in-depth: only ADMIN or OWNER can force close cash registers
+    if (
+      closedByRole &&
+      closedByRole !== UserRole.ADMIN &&
+      closedByRole !== UserRole.OWNER
+    ) {
+      throw new Error("NOT_AUTHORIZED_TO_FORCE_CLOSE");
+    }
 
     const cashRegister = await prisma.cashRegister.findUnique({
       where: { id: cashRegisterId },

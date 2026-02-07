@@ -1979,6 +1979,13 @@
         "CONFIRMED": "Confirmado",
         "CANCELLED": "Cancelado",
         "NO_SHOW": "No asistió"
+      },
+
+      "errors": {
+        "removeError": "Error al eliminar participante",
+        "attendanceError": "Error al actualizar asistencia",
+        "noActivePayment": "No se encontró un pago activo",
+        "fetchPaymentError": "Error al obtener el pago"
       }
     },
 
