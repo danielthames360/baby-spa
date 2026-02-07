@@ -1829,7 +1829,7 @@ La **Baby Card** es una tarjeta de beneficios prepagada que incluye:
 ## ✅ Fase 9: Reportes (COMPLETADA)
 
 Dashboard centralizado con KPIs y 16 módulos de reportes organizados en 3 tiers.
-Ver documentación completa en: `planificacionesBabySpa/REPORTES-CONSOLIDADOS.md`
+Ver documentación completa en: `docs/REPORTES-CONSOLIDADOS.md`
 
 **Mejoras recientes (Feb 2026):**
 - ✅ **Ingresos**: Muestra descuentos aplicados dentro de cada categoría
@@ -1886,7 +1886,6 @@ Ver documentación técnica en: `docs/FLUJOS-DINERO-NUEVA-ARQUITECTURA.md`
 ## ✅ Fase 11: Cron Jobs y Mensajería Automatizada (COMPLETADA)
 
 Sistema de automatización de mensajes y mantenimiento del sistema.
-Ver planificación detallada en: `planificacionesBabySpa/archive/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
 
 ### Arquitectura
 - **PM2** como process manager (Next.js + Cron Worker)
@@ -1952,7 +1951,7 @@ Ver planificación detallada en: `planificacionesBabySpa/archive/PLANIFICACION-C
 - [ ] Notificaciones Push (mobile)
 - [ ] QR de Pago configurable
 - [ ] Configuración avanzada del Sistema
-- Ver planificación de exportación en: `planificacionesBabySpa/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
+- Ver planificación de exportación en: `docs/PLANIFICACION-EXPORTACION-PDF-EXCEL.md`
 - [ ] Recordar preguntar acerca de implementar SWR en el proyecto! 
 
 ---
@@ -2263,8 +2262,6 @@ TRADUCCIONES:
 ```
 
 ## Fase 11: Cron Jobs y Mensajería Automatizada ✅ COMPLETADO
-
-> Ver planificación completa: `planificacionesBabySpa/archive/PLANIFICACION-CRON-JOBS-FINAL-V3.md`
 
 ### Módulo 11.1: Infraestructura Base ✅
 ```
