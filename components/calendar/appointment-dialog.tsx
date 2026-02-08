@@ -107,7 +107,7 @@ export function AppointmentDialog({
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   // Baby Card info state
   const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
-  const [_loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+  const [, setLoadingBabyCardInfo] = useState(false);
   // Advance payment flow states
   const [showAdvancePaymentConfirm, setShowAdvancePaymentConfirm] = useState(false);
   const [createdAppointment, setCreatedAppointment] = useState<{

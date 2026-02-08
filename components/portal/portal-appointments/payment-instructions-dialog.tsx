@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -115,9 +116,11 @@ export function PaymentInstructionsDialog({
                     {t("payment.scanQr")}
                   </p>
                   <div className="mx-auto h-44 w-44 rounded-xl border-2 border-teal-200 bg-white p-2 shadow-lg">
-                    <img
+                    <Image
                       src={paymentSettings.paymentQrImage}
                       alt="QR Code"
+                      width={176}
+                      height={176}
                       className="h-full w-full object-contain"
                     />
                   </div>

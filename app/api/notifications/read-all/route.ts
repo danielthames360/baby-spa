@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { withAuth, handleApiError, successResponse } from "@/lib/api-utils";
 import { notificationService } from "@/lib/services/notification-service";
 import { UserRole } from "@prisma/client";
@@ -7,7 +6,7 @@ import { UserRole } from "@prisma/client";
  * PATCH /api/notifications/read-all
  * Mark all unread notifications as read for the current user's role
  */
-export async function PATCH(_request: NextRequest) {
+export async function PATCH() {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 

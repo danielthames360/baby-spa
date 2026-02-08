@@ -569,7 +569,7 @@ export const cashRegisterService = {
     }
 
     // If closed, get ALL transactions during the shift
-    let allPayments: Array<{
+    const allPayments: Array<{
       id: string;
       amount: number;
       paymentMethod: string;

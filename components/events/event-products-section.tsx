@@ -81,7 +81,7 @@ export function EventProductsSection({
       setProductUsages((prev) => prev.filter((u) => u.id !== usageId));
       toast.success(t("products.removed"));
       router.refresh();
-    } catch (error) {
+    } catch {
       toast.error("Error removing product");
     } finally {
       setDeletingId(null);

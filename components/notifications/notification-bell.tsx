@@ -30,9 +30,9 @@ export function NotificationBell() {
     closePanel,
   } = useNotifications();
 
-  // Track if component is mounted (for portal)
+  // Track if component is mounted (for portal - avoids hydration mismatch)
   useEffect(() => {
-    setMounted(true);
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect -- Standard hydration pattern
   }, []);
 
   // Update panel position when opening

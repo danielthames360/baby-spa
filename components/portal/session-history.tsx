@@ -370,19 +370,19 @@ interface EvaluationDetailsProps {
   therapistName: string;
 }
 
+function BooleanIndicator({ value }: { value: boolean | null }) {
+  if (value === null) {
+    return <Minus className="h-4 w-4 text-gray-300" />;
+  }
+  return value ? (
+    <CheckCircle className="h-4 w-4 text-emerald-500" />
+  ) : (
+    <X className="h-4 w-4 text-rose-400" />
+  );
+}
+
 function EvaluationDetails({ evaluation, therapistName }: EvaluationDetailsProps) {
   const t = useTranslations();
-
-  const BooleanIndicator = ({ value }: { value: boolean | null }) => {
-    if (value === null) {
-      return <Minus className="h-4 w-4 text-gray-300" />;
-    }
-    return value ? (
-      <CheckCircle className="h-4 w-4 text-emerald-500" />
-    ) : (
-      <X className="h-4 w-4 text-rose-400" />
-    );
-  };
 
   // Activities with emojis for a friendlier look
   const activities = [

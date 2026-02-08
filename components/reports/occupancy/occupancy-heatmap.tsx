@@ -41,12 +41,12 @@ export function OccupancyHeatmap({ data }: OccupancyHeatmapProps) {
       map.get(slot.time)!.set(slot.dayOfWeek, slot);
     }
     return map;
-  }, [data.heatmap]);
+  }, [data]);
 
   // Find low occupancy slots for suggestions - memoized to avoid recomputation on re-render
   const lowOccupancySlots = useMemo(
     () => data.heatmap.filter((s) => s.level === "low" && s.occupancyRate < 40),
-    [data.heatmap]
+    [data]
   );
 
   return (

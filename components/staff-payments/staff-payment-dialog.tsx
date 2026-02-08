@@ -55,6 +55,7 @@ const INCOME_TYPES = [
 // For the type selector - Expenses (negative for employee)
 const EXPENSE_TYPES = ["DEDUCTION", "ADVANCE_RETURN"] as const;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ALL_TYPES = [...INCOME_TYPES, ...EXPENSE_TYPES] as const;
 
 type PayFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
@@ -186,7 +187,7 @@ export function StaffPaymentDialog({
   const selectedStaff = staffList.find((s) => s.id === staffId);
 
   // Is this type a movement (accumulates) or actual payment?
-  const isMovementType = MOVEMENT_TYPES.includes(type as any);
+  const isMovementType = MOVEMENT_TYPES.includes(type as typeof MOVEMENT_TYPES[number]);
   const isSalaryType = type === "SALARY";
   const isAdvanceType = type === "ADVANCE";
   const isAdvanceReturnType = type === "ADVANCE_RETURN";
@@ -240,6 +241,7 @@ export function StaffPaymentDialog({
     } finally {
       setLoadingStats(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- periodDates derived from periodStartISO/periodEndISO
   }, [staffId, periodStartISO, periodEndISO, isSalaryType]);
 
   useEffect(() => {
@@ -298,7 +300,7 @@ export function StaffPaymentDialog({
 
     setLoading(true);
     try {
-      let body: any = {
+      const body: Record<string, unknown> = {
         staffId,
         type,
         description,

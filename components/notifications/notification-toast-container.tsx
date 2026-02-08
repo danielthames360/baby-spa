@@ -31,9 +31,9 @@ export function NotificationToastContainer() {
     (n) => !n.isRead && !dismissedIds.has(n.id)
   );
 
-  // Reset dismissed IDs when notifications change (new ones come in)
+  // Clean stale dismissed IDs when notifications change
   useEffect(() => {
-    setDismissedIds((prev) => {
+    setDismissedIds((prev) => { // eslint-disable-line react-hooks/set-state-in-effect -- Sync dismissed IDs with external notification state
       const validIds = new Set<string>();
       prev.forEach((id) => {
         if (notifications.some((n) => n.id === id)) {

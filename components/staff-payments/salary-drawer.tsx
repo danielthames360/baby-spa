@@ -174,6 +174,10 @@ export function SalaryDrawer({
     ? salaryPreview.grossAmount - advanceDeductedNum
     : 0;
 
+  // Extract period date strings for stable dependency tracking
+  const periodStartStr = periodDates?.start.toISOString() ?? null;
+  const periodEndStr = periodDates?.end.toISOString() ?? null;
+
   // Fetch preview when staff and period change
   const fetchPreview = useCallback(async () => {
     if (!staffId || !periodDates) {
@@ -212,7 +216,8 @@ export function SalaryDrawer({
     } finally {
       setLoadingPreview(false);
     }
-  }, [staffId, periodDates?.start.toISOString(), periodDates?.end.toISOString(), staffList, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- periodDates derived from periodStartStr/periodEndStr
+  }, [staffId, periodStartStr, periodEndStr, staffList, t]);
 
   useEffect(() => {
     if (open && staffId) {

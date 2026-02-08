@@ -36,6 +36,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 
 const MIN_HOURS_BEFORE = 24;
 
@@ -418,6 +419,7 @@ export function RescheduleAppointmentDialog({
 }: RescheduleDialogProps) {
   const t = useTranslations();
   const locale = useLocale();
+  const { playSound } = useNotificationSound();
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -598,6 +600,7 @@ export function RescheduleAppointmentDialog({
         return;
       }
 
+      playSound();
       toast.success(t("portal.appointments.rescheduleSuccess"));
       onSuccess();
       onOpenChange(false);

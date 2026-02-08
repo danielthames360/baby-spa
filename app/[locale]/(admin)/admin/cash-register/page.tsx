@@ -188,6 +188,7 @@ export default function CashRegisterPage() {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable from useTranslations
   }, [filter]);
 
   useEffect(() => {
@@ -462,9 +463,10 @@ function CashRegisterCard({
   const openedDate = new Date(data.openedAt);
   const closedDate = data.closedAt ? new Date(data.closedAt) : null;
 
-  // Calculate hours open for OPEN status
+  // Calculate hours open for OPEN status (use state to avoid impure Date.now() in render)
+  const [now] = useState(() => Date.now());
   const hoursOpen = data.status === "OPEN"
-    ? Math.floor((Date.now() - openedDate.getTime()) / (1000 * 60 * 60))
+    ? Math.floor((now - openedDate.getTime()) / (1000 * 60 * 60))
     : null;
 
   // Use pre-calculated payment data from service

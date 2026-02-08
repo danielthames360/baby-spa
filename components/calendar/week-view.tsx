@@ -120,8 +120,11 @@ export function WeekView({
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
   const allTimeSlots = useMemo(() => getAllTimeSlots(), []);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   // Memoize all per-day data in a single pass to avoid recalculating on every render
   const weekData = useMemo(() => {

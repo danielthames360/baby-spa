@@ -9,8 +9,6 @@ import { EmailStatus, TemplateCategory } from "@prisma/client";
 import {
   generateAppointmentConfirmationEmail,
   generateAppointmentRescheduledEmail,
-  generateGoogleCalendarLink,
-  generateOutlookCalendarLink,
 } from "@/lib/utils/email-template";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
 

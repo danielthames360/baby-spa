@@ -81,7 +81,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/sessions/[id]/products - Remove product from session
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function DELETE(request: NextRequest, _routeParams: RouteParams) {
   try {
     const session = await getServerSession(authOptions);

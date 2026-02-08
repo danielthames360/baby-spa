@@ -90,6 +90,7 @@ export default function EmailStatsPage() {
     if (isOwner) {
       fetchStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchStats depends on days which is already in deps
   }, [days, isOwner]);
 
   const fetchStats = async () => {

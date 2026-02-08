@@ -1,31 +1,26 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 const SOUND_PATH = "/sounds/notification.mp3";
 const DEBOUNCE_MS = 1000; // 1 second debounce to prevent multiple sounds
 
+// Module-level audio instance - persists across component lifecycles
+// This avoids issues with React StrictMode double-mount and component unmounting
+let audioInstance: HTMLAudioElement | null = null;
+let lastPlayed = 0;
+
+function getAudioInstance(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null;
+  if (!audioInstance) {
+    audioInstance = new Audio(SOUND_PATH);
+    audioInstance.preload = "auto";
+    audioInstance.volume = 0.5;
+  }
+  return audioInstance;
+}
+
 export function useNotificationSound() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastPlayedRef = useRef<number>(0);
-
-  // Initialize audio element on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      audioRef.current = new Audio(SOUND_PATH);
-      audioRef.current.preload = "auto";
-      audioRef.current.volume = 0.5; // 50% volume
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  // Play sound with debounce
   const playSound = useCallback(() => {
     // Only play if tab is visible
     if (typeof document !== "undefined" && document.visibilityState !== "visible") {
@@ -34,20 +29,21 @@ export function useNotificationSound() {
 
     // Debounce: don't play if played recently
     const now = Date.now();
-    if (now - lastPlayedRef.current < DEBOUNCE_MS) {
+    if (now - lastPlayed < DEBOUNCE_MS) {
       return;
     }
 
     // Play the sound
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0; // Reset to start
-      audioRef.current.play().catch((error) => {
-        // Ignore autoplay errors (browser policy)
-        if (error.name !== "NotAllowedError") {
+    const audio = getAudioInstance();
+    if (audio) {
+      audio.currentTime = 0; // Reset to start
+      audio.play().catch((error) => {
+        // Ignore autoplay errors (browser policy) and abort errors
+        if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
           console.error("Error playing notification sound:", error);
         }
       });
-      lastPlayedRef.current = now;
+      lastPlayed = now;
     }
   }, []);
 

@@ -238,6 +238,7 @@ export default function MessageTemplatesPage() {
 
   useEffect(() => {
     fetchTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional mount-only fetch
   }, []);
 
   // Debounced preview fetch

@@ -151,6 +151,7 @@ export function SplitPaymentForm({
 
   // Auto-sync single line amount when totalAmount changes (e.g., discount applied)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Prop sync: update line amount when parent changes total
     setLines((prev) => {
       if (prev.length === 1) {
         return [{ ...prev[0], amount: totalAmount }];
@@ -226,7 +227,7 @@ export function SplitPaymentForm({
 
       {/* Payment lines */}
       <div className="space-y-3">
-        {lines.map((line, _index) => (
+        {lines.map((line) => (
           <div
             key={line.id}
             className="rounded-xl border-2 border-gray-100 bg-gray-50/50 p-4 space-y-3"

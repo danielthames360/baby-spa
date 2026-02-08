@@ -71,6 +71,7 @@ const createSalarySchema = z.object({
 });
 
 // Helper to serialize payment for response
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializePayment(payment: any) {
   return {
     ...payment,

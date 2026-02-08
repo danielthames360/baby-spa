@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { withAuth, handleApiError, successResponse } from "@/lib/api-utils";
 import { notificationService } from "@/lib/services/notification-service";
 import { UserRole } from "@prisma/client";
@@ -8,7 +7,7 @@ import { UserRole } from "@prisma/client";
  * Get count of unread notifications and last created timestamp
  * This is a lightweight endpoint for polling
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 

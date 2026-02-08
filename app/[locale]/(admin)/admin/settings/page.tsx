@@ -80,6 +80,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional mount-only fetch
   }, []);
 
   // Detect changes

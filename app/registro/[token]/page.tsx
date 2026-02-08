@@ -215,7 +215,6 @@ export default function PublicRegistrationPage() {
   const [locale, setLocale] = useState<"es" | "pt-BR">("es");
   const [isLoading, setIsLoading] = useState(true);
   const [linkError, setLinkError] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_linkData, setLinkData] = useState<LinkData | null>(null);
   const [step, setStep] = useState<Step>("parent1");
   const [skipParent2, setSkipParent2] = useState(false);

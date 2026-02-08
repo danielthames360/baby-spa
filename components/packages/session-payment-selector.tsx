@@ -31,6 +31,7 @@ export function SessionPaymentSelector({
         .split(",")
         .map(Number)
         .filter((n) => !isNaN(n) && n > 0);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Prop sync: parse string value into local state
       setSelectedSessions(parsed);
     } else {
       setSelectedSessions([]);
@@ -41,6 +42,7 @@ export function SessionPaymentSelector({
   useEffect(() => {
     if (installmentsCount > 0 && totalSessions > 0 && selectedSessions.length === 0) {
       const suggested = suggestPayOnSessions(totalSessions, installmentsCount);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- One-time auto-suggestion when configuration changes
       setSelectedSessions(suggested);
       onChange(suggested.join(","));
     }

@@ -77,6 +77,7 @@ export default function ParentLoginPage() {
     }
 
     // Login successful - full navigation to ensure server re-evaluates layout with session
+    // eslint-disable-next-line react-hooks/immutability -- Intentional hard navigation after login
     window.location.href = "/portal/dashboard";
   };
 
@@ -241,6 +242,17 @@ export default function ParentLoginPage() {
               Baby Spa
             </span>
             . {t("common.tagline")}.
+          </p>
+          <p className="mt-2 text-center text-xs text-gray-400">
+            {t("common.developerCta")}{" "}
+            <a
+              href="https://www.linkedin.com/in/daniel-cespedes-tames/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-teal-500/70 underline decoration-teal-300/50 underline-offset-2 transition-colors hover:text-teal-600 hover:decoration-teal-400"
+            >
+              {t("common.contactDeveloper")} &rarr;
+            </a>
           </p>
         </div>
       </div>

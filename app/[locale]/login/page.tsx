@@ -82,6 +82,7 @@ export default function StaffLoginPage() {
 
     // Login successful - hard navigation to force layout re-render with session
     // Default to admin dashboard, the layout will redirect based on role if needed
+    // eslint-disable-next-line react-hooks/immutability -- Intentional hard navigation after login
     window.location.href = "/admin/dashboard";
   };
 

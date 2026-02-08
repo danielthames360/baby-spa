@@ -80,6 +80,17 @@ interface SessionHistoryCardProps {
   locale: string;
 }
 
+function BooleanIndicator({ value }: { value: boolean | null }) {
+  if (value === null || value === undefined) {
+    return <Minus className="h-4 w-4 text-gray-300" />;
+  }
+  return value ? (
+    <CheckCircle className="h-4 w-4 text-emerald-500" />
+  ) : (
+    <XCircle className="h-4 w-4 text-rose-400" />
+  );
+}
+
 export function SessionHistoryCard({ session, locale }: SessionHistoryCardProps) {
   const t = useTranslations();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -103,17 +114,6 @@ export function SessionHistoryCard({ session, locale }: SessionHistoryCardProps)
         { key: "relaxation", value: session.evaluation.relaxation, icon: Moon, emoji: "😴" },
       ].filter((a) => a.value)
     : [];
-
-  const BooleanIndicator = ({ value }: { value: boolean | null }) => {
-    if (value === null || value === undefined) {
-      return <Minus className="h-4 w-4 text-gray-300" />;
-    }
-    return value ? (
-      <CheckCircle className="h-4 w-4 text-emerald-500" />
-    ) : (
-      <XCircle className="h-4 w-4 text-rose-400" />
-    );
-  };
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-lg shadow-teal-500/10 backdrop-blur-md transition-all duration-300 hover:shadow-xl">

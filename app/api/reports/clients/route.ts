@@ -1,8 +1,7 @@
-import { NextRequest } from "next/server";
 import { withAuth, handleApiError, successResponse } from "@/lib/api-utils";
 import { reportService } from "@/lib/services/report-service";
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     await withAuth(["OWNER", "ADMIN"]);
 

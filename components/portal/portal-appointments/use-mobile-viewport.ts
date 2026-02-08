@@ -14,7 +14,7 @@ export function useMobileViewport() {
 
   useLayoutEffect(() => {
     // Mark as mounted first to avoid hydration mismatch
-    setMounted(true);
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect -- Standard hydration pattern
 
     function update() {
       const isMobile = window.innerWidth < 640;

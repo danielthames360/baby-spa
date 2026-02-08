@@ -79,7 +79,7 @@ export function ScheduleDialog({
   const [autoScheduling, setAutoScheduling] = useState(false);
 
   // Payment state
-  const [_requiresPayment, setRequiresPayment] = useState(false);
+  const [, setRequiresPayment] = useState(false);
   const [advanceAmount, setAdvanceAmount] = useState<number | null>(null);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
@@ -89,7 +89,7 @@ export function ScheduleDialog({
 
   // Baby Card state
   const [babyCardInfo, setBabyCardInfo] = useState<BabyCardPortalInfo | null>(null);
-  const [_loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+  const [, setLoadingBabyCardInfo] = useState(false);
   const [unlockedReward, setUnlockedReward] = useState<{
     displayName: string;
     displayIcon: string | null;
@@ -277,6 +277,7 @@ export function ScheduleDialog({
     if (selectedDate) {
       fetchSlots();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchSlots captures selectedDate which is already in deps
   }, [selectedDate]);
 
   // Scroll to top when entering payment step
@@ -513,7 +514,7 @@ export function ScheduleDialog({
         });
         return;
       }
-    } catch (error) {
+    } catch {
       // Share API not available or user cancelled, fall through to download
     }
 

@@ -165,6 +165,7 @@ export function AppointmentDetails({
     };
 
     fetchBabyCardInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-fetch when dialog opens or baby ID changes
   }, [open, appointment?.baby?.id]);
 
   // Calculate installment payment status (narrow dependency to packagePurchase identity)
@@ -254,6 +255,31 @@ export function AppointmentDetails({
     setRescheduleError("");
   }, [rescheduleDate]);
 
+  // Action handlers - wrapped in useCallback since passed to child components
+  const handleAction = useCallback(async (action: string, reason?: string) => {
+    if (!appointment) return;
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      });
+
+      if (response.ok) {
+        onUpdate?.();
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+    } finally {
+      setIsUpdating(false);
+      setShowCancelDialog(false);
+      setShowNoShowDialog(false);
+      setCancelReason("");
+    }
+  }, [appointment, onUpdate, onOpenChange]);
+
   if (!appointment) return null;
 
   // Determine appointment type and client info
@@ -278,30 +304,6 @@ export function AppointmentDetails({
   const canMarkNoShow = appointment.status === "SCHEDULED";
   const canReschedule = appointment.status === "SCHEDULED" || appointment.status === "PENDING_PAYMENT";
   const canRegisterPayment = appointment.status === "PENDING_PAYMENT" || appointment.status === "SCHEDULED";
-
-  // Action handlers - wrapped in useCallback since passed to child components
-  const handleAction = useCallback(async (action: string, reason?: string) => {
-    setIsUpdating(true);
-    try {
-      const response = await fetch(`/api/appointments/${appointment.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
-      });
-
-      if (response.ok) {
-        onUpdate?.();
-        onOpenChange(false);
-      }
-    } catch (error) {
-      console.error("Error updating appointment:", error);
-    } finally {
-      setIsUpdating(false);
-      setShowCancelDialog(false);
-      setShowNoShowDialog(false);
-      setCancelReason("");
-    }
-  }, [appointment.id, onUpdate, onOpenChange]);
 
   const handleReschedule = async () => {
     if (!rescheduleDate || !rescheduleTime) return;

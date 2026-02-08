@@ -48,33 +48,16 @@ interface ViewBabyDialogProps {
   } | null;
 }
 
-export function ViewBabyDialog({
-  open,
-  onOpenChange,
-  baby,
-}: ViewBabyDialogProps) {
-  const t = useTranslations();
-
-  if (!baby) return null;
-
-  const ageResult = calculateExactAge(baby.birthDate);
-  const age = formatAge(ageResult, t);
-
-  const primaryParent =
-    baby.parents?.find((p) => p.isPrimary)?.parent || baby.parents?.[0]?.parent;
-
-  const hasMedicalAlerts =
-    baby.allergies || baby.diagnosedIllness || baby.birthDifficulty;
-
-  const SectionTitle = ({
-    icon: Icon,
-    children,
-    variant = "default",
-  }: {
-    icon: React.ElementType;
-    children: React.ReactNode;
-    variant?: "default" | "alert";
-  }) => (
+function SectionTitle({
+  icon: Icon,
+  children,
+  variant = "default",
+}: {
+  icon: React.ElementType;
+  children: React.ReactNode;
+  variant?: "default" | "alert";
+}) {
+  return (
     <div className="flex items-center gap-2 border-b border-teal-100 pb-2">
       <div
         className={`flex h-8 w-8 items-center justify-center rounded-lg ${
@@ -94,6 +77,25 @@ export function ViewBabyDialog({
       </h3>
     </div>
   );
+}
+
+export function ViewBabyDialog({
+  open,
+  onOpenChange,
+  baby,
+}: ViewBabyDialogProps) {
+  const t = useTranslations();
+
+  if (!baby) return null;
+
+  const ageResult = calculateExactAge(baby.birthDate);
+  const age = formatAge(ageResult, t);
+
+  const primaryParent =
+    baby.parents?.find((p) => p.isPrimary)?.parent || baby.parents?.[0]?.parent;
+
+  const hasMedicalAlerts =
+    baby.allergies || baby.diagnosedIllness || baby.birthDifficulty;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

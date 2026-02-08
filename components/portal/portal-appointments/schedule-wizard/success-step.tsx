@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   CheckCircle,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 import type { BabyCardPortalInfo, ClientType } from "../types";
 
 interface SuccessStepProps {
@@ -40,6 +42,12 @@ export function SuccessStep({
   const t = useTranslations();
   const locale = useLocale();
   const dateLocale = locale === "pt-BR" ? "pt-BR" : "es-BO";
+  const { playSound } = useNotificationSound();
+
+  // Play confirmation sound when success step mounts
+  useEffect(() => {
+    playSound();
+  }, [playSound]);
 
   return (
     <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">

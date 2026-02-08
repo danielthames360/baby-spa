@@ -21,6 +21,12 @@ interface TherapistTableProps {
 export function TherapistTable({ data, locale }: TherapistTableProps) {
   const t = useTranslations("reports");
 
+  // Memoize derived total to avoid recomputation on every render
+  const totalSessions = useMemo(
+    () => data.reduce((sum, item) => sum + item.completedSessions, 0),
+    [data]
+  );
+
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-white/50 bg-white/70 p-12 text-center shadow-lg backdrop-blur-md">
@@ -29,12 +35,6 @@ export function TherapistTable({ data, locale }: TherapistTableProps) {
       </div>
     );
   }
-
-  // Memoize derived total to avoid recomputation on every render
-  const totalSessions = useMemo(
-    () => data.reduce((sum, t) => sum + t.completedSessions, 0),
-    [data]
-  );
 
   return (
     <div className="space-y-6">

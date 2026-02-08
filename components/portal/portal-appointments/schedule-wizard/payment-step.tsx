@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
+import Image from "next/image";
 import { formatCurrency } from "@/lib/utils/currency-utils";
 import { Clock, CreditCard, Download, Loader2 } from "lucide-react";
 import type { PaymentSettings, ClientType } from "../types";
@@ -65,9 +66,11 @@ export function PaymentStep({
             {t("payment.scanQr")}
           </p>
           <div className="mx-auto h-48 w-48 rounded-xl border-2 border-teal-200 bg-white p-2 shadow-lg">
-            <img
+            <Image
               src={paymentSettings.paymentQrImage}
               alt="QR Code"
+              width={192}
+              height={192}
               className="h-full w-full object-contain"
             />
           </div>

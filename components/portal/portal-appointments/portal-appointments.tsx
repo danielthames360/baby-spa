@@ -52,7 +52,7 @@ export function PortalAppointments() {
   const [canSchedule, setCanSchedule] = useState(true);
   const [requiresPrepayment, setRequiresPrepayment] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [_error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
   // Dialog state
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -205,7 +205,7 @@ export function PortalAppointments() {
         });
         return;
       }
-    } catch (error) {
+    } catch {
       // Share API not available or user cancelled, fall through to download
     }
 

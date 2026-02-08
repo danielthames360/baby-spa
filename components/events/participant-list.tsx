@@ -363,6 +363,7 @@ export function ParticipantList({
 
   useEffect(() => {
     fetchPurchaseStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchPurchaseStatus captures eventId and canViewPurchases which are in deps
   }, [eventId, canViewPurchases]);
 
   const handleDelete = async () => {
@@ -377,7 +378,7 @@ export function ParticipantList({
       toast.success(t("messages.participantRemoved"));
       onRefresh?.();
       router.refresh();
-    } catch (error) {
+    } catch {
       toast.error(t("participants.errors.removeError"));
     } finally {
       setIsDeleting(false);
@@ -399,7 +400,7 @@ export function ParticipantList({
       toast.success(t("messages.attendanceSaved"));
       onRefresh?.();
       router.refresh();
-    } catch (error) {
+    } catch {
       toast.error(t("participants.errors.attendanceError"));
     }
   }, [eventId, t, onRefresh, router]);
@@ -478,7 +479,7 @@ export function ParticipantList({
         toast.error(t("participants.errors.fetchPaymentError"));
       }
     },
-    [eventId]
+    [eventId, t]
   );
 
   if (participants.length === 0) {

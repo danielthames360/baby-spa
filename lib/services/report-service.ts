@@ -1386,7 +1386,7 @@ export const reportService = {
   // ----------------------
 
   async getPayrollReport(from: Date, to: Date): Promise<PayrollReport> {
-    const [payments, advances, _staffList] = await Promise.all([
+    const [payments, advances] = await Promise.all([
       // Paid payments in period
       prisma.staffPayment.findMany({
         where: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatCurrency } from "@/lib/utils/currency-utils";
 import {
@@ -49,10 +50,11 @@ export function AppointmentCard({
   const locale = useLocale();
 
   // Check if appointment can be modified (more than 24h before)
+  const [now] = useState(() => Date.now());
   const dateOnly = appointment.date.split("T")[0];
   const appointmentDateTime = new Date(`${dateOnly}T${appointment.startTime}:00`);
   const hoursUntil = Math.floor(
-    (appointmentDateTime.getTime() - Date.now()) / (1000 * 60 * 60)
+    (appointmentDateTime.getTime() - now) / (1000 * 60 * 60)
   );
   const canModify =
     hoursUntil >= 24 &&

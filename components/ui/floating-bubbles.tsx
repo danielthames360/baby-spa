@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Bubble {
   id: number;
@@ -17,25 +17,30 @@ interface FloatingBubblesProps {
 }
 
 export function FloatingBubbles({ count = 15, className = '' }: FloatingBubblesProps) {
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Generate random bubbles only on client
-    const newBubbles: Bubble[] = [];
+    setMounted(true);
+  }, []);
+
+  // Generate bubbles with random values (only rendered after mount to avoid hydration mismatch)
+  /* eslint-disable react-hooks/purity -- Intentional: decorative random values, guarded by mounted flag */
+  const bubbles = useMemo(() => {
+    if (!mounted) return [];
+    const result: Bubble[] = [];
     for (let i = 0; i < count; i++) {
-      newBubbles.push({
+      result.push({
         id: i,
-        x: Math.random() * 100, // Random horizontal position (%)
-        size: 10 + Math.random() * 28, // Size between 10-38px (slightly larger)
-        delay: Math.random() * 8, // Random delay 0-8s
-        duration: 10 + Math.random() * 15, // Duration 10-25s (a bit faster)
-        opacity: 0.35 + Math.random() * 0.35, // Opacity 0.35-0.7 (more visible)
+        x: Math.random() * 100,
+        size: 10 + Math.random() * 28,
+        delay: Math.random() * 8,
+        duration: 10 + Math.random() * 15,
+        opacity: 0.35 + Math.random() * 0.35,
       });
     }
-    setBubbles(newBubbles);
-    setMounted(true);
-  }, [count]);
+    return result;
+  }, [count, mounted]);
+  /* eslint-enable react-hooks/purity */
 
   // Return null until mounted to avoid hydration mismatch
   if (!mounted) {

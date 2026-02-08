@@ -59,7 +59,6 @@ const DEFAULT_PASSWORD = "cambiar123";
 export function UserDialog({
   open,
   onOpenChange,
-  locale: _locale,
   user,
   trigger,
   currentUserRole,

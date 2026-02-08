@@ -454,7 +454,7 @@ export const sessionService = {
 
     const discountDecimal = new Prisma.Decimal(discountAmount);
     const totalDiscounts = discountDecimal.add(firstSessionDiscountAmount);
-    let totalBeforeAdvance = subtotalAmount.sub(totalDiscounts).greaterThan(0)
+    const totalBeforeAdvance = subtotalAmount.sub(totalDiscounts).greaterThan(0)
       ? subtotalAmount.sub(totalDiscounts)
       : new Prisma.Decimal(0);
 

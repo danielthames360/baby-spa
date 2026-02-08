@@ -10,7 +10,7 @@ interface PortalLayoutClientProps {
   session: Session;
 }
 
-export function PortalLayoutClient({ children, session: _session }: PortalLayoutClientProps) {
+export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
   const t = useTranslations();
 
   return (
@@ -30,9 +30,23 @@ export function PortalLayoutClient({ children, session: _session }: PortalLayout
         <main className="flex-1">
           <div className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
             {children}
+
+            {/* Developer CTA - mobile only (inside content area, uses existing pb-24 for bottom nav clearance) */}
+            <p className="mt-4 block md:hidden text-center text-xs text-gray-400">
+              {t("common.developerCta")}{" "}
+              <a
+                href="https://www.linkedin.com/in/daniel-cespedes-tames/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-teal-500/70 underline decoration-teal-300/50 underline-offset-2 transition-colors hover:text-teal-600 hover:decoration-teal-400"
+              >
+                {t("common.contactDeveloper")} &rarr;
+              </a>
+            </p>
           </div>
         </main>
 
+        {/* Full footer - desktop only */}
         <footer className="hidden md:block border-t border-white/50 bg-white/50 py-6 backdrop-blur-sm">
           <div className="mx-auto max-w-5xl px-4 text-center">
             <div className="flex items-center justify-center gap-2">
@@ -43,6 +57,17 @@ export function PortalLayoutClient({ children, session: _session }: PortalLayout
             <p className="mt-2 text-sm text-gray-500">
               &copy; {new Date().getFullYear()} Baby Spa.{" "}
               {t("common.footerTagline")}.
+            </p>
+            <p className="mt-3 text-xs text-gray-400">
+              {t("common.developerCta")}{" "}
+              <a
+                href="https://www.linkedin.com/in/daniel-cespedes-tames/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-teal-500/70 underline decoration-teal-300/50 underline-offset-2 transition-colors hover:text-teal-600 hover:decoration-teal-400"
+              >
+                {t("common.contactDeveloper")} &rarr;
+              </a>
             </p>
           </div>
         </footer>
