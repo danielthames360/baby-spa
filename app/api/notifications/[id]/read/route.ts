@@ -10,7 +10,7 @@ interface RouteParams {
  * PATCH /api/notifications/[id]/read
  * Mark a single notification as read
  */
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
     const { id } = await params;

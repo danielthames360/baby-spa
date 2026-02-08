@@ -303,9 +303,6 @@ export const babyCardService = {
         const protectedRewards = existingRewards.filter((r) => r._count.usages > 0);
         const editableRewards = existingRewards.filter((r) => r._count.usages === 0);
 
-        // Get session numbers from input
-        const inputSessionNumbers = new Set(input.rewards.map((r) => r.sessionNumber));
-
         // Check if trying to remove or modify a protected reward
         for (const protectedReward of protectedRewards) {
           const inputReward = input.rewards.find((r) => r.sessionNumber === protectedReward.sessionNumber);

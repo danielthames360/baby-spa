@@ -10,7 +10,7 @@ interface PortalLayoutClientProps {
   session: Session;
 }
 
-export function PortalLayoutClient({ children, session }: PortalLayoutClientProps) {
+export function PortalLayoutClient({ children, session: _session }: PortalLayoutClientProps) {
   const t = useTranslations();
 
   return (

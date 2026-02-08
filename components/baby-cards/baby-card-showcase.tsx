@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Gift, Star, Sparkles, Heart, Crown } from "lucide-react";
+import { Star, Sparkles, Heart } from "lucide-react";
 
 // ===========================================
 // MOCK DATA

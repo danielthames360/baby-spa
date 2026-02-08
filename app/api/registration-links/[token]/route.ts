@@ -21,7 +21,7 @@ function generateAccessCode(): string {
 }
 
 // GET /api/registration-links/[token] - Validate token and get pre-filled data
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const { token } = await params;
 

@@ -9,7 +9,6 @@ import {
   Plus,
   UserRound,
   Loader2,
-  Filter,
   ChevronLeft,
   ChevronRight,
   Heart,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { suggestPayOnSessions } from "@/lib/utils/installments";
 
 interface SessionPaymentSelectorProps {

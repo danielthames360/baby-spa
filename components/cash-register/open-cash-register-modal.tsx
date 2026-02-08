@@ -28,7 +28,6 @@ export function OpenCashRegisterModal({
   onOpenChange,
 }: OpenCashRegisterModalProps) {
   const t = useTranslations("cashRegister");
-  const tCommon = useTranslations("common");
   const locale = useLocale();
   const { openCashRegister } = useCashRegister();
 

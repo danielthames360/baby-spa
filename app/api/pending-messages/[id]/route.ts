@@ -14,7 +14,7 @@ import { PendingMessageStatus } from "@prisma/client";
 
 // GET - Get single message
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -110,7 +110,7 @@ export async function PATCH(
 
 // DELETE - Delete a pending message
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

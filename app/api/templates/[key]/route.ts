@@ -12,7 +12,7 @@ import { withAuth, handleApiError } from "@/lib/api-utils";
 
 // GET - Get single template
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ key: string }> }
 ) {
   try {

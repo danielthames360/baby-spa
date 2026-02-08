@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTranslations, useLocale, useFormatter } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 import { ActivityCard } from "./activity-card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Inbox } from "lucide-react";

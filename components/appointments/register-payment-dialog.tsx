@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
-import { formatCurrency, getCurrencySymbol } from "@/lib/utils/currency-utils";
+import { formatCurrency } from "@/lib/utils/currency-utils";
 import {
   Dialog,
   DialogContent,

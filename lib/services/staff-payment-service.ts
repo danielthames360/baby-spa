@@ -68,14 +68,6 @@ const MOVEMENT_TYPES: StaffPaymentType[] = [
   "DEDUCTION",
 ];
 
-// Payment types (actual money transfers)
-const PAYMENT_TYPES: StaffPaymentType[] = [
-  "SALARY",
-  "ADVANCE",
-  "ADVANCE_RETURN",
-  "SETTLEMENT",
-];
-
 // Income types (positive for employee)
 const INCOME_TYPES: StaffPaymentType[] = [
   "SALARY",

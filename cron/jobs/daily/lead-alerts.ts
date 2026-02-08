@@ -40,7 +40,7 @@ interface EventParticipantWithEvent {
  */
 export async function runLeadAlerts(
   prisma: PrismaClient,
-  config: CountryConfig
+  _config: CountryConfig
 ): Promise<number> {
   let totalProcessed = 0;
 
@@ -134,7 +134,7 @@ async function createLeadAlert(
  * This is not a cron job but can be called manually
  */
 export async function sendLeadWelcomeEmail(
-  prisma: PrismaClient,
+  _prisma: PrismaClient,
   lead: { id: string; name: string; email: string | null },
   eventName: string,
   config: CountryConfig & { whatsappNumber: string }

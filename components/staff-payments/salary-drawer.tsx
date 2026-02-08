@@ -31,7 +31,6 @@ import {
   TrendingUp,
   Calendar,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SplitPaymentForm } from "@/components/payments/split-payment-form";

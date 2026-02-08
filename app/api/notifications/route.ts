@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { withAuth, handleApiError, successResponse } from "@/lib/api-utils";
 import { notificationService } from "@/lib/services/notification-service";
 import { UserRole } from "@prisma/client";

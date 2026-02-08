@@ -3,7 +3,7 @@
 import { useState, useEffect, ReactNode, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { es, ptBR } from "date-fns/locale";
 import {
   Dialog,
@@ -42,9 +42,6 @@ import { getCurrencySymbol, formatCurrency as formatCurrencyUtil } from "@/lib/u
 
 // Movement types (records that accumulate, not actual payments)
 const MOVEMENT_TYPES = ["BONUS", "COMMISSION", "BENEFIT", "DEDUCTION"] as const;
-
-// Payment types (actual money transfers)
-const PAYMENT_TYPES_ACTUAL = ["SALARY", "ADVANCE", "ADVANCE_RETURN"] as const;
 
 // For the type selector - Income (positive for employee)
 const INCOME_TYPES = [
@@ -207,10 +204,7 @@ export function StaffPaymentDialog({
   const amountNum = parseFloat(amount) || 0;
   const advanceDeductedNum = deductAdvance ? parseFloat(advanceToDeduct) || 0 : 0;
 
-  // For salary, use the preview's gross and net
-  const grossAmount = isSalaryType && salaryPreview
-    ? salaryPreview.grossAmount
-    : amountNum;
+  // For salary, use the preview's net
   const netAmount = isSalaryType && salaryPreview
     ? salaryPreview.grossAmount - advanceDeductedNum
     : amountNum - advanceDeductedNum;

@@ -5,7 +5,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import Link from "next/link";
 import {
-  Baby,
   CreditCard,
   Gift,
   Lock,
@@ -16,7 +15,6 @@ import {
   Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { BabyCardVisual } from "@/components/baby-cards/baby-card-visual";
 
 interface Reward {

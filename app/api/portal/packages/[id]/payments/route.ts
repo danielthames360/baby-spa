@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { transactionService, TransactionWithItems } from "@/lib/services/transaction-service";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

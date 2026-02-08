@@ -2,10 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Calendar, Clock, Users, ChevronRight, PartyPopper, Baby, UserRound } from "lucide-react";
+import { Calendar, Clock, Users, ChevronRight, Baby, UserRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDateForDisplay, fromDateOnly } from "@/lib/utils/date-utils";
+import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import { formatCurrency } from "@/lib/utils/currency-utils";
 
 // Status badge styles
@@ -36,7 +36,6 @@ interface EventCardProps {
 
 export function EventCard({ event, locale = "es" }: EventCardProps) {
   const t = useTranslations("events");
-  const tCommon = useTranslations("common");
 
   const participantCount = event._count?.participants ??
     event.participants?.filter(p => p.status !== "CANCELLED").length ?? 0;

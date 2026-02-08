@@ -7,7 +7,6 @@ import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils/currenc
 import {
   Package,
   TrendingUp,
-  AlertTriangle,
   BarChart3,
   Percent,
   Moon,

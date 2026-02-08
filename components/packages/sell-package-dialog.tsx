@@ -81,12 +81,6 @@ const paymentMethods = [
   { value: "TRANSFER", icon: Building, color: "blue" },
 ] as const;
 
-// Payment plan options (SINGLE = full payment, INSTALLMENTS = use package config)
-const paymentPlanOptions = [
-  { value: "SINGLE", labelKey: "packages.installments.fullPayment" },
-  { value: "INSTALLMENTS", labelKey: "packages.installments.title" },
-] as const;
-
 export function SellPackageDialog({
   open,
   onOpenChange,

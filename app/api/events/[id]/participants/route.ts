@@ -6,7 +6,7 @@ import { addBabyParticipantSchema, addParentParticipantSchema } from "@/lib/vali
 
 // GET /api/events/[id]/participants - Get all participants for an event
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

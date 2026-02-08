@@ -32,7 +32,7 @@ interface MaintenanceResult {
  */
 export async function runMaintenance(
   prisma: PrismaClient,
-  config: CountryConfig
+  _config: CountryConfig
 ): Promise<number> {
   const result: MaintenanceResult = {
     noShowMarked: 0,

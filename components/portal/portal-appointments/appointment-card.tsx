@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatCurrency } from "@/lib/utils/currency-utils";
 import {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -16,7 +16,6 @@ import {
   Gift,
   Tag,
   ShoppingBag,
-  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -62,7 +61,6 @@ interface BabyCardItem {
 export default function BabyCardsPage() {
   const t = useTranslations();
   const params = useParams();
-  const router = useRouter();
   const locale = params.locale as string;
   const { data: session } = useSession();
   const userRole = (session?.user?.role as UserRole) || "RECEPTION";

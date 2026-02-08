@@ -28,7 +28,6 @@ import {
   Pill,
   Stethoscope,
   ClipboardList,
-  Info,
   XCircle,
   AlertTriangle,
   ShieldAlert,

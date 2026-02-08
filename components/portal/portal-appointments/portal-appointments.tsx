@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   Calendar,
@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { formatDateForDisplay } from "@/lib/utils/date-utils";
 import {
-  canModifyAppointment,
   type AppointmentForActions,
 } from "@/components/portal/appointment-actions";
 
@@ -53,7 +52,7 @@ export function PortalAppointments() {
   const [canSchedule, setCanSchedule] = useState(true);
   const [requiresPrepayment, setRequiresPrepayment] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   // Dialog state
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);

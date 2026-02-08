@@ -47,7 +47,7 @@ export function useNotifications() {
     openPanel,
     markAsReadLocally,
     markAllAsReadLocally,
-    setHasInitialLoad,
+    setHasInitialLoad: _setHasInitialLoad,
   } = useNotificationStore();
 
   // Check if user has permission to see notifications

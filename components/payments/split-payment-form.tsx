@@ -226,7 +226,7 @@ export function SplitPaymentForm({
 
       {/* Payment lines */}
       <div className="space-y-3">
-        {lines.map((line, index) => (
+        {lines.map((line, _index) => (
           <div
             key={line.id}
             className="rounded-xl border-2 border-gray-100 bg-gray-50/50 p-4 space-y-3"

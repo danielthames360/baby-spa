@@ -7,94 +7,6 @@ import { cn } from "@/lib/utils";
 import { Gift, Lock, Check } from "lucide-react";
 import { getCurrencySymbol } from "@/lib/utils/currency-utils";
 
-// ===========================================
-// COLOR THEMES - Saved options for easy switching
-// ===========================================
-const COLOR_THEMES = {
-  // Current: Pastel Baby Spa (teal/cyan)
-  pastelTeal: {
-    border: "from-teal-400 via-cyan-300 to-teal-300",
-    shadow: "shadow-teal-200/50",
-    bubbles: ["from-cyan-200/40", "from-teal-200/40", "from-pink-100/30"],
-    title: "from-teal-600 via-cyan-500 to-teal-600",
-    gridBg: "bg-white/60 border-teal-100",
-    sessionNormal: "border-teal-200 bg-white hover:border-teal-300",
-    sessionNumber: "text-teal-400",
-    sessionReward:
-      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
-    statsText: "text-teal-500",
-    statsDot: "from-teal-400 to-cyan-400",
-    rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
-    bottomBar: "from-teal-300 via-cyan-300 to-teal-300",
-  },
-  // Option 2: Soft Pink/Rose (for baby girls)
-  pastelPink: {
-    border: "from-pink-400 via-rose-300 to-pink-300",
-    shadow: "shadow-pink-200/50",
-    bubbles: ["from-pink-200/40", "from-rose-200/40", "from-purple-100/30"],
-    title: "from-pink-600 via-rose-500 to-pink-600",
-    gridBg: "bg-white/60 border-pink-100",
-    sessionNormal: "border-pink-200 bg-white hover:border-pink-300",
-    sessionNumber: "text-pink-400",
-    sessionReward:
-      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
-    statsText: "text-pink-500",
-    statsDot: "from-pink-400 to-rose-400",
-    rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
-    bottomBar: "from-pink-300 via-rose-300 to-pink-300",
-  },
-  // Option 3: Lavender/Purple
-  pastelLavender: {
-    border: "from-violet-400 via-purple-300 to-violet-300",
-    shadow: "shadow-violet-200/50",
-    bubbles: ["from-violet-200/40", "from-purple-200/40", "from-pink-100/30"],
-    title: "from-violet-600 via-purple-500 to-violet-600",
-    gridBg: "bg-white/60 border-violet-100",
-    sessionNormal: "border-violet-200 bg-white hover:border-violet-300",
-    sessionNumber: "text-violet-400",
-    sessionReward:
-      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
-    statsText: "text-violet-500",
-    statsDot: "from-violet-400 to-purple-400",
-    rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
-    bottomBar: "from-violet-300 via-purple-300 to-violet-300",
-  },
-  // Option 4: Mint/Green
-  pastelMint: {
-    border: "from-emerald-400 via-green-300 to-emerald-300",
-    shadow: "shadow-emerald-200/50",
-    bubbles: ["from-emerald-200/40", "from-green-200/40", "from-teal-100/30"],
-    title: "from-emerald-600 via-green-500 to-emerald-600",
-    gridBg: "bg-white/60 border-emerald-100",
-    sessionNormal: "border-emerald-200 bg-white hover:border-emerald-300",
-    sessionNumber: "text-emerald-400",
-    sessionReward:
-      "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 shadow-amber-200/50",
-    statsText: "text-emerald-500",
-    statsDot: "from-emerald-400 to-green-400",
-    rewardBg: "from-amber-50 to-orange-50 border-amber-200 text-amber-600",
-    bottomBar: "from-emerald-300 via-green-300 to-emerald-300",
-  },
-  // Option 5: Peach/Coral
-  pastelPeach: {
-    border: "from-orange-300 via-amber-200 to-orange-300",
-    shadow: "shadow-orange-200/50",
-    bubbles: ["from-orange-200/40", "from-amber-200/40", "from-pink-100/30"],
-    title: "from-orange-500 via-amber-500 to-orange-500",
-    gridBg: "bg-white/60 border-orange-100",
-    sessionNormal: "border-orange-200 bg-white hover:border-orange-300",
-    sessionNumber: "text-orange-400",
-    sessionReward:
-      "border-teal-300 bg-gradient-to-br from-teal-50 to-cyan-50 shadow-teal-200/50",
-    statsText: "text-orange-500",
-    statsDot: "from-orange-400 to-amber-400",
-    rewardBg: "from-teal-50 to-cyan-50 border-teal-200 text-teal-600",
-    bottomBar: "from-orange-300 via-amber-300 to-orange-300",
-  },
-};
-
-// Current active theme - change this to switch colors
-const ACTIVE_THEME = COLOR_THEMES.pastelTeal;
 
 interface Reward {
   id: string;
@@ -171,8 +83,6 @@ function PreviewCard({
     setIsHovering(false);
     setTilt({ x: 0, y: 0 });
   };
-
-  const theme = ACTIVE_THEME;
 
   return (
     <div className={cn("perspective-1000", className)}>

@@ -4,7 +4,7 @@ import { updateUserSchema } from "@/lib/validations/user";
 import { withAuth, handleApiError } from "@/lib/api-utils";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -50,7 +50,7 @@ export async function PUT(
 }
 
 export async function PATCH(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

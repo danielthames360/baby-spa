@@ -50,7 +50,7 @@ export function PaymentSummarySection({
   productsTotal,
   subtotal,
   discountAmount,
-  firstSessionDiscountValue,
+  firstSessionDiscountValue: _firstSessionDiscountValue,
   advancePaidAmount,
   grandTotal,
   showDiscount,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Package, Plus, Minus, X, AlertTriangle, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -38,7 +38,6 @@ export function ProductSelector({
   disabled = false,
 }: ProductSelectorProps) {
   const t = useTranslations();
-  const locale = useLocale();
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredProducts = products.filter((product) => {

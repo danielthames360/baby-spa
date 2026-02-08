@@ -13,7 +13,6 @@ import {
   ChevronUp,
   Loader2,
   Scale,
-  Check,
   X,
   Minus,
   FileDown,

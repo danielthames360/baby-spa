@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { withAuth, validateRequest, handleApiError, createdResponse, successResponse } from "@/lib/api-utils";
 import { eventService } from "@/lib/services/event-service";
 import { createEventSchema, eventFiltersSchema } from "@/lib/validations/event";

@@ -10,7 +10,7 @@ interface TherapistLayoutClientProps {
   session: Session;
 }
 
-export function TherapistLayoutClient({ children, session }: TherapistLayoutClientProps) {
+export function TherapistLayoutClient({ children, session: _session }: TherapistLayoutClientProps) {
   return (
     <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-cyan-50 via-teal-50 to-white">
       {/* Decorative Background Blurs */}

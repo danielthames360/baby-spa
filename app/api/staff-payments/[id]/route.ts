@@ -12,7 +12,7 @@ interface RouteParams {
 }
 
 // GET /api/staff-payments/:id
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     await withAuth(["OWNER"]);
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/staff-payments/:id
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await withAuth(["OWNER"]);
 

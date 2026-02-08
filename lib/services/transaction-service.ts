@@ -5,7 +5,6 @@ import {
   ItemType,
   PaymentMethod,
   Prisma,
-  type PrismaClient,
 } from "@prisma/client";
 
 // Use Prisma.Decimal for proper typing

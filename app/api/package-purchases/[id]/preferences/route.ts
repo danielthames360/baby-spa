@@ -48,7 +48,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
  * GET /api/package-purchases/[id]/preferences
  * Get schedule preferences for a package purchase
  */
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await withAuth(['OWNER', 'ADMIN', 'RECEPTION', 'THERAPIST']);
 

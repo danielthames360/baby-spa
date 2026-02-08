@@ -89,13 +89,6 @@ export function BabyCardProfileSection({
     fetchPurchases();
   }, [fetchPurchases]);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "es-BO", {
-      style: "currency",
-      currency: locale === "pt-BR" ? "BRL" : "BOB",
-    }).format(price);
-  };
-
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString(
       locale === "pt-BR" ? "pt-BR" : "es-ES",

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   Dialog,
@@ -79,7 +79,7 @@ export function ScheduleDialog({
   const [autoScheduling, setAutoScheduling] = useState(false);
 
   // Payment state
-  const [requiresPayment, setRequiresPayment] = useState(false);
+  const [_requiresPayment, setRequiresPayment] = useState(false);
   const [advanceAmount, setAdvanceAmount] = useState<number | null>(null);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
@@ -89,7 +89,7 @@ export function ScheduleDialog({
 
   // Baby Card state
   const [babyCardInfo, setBabyCardInfo] = useState<BabyCardPortalInfo | null>(null);
-  const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+  const [_loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
   const [unlockedReward, setUnlockedReward] = useState<{
     displayName: string;
     displayIcon: string | null;

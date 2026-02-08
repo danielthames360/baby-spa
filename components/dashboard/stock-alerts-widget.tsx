@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Package, AlertTriangle, ChevronRight, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,6 @@ interface LowStockProduct {
 
 export function StockAlertsWidget() {
   const t = useTranslations();
-  const locale = useLocale();
   const [products, setProducts] = useState<LowStockProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

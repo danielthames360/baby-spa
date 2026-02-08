@@ -183,7 +183,6 @@ const DEFAULT_CONFIG = {
 
 export function ActivityCard({ activity, locale }: ActivityCardProps) {
   const router = useRouter();
-  const t = useTranslations("activity");
   const tTypes = useTranslations("activity.types");
   const format = useFormatter();
 

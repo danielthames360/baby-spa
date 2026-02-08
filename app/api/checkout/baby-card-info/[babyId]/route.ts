@@ -13,7 +13,7 @@ type RouteParams = { params: Promise<{ babyId: string }> };
  * Get baby card info for checkout
  * Returns: active card status, available rewards, next reward, special prices
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     await withAuth(["OWNER", "ADMIN", "RECEPTION", "THERAPIST"]);
 

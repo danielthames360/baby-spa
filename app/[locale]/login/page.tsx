@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn, getSession, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -57,19 +57,6 @@ export default function StaffLoginPage() {
       password: "",
     },
   });
-
-  const getRedirectUrl = (role: string): string => {
-    switch (role) {
-      case "ADMIN":
-        return "/admin/dashboard";
-      case "RECEPTION":
-        return "/admin/calendar";
-      case "THERAPIST":
-        return "/therapist/today";
-      default:
-        return "/admin/dashboard";
-    }
-  };
 
   const handleLogin = async (data: StaffLoginInput) => {
     setServerError("");

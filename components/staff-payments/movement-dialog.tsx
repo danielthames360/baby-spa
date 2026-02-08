@@ -54,7 +54,7 @@ interface MovementDialogProps {
 export function MovementDialog({
   open,
   onOpenChange,
-  locale,
+  locale: _locale,
   staffList,
 }: MovementDialogProps) {
   const t = useTranslations("staffPayments");

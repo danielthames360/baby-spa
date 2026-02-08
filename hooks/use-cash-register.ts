@@ -20,7 +20,7 @@ export function useCashRegister() {
     setCashRegister,
     setIsLoading,
     setError,
-    setHasInitialLoad,
+    setHasInitialLoad: _setHasInitialLoad,
   } = useCashRegisterStore();
 
   const fetchCashRegister = useCallback(async () => {

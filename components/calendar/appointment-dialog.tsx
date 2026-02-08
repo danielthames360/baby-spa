@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Baby,
   Calendar,
   Clock,
   Loader2,
@@ -22,7 +21,6 @@ import {
   Package,
   CreditCard,
   AlertTriangle,
-  UserRound,
   Sparkles,
   Star,
 } from "lucide-react";
@@ -36,7 +34,6 @@ import {
 import {
   ClientSelector,
   type SelectedClient,
-  type BabySearchResult,
 } from "@/components/calendar/client-selector";
 
 // bundle-dynamic-imports: Lazy load payment dialog to reduce initial bundle
@@ -110,7 +107,7 @@ export function AppointmentDialog({
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   // Baby Card info state
   const [babyCardInfo, setBabyCardInfo] = useState<BabyCardCheckoutInfo | null>(null);
-  const [loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
+  const [_loadingBabyCardInfo, setLoadingBabyCardInfo] = useState(false);
   // Advance payment flow states
   const [showAdvancePaymentConfirm, setShowAdvancePaymentConfirm] = useState(false);
   const [createdAppointment, setCreatedAppointment] = useState<{

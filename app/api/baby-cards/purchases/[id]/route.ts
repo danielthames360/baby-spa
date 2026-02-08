@@ -12,7 +12,7 @@ type RouteParams = { params: Promise<{ id: string }> };
  * GET /api/baby-cards/purchases/[id]
  * Get a single baby card purchase with details
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 

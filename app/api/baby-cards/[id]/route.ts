@@ -14,7 +14,7 @@ type RouteParams = { params: Promise<{ id: string }> };
  * GET /api/baby-cards/[id]
  * Get a single baby card template with details
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 
@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/baby-cards/[id]
  * Delete a baby card template (only if no purchases)
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     await withAuth(["OWNER", "ADMIN"]);
 

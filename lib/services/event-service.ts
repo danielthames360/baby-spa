@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Prisma, EventStatus, EventType } from "@prisma/client";
-import { toDateOnly, fromDateOnly, getStartOfDayUTC, getEndOfDayUTC, getTodayUTCNoon } from "@/lib/utils/date-utils";
+import { toDateOnly, getStartOfDayUTC, getEndOfDayUTC, getTodayUTCNoon } from "@/lib/utils/date-utils";
 
 // Types for service inputs
 interface CreateEventInput {

@@ -5,7 +5,7 @@ import { packageService } from "@/lib/services/package-service";
 
 // DELETE /api/package-purchases/[id] - Cancel/void a package purchase
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

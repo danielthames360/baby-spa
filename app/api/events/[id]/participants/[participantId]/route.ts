@@ -5,7 +5,7 @@ import { updateParticipantSchema, registerPaymentSchema, markAttendanceSchema } 
 
 // GET /api/events/[id]/participants/[participantId] - Get participant by ID
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {
@@ -70,7 +70,7 @@ export async function PUT(
 
 // DELETE /api/events/[id]/participants/[participantId] - Remove participant
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; participantId: string }> }
 ) {
   try {

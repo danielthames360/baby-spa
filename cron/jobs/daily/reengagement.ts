@@ -162,7 +162,7 @@ export async function runReengagement(
  * Send re-engagement message (email + WhatsApp)
  */
 async function sendReengagementMessage(
-  prisma: PrismaClient,
+  _prisma: PrismaClient,
   parent: ParentWithBabies,
   baby: ParentWithBabies["babies"][0]["baby"],
   config: CountryConfig

@@ -1,6 +1,6 @@
 "use client";
 
-import { Baby, User, Clock, Package, AlertCircle, UserRound } from "lucide-react";
+import { Baby, User, Clock, Package, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 

@@ -60,7 +60,6 @@ export function RoleDashboard({ userRole, userName, stats }: RoleDashboardProps)
 
   // Finance calculations
   const todayNet = (stats.todayIncome ?? 0) - (stats.todayExpenses ?? 0);
-  const monthNet = (stats.monthIncome ?? 0) - (stats.monthExpenses ?? 0);
 
   return (
     <div className="space-y-6">

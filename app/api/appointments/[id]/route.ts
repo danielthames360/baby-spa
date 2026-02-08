@@ -8,7 +8,7 @@ import { parseDateToUTCNoon } from "@/lib/utils/date-utils";
 
 // GET /api/appointments/[id] - Get single appointment
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -222,7 +222,7 @@ export async function PATCH(
 
 // DELETE /api/appointments/[id] - Delete appointment (cancel)
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

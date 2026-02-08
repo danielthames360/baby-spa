@@ -7,7 +7,7 @@ import { UserRole } from "@prisma/client";
  * PATCH /api/notifications/read-all
  * Mark all unread notifications as read for the current user's role
  */
-export async function PATCH(request: NextRequest) {
+export async function PATCH(_request: NextRequest) {
   try {
     const session = await withAuth(["OWNER", "ADMIN", "RECEPTION"]);
 

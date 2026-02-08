@@ -277,7 +277,7 @@ export function PackageSelector({
   showPrices = true,
   showExistingFirst = true,
   allowNewPackage = true,
-  compact = false,
+  compact: _compact = false,
   showProvisionalMessage = true,
   defaultCategoryId,
   maxHeight = "300px",

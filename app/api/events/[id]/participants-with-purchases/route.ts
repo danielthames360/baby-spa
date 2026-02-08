@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 
 // GET /api/events/[id]/participants-with-purchases - Get participant IDs that have purchases
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

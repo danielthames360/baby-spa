@@ -10,7 +10,7 @@ import { transactionService } from "@/lib/services/transaction-service";
 
 // GET /api/package-payments/[id] - Get payment details (transaction)
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -75,7 +75,7 @@ export async function GET(
 
 // DELETE /api/package-payments/[id] - Delete/reverse a payment (admin only)
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

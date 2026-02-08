@@ -6,8 +6,6 @@ import { differenceInHours, format, addDays, startOfDay, isBefore } from "date-f
 import { es, ptBR } from "date-fns/locale";
 import { formatDateForDisplay, extractDateString } from "@/lib/utils/date-utils";
 import {
-  Calendar,
-  Clock,
   X,
   CalendarDays,
   AlertTriangle,

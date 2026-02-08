@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 
 // DELETE /api/events/[id]/products/[usageId] - Remove product usage from event
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; usageId: string }> }
 ) {
   try {

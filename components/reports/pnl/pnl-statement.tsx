@@ -6,7 +6,6 @@ import { formatCurrency, formatPercent } from "@/lib/utils/currency-utils";
 import {
   TrendingUp,
   TrendingDown,
-  Minus,
   DollarSign,
   ShoppingCart,
   Users,

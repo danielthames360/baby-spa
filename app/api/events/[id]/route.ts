@@ -5,7 +5,7 @@ import { updateEventSchema } from "@/lib/validations/event";
 
 // GET /api/events/[id] - Get event by ID
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -42,7 +42,7 @@ export async function PUT(
 
 // DELETE /api/events/[id] - Delete event (only DRAFT)
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

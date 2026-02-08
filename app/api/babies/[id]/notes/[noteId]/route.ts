@@ -8,7 +8,7 @@ interface RouteParams {
 }
 
 // DELETE /api/babies/[id]/notes/[noteId] - Delete a note
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

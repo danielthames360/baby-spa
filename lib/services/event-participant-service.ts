@@ -528,7 +528,7 @@ export const eventParticipantService = {
    * Mark attendance for multiple participants at once
    */
   async bulkMarkAttendance(
-    eventId: string,
+    _eventId: string,
     attendanceMap: Array<{ participantId: string; attended: boolean }>
   ) {
     // Use transaction to update all at once

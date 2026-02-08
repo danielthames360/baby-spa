@@ -119,7 +119,7 @@ export function EventDetails({ event }: EventDetailsProps) {
   const basePrice = Number(event.basePrice);
 
   // js-combine-iterations: Single iteration to compute all participant stats
-  const { activeParticipants, totalExpected, totalPaid, attendedCount } = useMemo(() => {
+  const { activeParticipants, totalExpected, totalPaid, attendedCount: _attendedCount } = useMemo(() => {
     let expected = 0;
     let paid = 0;
     let attended = 0;

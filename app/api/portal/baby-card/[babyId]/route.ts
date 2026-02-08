@@ -11,7 +11,7 @@ type RouteParams = { params: Promise<{ babyId: string }> };
  * Get baby card info for portal (parents view)
  * Validates that the parent owns this baby
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
 

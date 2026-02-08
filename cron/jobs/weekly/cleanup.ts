@@ -27,7 +27,7 @@ interface CleanupResult {
  */
 export async function runWeeklyCleanup(
   prisma: PrismaClient,
-  config: CountryConfig
+  _config: CountryConfig
 ): Promise<CleanupResult> {
   const result: CleanupResult = {
     messagesDeleted: 0,

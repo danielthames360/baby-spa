@@ -5,8 +5,6 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import {
   Gift,
-  DollarSign,
-  Minus,
   Banknote,
   ArrowUpCircle,
   ArrowDownCircle,

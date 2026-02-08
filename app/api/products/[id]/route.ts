@@ -9,7 +9,7 @@ interface RouteParams {
 }
 
 // GET /api/products/[id] - Get a single product
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/products/[id] - Toggle product active status
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

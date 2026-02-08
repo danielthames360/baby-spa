@@ -9,7 +9,7 @@ interface RouteParams {
 }
 
 // GET /api/packages/[id] - Get a single package
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/packages/[id] - Toggle package active status
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

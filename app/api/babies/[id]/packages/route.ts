@@ -8,7 +8,7 @@ interface RouteParams {
 }
 
 // GET /api/babies/[id]/packages - Get all packages with remaining sessions for a baby
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

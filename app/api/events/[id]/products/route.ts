@@ -5,7 +5,7 @@ import { addEventProductSchema } from "@/lib/validations/event";
 
 // GET /api/events/[id]/products - Get products used in event
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

@@ -254,7 +254,7 @@ async function sendSameDayWhatsAppReminder(
   prisma: PrismaClient,
   parentId: string,
   appointments: AppointmentWithRelations[],
-  config: CountryConfig
+  _config: CountryConfig
 ): Promise<boolean> {
   const parents = getParentsFromBaby(appointments[0]?.baby);
   const parent = parents.find((p) => p.id === parentId);

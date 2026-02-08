@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db";
 import { Prisma, PaymentMethod } from "@prisma/client";
-import { inventoryService } from "./inventory-service";
 import { packageService } from "./package-service";
 import { babyCardService } from "./baby-card-service";
 import { transactionService, PaymentMethodEntry, TransactionItemInput } from "./transaction-service";
@@ -404,10 +403,6 @@ export const sessionService = {
     const sessionPackage = selectedPackagePurchase || session.packagePurchase;
     // Only look for active baby package if this is a baby appointment
     const activePackage = !sessionPackage && babyId ? await packageService.getActivePackageForBaby(babyId) : null;
-    const hasActivePackageWithSessions =
-      (sessionPackage && sessionPackage.remainingSessions > 0) ||
-      (activePackage && activePackage.remainingSessions > 0);
-
     // Calculate chargeable amount from products
     let productsAmount = new Prisma.Decimal(0);
     for (const sp of session.products) {

@@ -195,7 +195,7 @@ function findUpcomingMesversary(
  * Send mesversary notification (email + WhatsApp pending)
  */
 async function sendMesversaryNotification(
-  prisma: PrismaClient,
+  _prisma: PrismaClient,
   baby: BabyWithParents,
   months: number,
   mesversaryDate: Date,

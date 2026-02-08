@@ -8,7 +8,7 @@ interface RouteParams {
 }
 
 // POST /api/appointments/[id]/no-show - Mark appointment as no-show
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
 

@@ -9,7 +9,7 @@ interface RouteParams {
 }
 
 // GET /api/categories/[id] - Get a single category
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // PATCH /api/categories/[id] - Toggle category active status
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -132,7 +132,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/categories/[id] - Delete a category
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
